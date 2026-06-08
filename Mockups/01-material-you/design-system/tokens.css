@@ -1,0 +1,285 @@
+/* =============================================================================
+ * Material Design 3 — Design Tokens (Polla Mundial 2026)
+ * Semilla: Verde Césped / Teal (#1B6CA8 primario) + acento dorado
+ * Modo light + dark. CSS custom properties.
+ * ============================================================================= */
+
+/* --------------------------------------------------------------------------- */
+/* TYPE SCALE (Roboto / Inter fallback)                                         */
+/* --------------------------------------------------------------------------- */
+:root {
+  --font-family: 'Roboto', 'Inter', system-ui, sans-serif;
+
+  /* Display */
+  --typescale-display-large-size:   57px;
+  --typescale-display-large-weight: 400;
+  --typescale-display-large-line:   64px;
+  --typescale-display-large-tracking: -0.25px;
+
+  --typescale-display-medium-size:  45px;
+  --typescale-display-medium-weight:400;
+  --typescale-display-medium-line:  52px;
+  --typescale-display-medium-tracking:0px;
+
+  --typescale-display-small-size:   36px;
+  --typescale-display-small-weight: 400;
+  --typescale-display-small-line:   44px;
+  --typescale-display-small-tracking:0px;
+
+  /* Headline */
+  --typescale-headline-large-size:  32px;
+  --typescale-headline-large-weight:400;
+  --typescale-headline-large-line:  40px;
+  --typescale-headline-large-tracking:0px;
+
+  --typescale-headline-medium-size: 28px;
+  --typescale-headline-medium-weight:400;
+  --typescale-headline-medium-line: 36px;
+  --typescale-headline-medium-tracking:0px;
+
+  --typescale-headline-small-size:  24px;
+  --typescale-headline-small-weight:400;
+  --typescale-headline-small-line:  32px;
+  --typescale-headline-small-tracking:0px;
+
+  /* Title */
+  --typescale-title-large-size:     22px;
+  --typescale-title-large-weight:   400;
+  --typescale-title-large-line:     28px;
+  --typescale-title-large-tracking: 0px;
+
+  --typescale-title-medium-size:    16px;
+  --typescale-title-medium-weight:  500;
+  --typescale-title-medium-line:    24px;
+  --typescale-title-medium-tracking:0.15px;
+
+  --typescale-title-small-size:     14px;
+  --typescale-title-small-weight:   500;
+  --typescale-title-small-line:     20px;
+  --typescale-title-small-tracking: 0.1px;
+
+  /* Body */
+  --typescale-body-large-size:      16px;
+  --typescale-body-large-weight:    400;
+  --typescale-body-large-line:      24px;
+  --typescale-body-large-tracking:  0.5px;
+
+  --typescale-body-medium-size:     14px;
+  --typescale-body-medium-weight:   400;
+  --typescale-body-medium-line:     20px;
+  --typescale-body-medium-tracking: 0.25px;
+
+  --typescale-body-small-size:      12px;
+  --typescale-body-small-weight:    400;
+  --typescale-body-small-line:      16px;
+  --typescale-body-small-tracking:  0.4px;
+
+  /* Label */
+  --typescale-label-large-size:     14px;
+  --typescale-label-large-weight:   500;
+  --typescale-label-large-line:     20px;
+  --typescale-label-large-tracking: 0.1px;
+
+  --typescale-label-medium-size:    12px;
+  --typescale-label-medium-weight:  500;
+  --typescale-label-medium-line:    16px;
+  --typescale-label-medium-tracking:0.5px;
+
+  --typescale-label-small-size:     11px;
+  --typescale-label-small-weight:   500;
+  --typescale-label-small-line:     16px;
+  --typescale-label-small-tracking: 0.5px;
+
+  /* --------------------------------------------------------------------------- */
+  /* SHAPE TOKENS                                                                 */
+  /* --------------------------------------------------------------------------- */
+  --shape-none:   0px;
+  --shape-xs:     4px;
+  --shape-sm:     8px;
+  --shape-md:     12px;
+  --shape-lg:     16px;
+  --shape-xl:     28px;
+  --shape-full:   9999px;
+
+  /* --------------------------------------------------------------------------- */
+  /* SPACING                                                                      */
+  /* --------------------------------------------------------------------------- */
+  --spacing-1:  4px;
+  --spacing-2:  8px;
+  --spacing-3:  12px;
+  --spacing-4:  16px;
+  --spacing-5:  20px;
+  --spacing-6:  24px;
+  --spacing-8:  32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* --------------------------------------------------------------------------- */
+  /* MOTION (MD3 "emphasized" easing)                                            */
+  /* --------------------------------------------------------------------------- */
+  --motion-duration-short1:  50ms;
+  --motion-duration-short2:  100ms;
+  --motion-duration-medium1: 200ms;
+  --motion-duration-medium2: 300ms;
+  --motion-duration-long1:   450ms;
+  --motion-duration-long2:   500ms;
+
+  --motion-easing-standard:            cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-standard-accel:      cubic-bezier(0.3, 0, 1, 1);
+  --motion-easing-standard-decel:      cubic-bezier(0, 0, 0, 1);
+  --motion-easing-emphasized:          cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-emphasized-accel:    cubic-bezier(0.3, 0, 0.8, 0.15);
+  --motion-easing-emphasized-decel:    cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* --------------------------------------------------------------------------- */
+  /* ELEVATION (shadow + tonal tint alpha)                                        */
+  /* --------------------------------------------------------------------------- */
+  --elevation-0: none;
+  --elevation-1: 0px 1px 2px rgba(0,0,0,.3), 0px 1px 3px 1px rgba(0,0,0,.15);
+  --elevation-2: 0px 1px 2px rgba(0,0,0,.3), 0px 2px 6px 2px rgba(0,0,0,.15);
+  --elevation-3: 0px 4px 8px 3px rgba(0,0,0,.15), 0px 1px 3px rgba(0,0,0,.3);
+  --elevation-4: 0px 6px 10px 4px rgba(0,0,0,.15), 0px 2px 3px rgba(0,0,0,.3);
+  --elevation-5: 0px 8px 12px 6px rgba(0,0,0,.15), 0px 4px 4px rgba(0,0,0,.3);
+
+  /* Tonal tint alphas por nivel de elevación */
+  --tonal-tint-0:  0%;
+  --tonal-tint-1:  5%;
+  --tonal-tint-2:  8%;
+  --tonal-tint-3: 11%;
+  --tonal-tint-4: 12%;
+  --tonal-tint-5: 14%;
+}
+
+/* --------------------------------------------------------------------------- */
+/* COLOR TOKENS — LIGHT MODE (semilla: verde-teal #006B5E)                      */
+/* --------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  /* Primary */
+  --md-primary:                #006B5E;
+  --md-on-primary:             #FFFFFF;
+  --md-primary-container:      #7EF8E2;
+  --md-on-primary-container:   #00201B;
+
+  /* Secondary */
+  --md-secondary:              #4A6360;
+  --md-on-secondary:           #FFFFFF;
+  --md-secondary-container:    #CCE8E4;
+  --md-on-secondary-container: #051F1D;
+
+  /* Tertiary (acento dorado/cobre para el torneo) */
+  --md-tertiary:               #7E5700;
+  --md-on-tertiary:            #FFFFFF;
+  --md-tertiary-container:     #FFDEA8;
+  --md-on-tertiary-container:  #281800;
+
+  /* Error */
+  --md-error:                  #BA1A1A;
+  --md-on-error:               #FFFFFF;
+  --md-error-container:        #FFDAD6;
+  --md-on-error-container:     #410002;
+
+  /* Surface */
+  --md-surface:                #F4FBF9;
+  --md-on-surface:             #161D1C;
+  --md-surface-variant:        #DBE5E2;
+  --md-on-surface-variant:     #3F4947;
+
+  /* Surface containers */
+  --md-surface-container-lowest:  #FFFFFF;
+  --md-surface-container-low:     #EEF5F3;
+  --md-surface-container:         #E8EFED;
+  --md-surface-container-high:    #E2EAE7;
+  --md-surface-container-highest: #DCE4E2;
+
+  /* Outline */
+  --md-outline:                #6F7977;
+  --md-outline-variant:        #BFC9C6;
+
+  /* Background */
+  --md-background:             #F4FBF9;
+  --md-on-background:          #161D1C;
+
+  /* Inverse */
+  --md-inverse-surface:        #2B3230;
+  --md-inverse-on-surface:     #EBF3F0;
+  --md-inverse-primary:        #60DBC6;
+
+  /* Shadow */
+  --md-shadow:                 rgba(0, 0, 0, 0.3);
+
+  /* Scrim */
+  --md-scrim:                  rgba(0, 0, 0, 0.32);
+}
+
+/* --------------------------------------------------------------------------- */
+/* COLOR TOKENS — DARK MODE                                                     */
+/* --------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  /* Primary */
+  --md-primary:                #60DBC6;
+  --md-on-primary:             #003730;
+  --md-primary-container:      #005045;
+  --md-on-primary-container:   #7EF8E2;
+
+  /* Secondary */
+  --md-secondary:              #B0CCC8;
+  --md-on-secondary:           #1B3532;
+  --md-secondary-container:    #324B48;
+  --md-on-secondary-container: #CCE8E4;
+
+  /* Tertiary */
+  --md-tertiary:               #F9BA4A;
+  --md-on-tertiary:            #422C00;
+  --md-tertiary-container:     #5F4200;
+  --md-on-tertiary-container:  #FFDEA8;
+
+  /* Error */
+  --md-error:                  #FFB4AB;
+  --md-on-error:               #690005;
+  --md-error-container:        #93000A;
+  --md-on-error-container:     #FFDAD6;
+
+  /* Surface */
+  --md-surface:                #0E1514;
+  --md-on-surface:             #DCE4E2;
+  --md-surface-variant:        #3F4947;
+  --md-on-surface-variant:     #BFC9C6;
+
+  /* Surface containers */
+  --md-surface-container-lowest:  #09100E;
+  --md-surface-container-low:     #161D1C;
+  --md-surface-container:         #1A2120;
+  --md-surface-container-high:    #242C2A;
+  --md-surface-container-highest: #2F3735;
+
+  /* Outline */
+  --md-outline:                #899390;
+  --md-outline-variant:        #3F4947;
+
+  /* Background */
+  --md-background:             #0E1514;
+  --md-on-background:          #DCE4E2;
+
+  /* Inverse */
+  --md-inverse-surface:        #DCE4E2;
+  --md-inverse-on-surface:     #2B3230;
+  --md-inverse-primary:        #006B5E;
+
+  /* Shadow */
+  --md-shadow:                 rgba(0, 0, 0, 0.6);
+
+  /* Scrim */
+  --md-scrim:                  rgba(0, 0, 0, 0.5);
+}
+
+/* --------------------------------------------------------------------------- */
+/* STATE LAYERS                                                                 */
+/* --------------------------------------------------------------------------- */
+:root {
+  --state-hover-opacity:   0.08;
+  --state-focus-opacity:   0.12;
+  --state-pressed-opacity: 0.12;
+  --state-dragged-opacity: 0.16;
+}

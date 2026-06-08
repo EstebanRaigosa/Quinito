@@ -1,0 +1,327 @@
+/* ============================================================
+   POLLA · Design Tokens
+   Tierra oscura + dorado mostaza · acento verde salvia
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+
+:root {
+  /* ---------- BRAND PALETTE (raw scale) ---------- */
+  /* Clay — earth brown, principal */
+  --clay-50:  #F8F4EE;
+  --clay-100: #EFE6D6;
+  --clay-200: #DDCBAE;
+  --clay-300: #C5AC83;
+  --clay-400: #A88B5E;
+  --clay-500: #8B6F45;
+  --clay-600: #6E5634;
+  --clay-700: #564127;
+  --clay-800: #3D2E1B;
+  --clay-900: #251B0F;
+  --clay-950: #14100A;
+
+  /* Mustard — dorado mostaza, primario / acción */
+  --mustard-50:  #FBF6E4;
+  --mustard-100: #F5EAB8;
+  --mustard-200: #EDD881;
+  --mustard-300: #E2C24E;
+  --mustard-400: #D1A82A;
+  --mustard-500: #B58D1A;
+  --mustard-600: #927012;
+  --mustard-700: #70560F;
+  --mustard-800: #4F3D0C;
+  --mustard-900: #322608;
+
+  /* Sage — verde salvia, acento secundario */
+  --sage-50:  #F1F4EF;
+  --sage-100: #DDE5D6;
+  --sage-200: #BCC9B0;
+  --sage-300: #97AB87;
+  --sage-400: #748A65;
+  --sage-500: #586C4B;
+  --sage-600: #44553A;
+  --sage-700: #34422C;
+  --sage-800: #25301F;
+  --sage-900: #161D13;
+
+  /* Sand — neutros cálidos */
+  --sand-50:  #FBF8F2;
+  --sand-100: #F4EEE2;
+  --sand-200: #E7DDC8;
+  --sand-300: #D2C3A4;
+  --sand-400: #B7A37B;
+  --sand-500: #97825B;
+  --sand-600: #786646;
+  --sand-700: #5C4D35;
+  --sand-800: #403626;
+  --sand-900: #261F15;
+
+  /* Stone — neutros más fríos para UI */
+  --stone-50:  #F7F5F2;
+  --stone-100: #ECE8E1;
+  --stone-200: #D7D0C3;
+  --stone-300: #B5AB99;
+  --stone-400: #8E8470;
+  --stone-500: #6E6552;
+  --stone-600: #554D3D;
+  --stone-700: #3F392C;
+  --stone-800: #2A261D;
+  --stone-900: #181610;
+
+  /* Semantic raw */
+  --rust-500:    #B5552B;  /* destructive / error */
+  --rust-600:    #923F1E;
+  --rust-100:    #F6E2D7;
+  --bronze-500:  #A87340;  /* warning */
+  --bronze-100:  #F2E3D2;
+  --moss-500:    #5C7A4A;  /* success */
+  --moss-100:    #DEE9D5;
+  --slate-500:   #4A5A6E;  /* info */
+  --slate-100:   #DBE2EB;
+
+  /* ---------- TYPOGRAPHY ---------- */
+  --font-sans: "Mulish", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Type scale (1.25 ratio, fluid display) */
+  --text-2xs: 0.6875rem; /* 11 */
+  --text-xs:  0.75rem;   /* 12 */
+  --text-sm:  0.875rem;  /* 14 */
+  --text-base:1rem;      /* 16 */
+  --text-md:  1.125rem;  /* 18 */
+  --text-lg:  1.25rem;   /* 20 */
+  --text-xl:  1.5rem;    /* 24 */
+  --text-2xl: 1.875rem;  /* 30 */
+  --text-3xl: 2.25rem;   /* 36 */
+  --text-4xl: 3rem;      /* 48 */
+  --text-5xl: 3.75rem;   /* 60 */
+  --text-6xl: 4.75rem;   /* 76 */
+
+  --leading-tight:  1.15;
+  --leading-snug:   1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.65;
+
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.04em;
+  --tracking-widest:  0.18em;
+
+  --weight-light:    300;
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extrabold:800;
+  --weight-black:    900;
+
+  /* ---------- SPACING (4px base) ---------- */
+  --space-0:  0;
+  --space-1:  0.25rem;  /* 4  */
+  --space-2:  0.5rem;   /* 8  */
+  --space-3:  0.75rem;  /* 12 */
+  --space-4:  1rem;     /* 16 */
+  --space-5:  1.25rem;  /* 20 */
+  --space-6:  1.5rem;   /* 24 */
+  --space-8:  2rem;     /* 32 */
+  --space-10: 2.5rem;   /* 40 */
+  --space-12: 3rem;     /* 48 */
+  --space-16: 4rem;     /* 64 */
+  --space-20: 5rem;     /* 80 */
+  --space-24: 6rem;     /* 96 */
+
+  /* ---------- RADII ---------- */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-2xl:  28px;
+  --radius-pill: 999px;
+
+  /* ---------- BORDERS ---------- */
+  --border-1: 1px;
+  --border-2: 2px;
+
+  /* ---------- TRANSITIONS ---------- */
+  --ease-out:  cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+
+  /* ---------- Z INDEX ---------- */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}
+
+/* ============================================================
+   LIGHT THEME (default)
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  /* Surfaces */
+  --bg-app:       var(--sand-50);
+  --bg-surface:   #FFFDF8;
+  --bg-elevated:  #FFFFFF;
+  --bg-sunken:    var(--sand-100);
+  --bg-muted:     var(--stone-100);
+  --bg-inverse:   var(--clay-900);
+
+  /* Text */
+  --fg-default:   var(--clay-900);
+  --fg-strong:    var(--clay-950);
+  --fg-muted:     var(--stone-600);
+  --fg-subtle:    var(--stone-500);
+  --fg-disabled:  var(--stone-400);
+  --fg-inverse:   var(--sand-50);
+  --fg-on-primary:var(--clay-950);
+  --fg-on-accent: #FFFFFF;
+
+  /* Borders */
+  --border-subtle:  var(--stone-200);
+  --border-default: var(--stone-300);
+  --border-strong:  var(--stone-400);
+  --border-inverse: var(--clay-900);
+
+  /* Brand (primary = mustard) */
+  --primary:        var(--mustard-400);
+  --primary-hover:  var(--mustard-500);
+  --primary-active: var(--mustard-600);
+  --primary-soft:   var(--mustard-100);
+  --primary-soft-hover: var(--mustard-200);
+  --primary-fg:     var(--clay-950);
+
+  /* Secondary (clay) */
+  --secondary:        var(--clay-800);
+  --secondary-hover:  var(--clay-900);
+  --secondary-active: var(--clay-950);
+  --secondary-soft:   var(--clay-100);
+  --secondary-fg:     #FFFFFF;
+
+  /* Accent (sage) */
+  --accent:        var(--sage-500);
+  --accent-hover:  var(--sage-600);
+  --accent-soft:   var(--sage-100);
+  --accent-fg:     #FFFFFF;
+
+  /* Status */
+  --success:      var(--moss-500);
+  --success-soft: var(--moss-100);
+  --warning:      var(--bronze-500);
+  --warning-soft: var(--bronze-100);
+  --danger:       var(--rust-500);
+  --danger-hover: var(--rust-600);
+  --danger-soft:  var(--rust-100);
+  --info:         var(--slate-500);
+  --info-soft:    var(--slate-100);
+
+  /* Focus ring */
+  --ring: 0 0 0 3px rgba(209, 168, 42, 0.35);
+  --ring-danger: 0 0 0 3px rgba(181, 85, 43, 0.35);
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(37, 27, 15, 0.06);
+  --shadow-sm: 0 1px 3px rgba(37, 27, 15, 0.08), 0 1px 2px rgba(37, 27, 15, 0.04);
+  --shadow-md: 0 4px 12px rgba(37, 27, 15, 0.08), 0 2px 4px rgba(37, 27, 15, 0.04);
+  --shadow-lg: 0 12px 28px rgba(37, 27, 15, 0.12), 0 4px 8px rgba(37, 27, 15, 0.06);
+  --shadow-xl: 0 24px 48px rgba(37, 27, 15, 0.16), 0 8px 16px rgba(37, 27, 15, 0.08);
+  --shadow-inner: inset 0 1px 2px rgba(37, 27, 15, 0.06);
+}
+
+/* ============================================================
+   DARK THEME
+   ============================================================ */
+[data-theme="dark"] {
+  --bg-app:       var(--clay-950);
+  --bg-surface:   #1A140C;
+  --bg-elevated:  var(--clay-900);
+  --bg-sunken:    #0F0B07;
+  --bg-muted:     var(--clay-800);
+  --bg-inverse:   var(--sand-50);
+
+  --fg-default:   var(--sand-100);
+  --fg-strong:    var(--sand-50);
+  --fg-muted:     var(--sand-300);
+  --fg-subtle:    var(--stone-400);
+  --fg-disabled:  var(--stone-600);
+  --fg-inverse:   var(--clay-950);
+  --fg-on-primary:var(--clay-950);
+  --fg-on-accent: #FFFFFF;
+
+  --border-subtle:  rgba(247, 245, 242, 0.08);
+  --border-default: rgba(247, 245, 242, 0.14);
+  --border-strong:  rgba(247, 245, 242, 0.24);
+  --border-inverse: var(--sand-50);
+
+  --primary:        var(--mustard-300);
+  --primary-hover:  var(--mustard-200);
+  --primary-active: var(--mustard-100);
+  --primary-soft:   rgba(209, 168, 42, 0.15);
+  --primary-soft-hover: rgba(209, 168, 42, 0.22);
+  --primary-fg:     var(--clay-950);
+
+  --secondary:        var(--sand-100);
+  --secondary-hover:  var(--sand-50);
+  --secondary-active: #FFFFFF;
+  --secondary-soft:   rgba(244, 238, 226, 0.08);
+  --secondary-fg:     var(--clay-950);
+
+  --accent:        var(--sage-300);
+  --accent-hover:  var(--sage-200);
+  --accent-soft:   rgba(151, 171, 135, 0.16);
+  --accent-fg:     var(--clay-950);
+
+  --success:      #8AAB75;
+  --success-soft: rgba(138, 171, 117, 0.15);
+  --warning:      #D49A66;
+  --warning-soft: rgba(212, 154, 102, 0.15);
+  --danger:       #D17A55;
+  --danger-hover: #DC8A68;
+  --danger-soft:  rgba(209, 122, 85, 0.15);
+  --info:         #8FA5BD;
+  --info-soft:    rgba(143, 165, 189, 0.15);
+
+  --ring: 0 0 0 3px rgba(226, 194, 78, 0.4);
+  --ring-danger: 0 0 0 3px rgba(209, 122, 85, 0.4);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.35);
+  --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================================
+   BASE RESET + GLOBALS
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--fg-default);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv01", "cv02";
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--radius-sm); }

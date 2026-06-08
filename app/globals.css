@@ -1,0 +1,437 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens del Polla Design System (tokens.css). Fuente de verdad de color/tema.
+ * Los alias shadcn (--background, --card, --primary-foreground…) se mapean a los
+ * tokens semánticos del DS para que los primitivos en components/ui/ sigan funcionando.
+ */
+:root,
+[data-theme="light"] {
+  /* Superficies — fondo slate frío, cards blancas puras (Spring Turf / bento) */
+  --bg-app: #F8FAFC;        /* slate-50 */
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-sunken: #F1F5F9;     /* slate-100 */
+  --bg-muted: #EEF2F7;
+
+  /* Texto — tinta navy/slate */
+  --fg-default: #0B1C30;    /* ink-900 */
+  --fg-strong: #07111F;     /* ink-950 */
+  --fg-muted: #475569;      /* slate-600 */
+  --fg-subtle: #64748B;     /* slate-500 */
+  --fg-disabled: #94A3B8;   /* slate-400 */
+
+  /* Bordes */
+  --border-subtle: #EEF2F7;
+  --border-default: #E2E8F0; /* slate-200 */
+  --border-strong: #CBD5E1;  /* slate-300 */
+
+  /* Marca — verde esmeralda (primario más profundo: texto blanco pasa AA) */
+  --primary: #16A34A;        /* emerald-600 */
+  --primary-hover: #15803D;
+  --primary-soft: #D1FAE5;   /* emerald-100 */
+  --primary-fg: #FFFFFF;
+
+  --secondary: #0B1C30;      /* ink-900 */
+  --secondary-soft: #E2E8F0; /* slate-200 */
+  --secondary-fg: #FFFFFF;
+
+  --accent: #0D9488;         /* teal-600 */
+  --accent-soft: #CCFBF1;    /* teal-100 */
+  --accent-fg: #FFFFFF;
+
+  /* Estado */
+  --success: #16A34A;
+  --success-soft: #D1FAE5;
+  --success-fg: #FFFFFF;
+  --warning: #D97706;
+  --warning-soft: #FEF3C7;
+  --warning-fg: #FFFFFF;
+  --danger: #E11D48;
+  --danger-soft: #FFE4E6;
+  --danger-fg: #FFFFFF;
+  --info: #2563EB;
+  --info-soft: #DBEAFE;
+  --info-fg: #FFFFFF;
+
+  --ring: #22C55E;           /* emerald-500 vibrante */
+  --radius: 16px;
+  /* Luz superior en superficies (atenuada en dark). */
+  --surface-highlight: rgba(255, 255, 255, 0.6);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  /* Navy frío profundo + verde brillante */
+  --bg-app: #07111F;
+  --bg-surface: #0F1B2A;
+  --bg-elevated: #15243A;
+  --bg-sunken: #0A1626;
+  --bg-muted: #15243A;
+
+  --fg-default: #F1F5F9;
+  --fg-strong: #F8FAFC;
+  --fg-muted: #CBD5E1;
+  --fg-subtle: #94A3B8;
+  --fg-disabled: #475569;
+
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-default: rgba(148, 163, 184, 0.22);
+  --border-strong: rgba(148, 163, 184, 0.34);
+
+  --primary: #22C55E;        /* emerald-500 vibrante */
+  --primary-hover: #4ADE80;
+  --primary-soft: rgba(34, 197, 94, 0.16);
+  --primary-fg: #052E16;
+
+  --secondary: #F1F5F9;
+  --secondary-soft: rgba(148, 163, 184, 0.10);
+  --secondary-fg: #07111F;
+
+  --accent: #2DD4BF;         /* teal-400 */
+  --accent-soft: rgba(45, 212, 191, 0.16);
+  --accent-fg: #07111F;
+
+  --success: #4ADE80;
+  --success-soft: rgba(74, 222, 128, 0.15);
+  --success-fg: #052E16;
+  --warning: #FBBF24;
+  --warning-soft: rgba(251, 191, 36, 0.15);
+  --warning-fg: #07111F;
+  --danger: #FB7185;
+  --danger-soft: rgba(251, 113, 133, 0.15);
+  --danger-fg: #07111F;
+  --info: #60A5FA;
+  --info-soft: rgba(96, 165, 250, 0.15);
+  --info-fg: #07111F;
+
+  --ring: #22C55E;
+  --surface-highlight: rgba(255, 255, 255, 0.03);
+
+  color-scheme: dark;
+}
+
+/*
+ * Escalas de marca como variables CSS (espejo de tailwind.config.ts).
+ * Son constantes del DS, independientes del tema. Necesarias para los
+ * degradados/sombras que se construyen en `style={{...}}` y en @layer components
+ * (ej. var(--clay-900), var(--mustard-400)). Sin esto los degradados inline
+ * quedaban inválidos y no pintaban → la causa de varias superficies "planas".
+ */
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
+  /* clay → INK / NAVY (texto + superficies oscuras) */
+  --clay-50: #F1F5F9; --clay-100: #E2E8F0; --clay-200: #CBD5E1; --clay-300: #94A3B8;
+  --clay-400: #64748B; --clay-500: #475569; --clay-600: #334155; --clay-700: #1E293B;
+  --clay-800: #14253B; --clay-900: #0B1C30; --clay-950: #07111F;
+
+  /* mustard → EMERALD (primario / marca / acción) */
+  --mustard-50: #ECFDF5; --mustard-100: #D1FAE5; --mustard-200: #A7F3D0; --mustard-300: #6EE7B7;
+  --mustard-400: #22C55E; --mustard-500: #16A34A; --mustard-600: #15803D; --mustard-700: #166534;
+  --mustard-800: #14532D; --mustard-900: #052E16;
+
+  /* sage → TEAL-GREEN fresco (acento secundario) */
+  --sage-50: #F0FDFA; --sage-100: #CCFBF1; --sage-200: #99F6E4; --sage-300: #5EEAD4;
+  --sage-400: #2DD4BF; --sage-500: #14B8A6; --sage-600: #0D9488; --sage-700: #0F766E;
+  --sage-800: #115E59; --sage-900: #134E4A;
+
+  /* sand → SLATE (fondo de página) */
+  --sand-50: #F8FAFC; --sand-100: #F1F5F9; --sand-200: #E2E8F0; --sand-300: #CBD5E1;
+  --sand-400: #94A3B8; --sand-500: #64748B; --sand-600: #475569; --sand-700: #334155;
+  --sand-800: #1E293B; --sand-900: #0F172A;
+
+  /* stone → SLATE (neutros de UI: bordes, mutados) */
+  --stone-50: #F8FAFC; --stone-100: #F1F5F9; --stone-200: #E2E8F0; --stone-300: #CBD5E1;
+  --stone-400: #94A3B8; --stone-500: #64748B; --stone-600: #475569; --stone-700: #334155;
+  --stone-800: #1E293B; --stone-900: #0F172A;
+}
+
+/* Alias shadcn → tokens del DS (no quitar: los usan los primitivos ui/). */
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
+  --background: var(--bg-app);
+  --foreground: var(--fg-default);
+  --card: var(--bg-surface);
+  --card-foreground: var(--fg-default);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg-default);
+  --muted: var(--bg-muted);
+  --muted-foreground: var(--fg-muted);
+  --primary-foreground: var(--primary-fg);
+  --secondary-foreground: var(--secondary-fg);
+  --accent-foreground: var(--accent-fg);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-fg);
+  --success-foreground: var(--success-fg);
+  --warning-foreground: var(--warning-fg);
+  --info-foreground: var(--info-fg);
+  --border: var(--border-subtle);
+  --input: var(--border-default);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-app text-foreground font-sans antialiased;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available; /* fallback Safari iOS (§2) */
+    /* Números alineados + tildes correctas (DS §Tipografía). */
+    font-feature-settings: "ss01", "cv01", "cv02";
+    text-rendering: optimizeLegibility;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* evita zoom en Safari iOS */
+  }
+
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--fg-default);
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-surface) inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  :disabled {
+    cursor: not-allowed;
+  }
+
+  /*
+   * Inputs deshabilitados legibles en iOS (§9). Safari baja la opacidad y
+   * atenúa el color vía -webkit-text-fill-color (no controlable con `color`).
+   * Crítico para el ScoreStepper/predicción deshabilitados (partido cerrado o
+   * con placeholder '2A'): el marcador debe seguir leyéndose.
+   */
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    opacity: 1;
+    -webkit-text-fill-color: var(--fg-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Overline: etiqueta corta en mayúsculas con tracking ancho (DS). */
+  .overline {
+    font-size: var(--text-2xs, 0.6875rem);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    line-height: 1.2;
+  }
+
+  /*
+   * Escala tipográfica semántica (mapea Desing System/tokens.css).
+   * Fuente única: Mulish. La jerarquía se logra SOLO con estas clases
+   * (tamaño + peso), nunca mezclando familias ni inventando tamaños sueltos.
+   * Color por defecto: el texto fuerte/estándar según el nivel; se puede
+   * sobre-escribir con text-fg-muted, etc.
+   */
+  .t-display {
+    font-size: clamp(2.25rem, 7vw, 3rem); /* 36 → 48 */
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--fg-strong);
+  }
+  .t-h1 {
+    font-size: 1.875rem; /* 30 */
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--fg-strong);
+  }
+  .t-h2 {
+    font-size: 1.5rem; /* 24 */
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    color: var(--fg-strong);
+  }
+  .t-h3 {
+    font-size: 1.25rem; /* 20 */
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    color: var(--fg-strong);
+  }
+  .t-h4 {
+    font-size: 1.125rem; /* 18 */
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--fg-strong);
+  }
+  .t-lede {
+    font-size: 1.125rem; /* 18 */
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--fg-muted);
+  }
+  .t-body {
+    font-size: 1rem; /* 16 */
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--fg-default);
+  }
+  .t-body-sm {
+    font-size: 0.875rem; /* 14 */
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--fg-default);
+  }
+  .t-caption {
+    font-size: 0.75rem; /* 12 */
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--fg-muted);
+  }
+  /* Número protagonista (tablero/stats) — vibe deportivo. */
+  .t-stat {
+    font-size: clamp(1.75rem, 6vw, 2.25rem); /* 28 → 36 */
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg-strong);
+  }
+
+  /*
+   * Superficie con profundidad: degradado vertical sutil (luz arriba) + borde +
+   * sombra. Reemplaza al plano `bg-surface border shadow-xs` en tarjetas.
+   */
+  .surface-card {
+    background-image: linear-gradient(
+      170deg,
+      var(--bg-elevated) 0%,
+      var(--bg-surface) 60%,
+      var(--bg-sunken) 100%
+    );
+    border: 1px solid var(--border-subtle);
+    box-shadow:
+      0 1px 2px rgba(15, 40, 27, 0.06),
+      0 1px 0 var(--surface-highlight) inset;
+  }
+
+
+  /*
+   * Tarjeta interactiva: eleva y profundiza la sombra al hover (desktop).
+   * Animamos transform+box-shadow juntos; en táctil queda el active.
+   */
+  .hover-lift {
+    transition:
+      transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
+      box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-color 0.25s ease;
+  }
+  /* will-change solo en dispositivos con hover (desktop): en táctil (iOS)
+     evita crear una capa de composición permanente por tarjeta (§7). */
+  @media (hover: hover) {
+    .hover-lift { will-change: transform; }
+    .hover-lift:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 30px -10px rgba(16, 64, 38, 0.20);
+      border-color: var(--border-default);
+    }
+  }
+  .hover-lift:active {
+    transform: translateY(0);
+  }
+
+  /* Texto con degradado dorado (números destacados, marca). */
+  .text-gradient-gold {
+    background-image: linear-gradient(
+      120deg,
+      var(--mustard-500),
+      var(--mustard-300) 50%,
+      var(--mustard-600)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+  .min-h-dvh { min-height: 100vh; min-height: 100dvh; min-height: -webkit-fill-available; }
+  .h-dvh { height: 100vh; height: 100dvh; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  /* Scroll táctil suave en iOS (§4) para contenedores con overflow interno. */
+  .scroll-touch { -webkit-overflow-scrolling: touch; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* ============================================================
+   AJUSTES ESPECÍFICOS DE iOS / SAFARI (WebKit)
+   `-webkit-touch-callout: none` es un proxy fiable de "es Safari/iOS"
+   (COMPATIBILIDAD-MOVIL.md §0.2). Fuera de @layer para ganar por
+   especificidad/orden sobre las utilidades de Tailwind.
+   ============================================================ */
+@supports (-webkit-touch-callout: none) {
+  /* §6 — quita el delay de 300ms y asegura que el tap caiga en el control,
+     no en sus hijos (íconos/spans). NO forzamos min-height global aquí
+     (rompería badges/links inline); los 44px van por componente. */
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+  button *,
+  a * {
+    pointer-events: none;
+  }
+
+  /* §11 — evita el rebote elástico y el pull-to-refresh accidental. */
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* §8 — backdrop-filter es caro y parpadea en iOS. Los fondos translúcidos
+     del proyecto ya usan opacidad alta (bg-app/95, bg-surface/95), así que
+     basta con anular el blur. */
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

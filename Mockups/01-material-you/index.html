@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es-CO" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#006B5E" />
+  <title>Polla — Mundial 2026</title>
+
+  <!-- Google Fonts: Roboto + Roboto Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <!-- Design System -->
+  <link rel="stylesheet" href="design-system/tokens.css" />
+  <link rel="stylesheet" href="design-system/components.css" />
+
+  <style>
+    /* App shell */
+    #app {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Branding */
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--md-primary), var(--md-tertiary));
+      border-radius: var(--shape-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .brand-name {
+      font-size: var(--typescale-title-large-size);
+      font-weight: 700;
+      color: var(--md-primary);
+      letter-spacing: 2px;
+    }
+
+    /* Login page */
+    .login-page {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 40px) var(--spacing-6) calc(env(safe-area-inset-bottom, 0px) + 40px);
+      background: linear-gradient(160deg, var(--md-surface-container-low) 0%, var(--md-background) 60%);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+      background-color: var(--md-surface-container-low);
+      border-radius: var(--shape-xl);
+      padding: var(--spacing-8);
+      box-shadow: var(--elevation-2);
+    }
+
+    /* Group header */
+    .group-header {
+      background: linear-gradient(135deg, var(--md-primary-container), var(--md-secondary-container));
+      padding: var(--spacing-4) var(--spacing-4) var(--spacing-6);
+    }
+
+    /* Tab content fade */
+    .tab-content {
+      display: none;
+      animation: fadeIn var(--motion-duration-medium1) var(--motion-easing-standard);
+    }
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Wizard phases */
+    .wizard-phase { display: none; flex-direction: column; }
+    .wizard-phase.active { display: flex; }
+
+    /* Match card prediction inputs row */
+    .pred-inputs {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) var(--spacing-4);
+      background-color: var(--md-surface-container);
+      border-top: 1px solid var(--md-outline-variant);
+    }
+
+    /* Overlay (loading or no connection) */
+    #snackbar { pointer-events: none; }
+    #snackbar.show { pointer-events: auto; }
+
+    /* Group info banner */
+    .group-info-banner {
+      background-color: var(--md-surface-container);
+      padding: var(--spacing-4);
+      border-bottom: 1px solid var(--md-outline-variant);
+    }
+
+    /* Participants payment pill */
+    .payment-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px var(--spacing-2);
+      border-radius: var(--shape-full);
+      font-size: var(--typescale-label-small-size);
+      font-weight: 500;
+    }
+    .payment-pill.paid   { background: #DCEDC8; color: #33691E; }
+    .payment-pill.unpaid { background: #FFEBEE; color: #B71C1C; }
+    [data-theme="dark"] .payment-pill.paid   { background: #33691E; color: #DCEDC8; }
+    [data-theme="dark"] .payment-pill.unpaid { background: #B71C1C; color: #FFEBEE; }
+
+    /* Prediction locked */
+    .pred-locked {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) var(--spacing-4);
+      background-color: var(--md-surface-container);
+      border-top: 1px solid var(--md-outline-variant);
+      font-size: var(--typescale-body-medium-size);
+    }
+
+    .pred-score-display {
+      font-size: var(--typescale-headline-small-size);
+      font-weight: 700;
+      color: var(--md-on-surface);
+      letter-spacing: 3px;
+    }
+
+    /* Prize summary row */
+    .prize-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) 0;
+      border-bottom: 1px solid var(--md-outline-variant);
+    }
+    .prize-row:last-child { border-bottom: none; }
+
+    .prize-medal { font-size: 24px; width: 32px; text-align: center; flex-shrink: 0; }
+
+    /* Dashboard group card */
+    .group-card-inner {
+      padding: var(--spacing-4);
+    }
+
+    /* Detalle partido */
+    .detail-hero {
+      background: linear-gradient(160deg, var(--md-primary-container), var(--md-surface-container-low));
+      padding: var(--spacing-6) var(--spacing-4);
+    }
+
+    .detail-teams {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-4);
+      margin-bottom: var(--spacing-4);
+    }
+
+    .detail-team {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-2);
+      text-align: center;
+    }
+
+    .detail-flag { font-size: 48px; line-height: 1; }
+
+    .detail-name {
+      font-size: var(--typescale-title-small-size);
+      font-weight: 500;
+      color: var(--md-on-surface);
+    }
+
+    .detail-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-2);
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+
+    .detail-score {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--md-on-surface);
+    }
+
+    /* Stats winner bars */
+    .winner-bars {
+      display: flex;
+      gap: var(--spacing-2);
+      align-items: flex-end;
+      height: 80px;
+    }
+
+    .winner-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-1);
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .winner-bar-fill {
+      width: 100%;
+      border-radius: var(--shape-xs) var(--shape-xs) 0 0;
+      transition: height var(--motion-duration-long1) var(--motion-easing-emphasized-decel);
+      min-height: 4px;
+    }
+
+    .winner-bar-pct {
+      font-size: var(--typescale-label-small-size);
+      font-weight: 700;
+      color: var(--md-on-surface);
+    }
+
+    .winner-bar-label {
+      font-size: var(--typescale-label-small-size);
+      color: var(--md-on-surface-variant);
+    }
+
+    /* Safe area spacers */
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Responsive helpers */
+    @media (min-width: 640px) {
+      .login-page { padding-top: 60px; }
+    }
+
+    /* Fase selector in wizard */
+    .fase-group {
+      border: 1px solid var(--md-outline-variant);
+      border-radius: var(--shape-md);
+      overflow: hidden;
+      margin-bottom: var(--spacing-3);
+    }
+
+    .fase-group-header {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) var(--spacing-4);
+      background-color: var(--md-surface-container);
+      border-bottom: 1px solid var(--md-outline-variant);
+      cursor: pointer;
+    }
+
+    .fase-group-body { padding: var(--spacing-2) 0; }
+
+    .partido-check-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-2) var(--spacing-4);
+      min-height: 48px;
+    }
+
+    .partido-check-teams {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      flex: 1;
+    }
+
+    .partido-check-date {
+      font-size: var(--typescale-body-small-size);
+      color: var(--md-on-surface-variant);
+      white-space: nowrap;
+    }
+
+    /* Prizes validation */
+    .prizes-sum {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-3) var(--spacing-4);
+      border-radius: var(--shape-sm);
+      font-size: var(--typescale-body-medium-size);
+      font-weight: 500;
+      margin-top: var(--spacing-3);
+    }
+
+    .prizes-sum.ok    { background-color: color-mix(in srgb, var(--md-primary) 10%, transparent); color: var(--md-primary); }
+    .prizes-sum.error { background-color: var(--md-error-container); color: var(--md-on-error-container); }
+
+    /* Rules tooltip icon */
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: var(--shape-full);
+      background-color: var(--md-secondary-container);
+      color: var(--md-on-secondary-container);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+
+    /* Input field with label for reglas (number) */
+    .regla-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-1);
+    }
+
+    .regla-field label {
+      font-size: var(--typescale-label-large-size);
+      font-weight: 500;
+      color: var(--md-on-surface-variant);
+    }
+
+    .regla-field input[type="number"] {
+      height: 48px;
+      border: 1px solid var(--md-outline);
+      border-radius: var(--shape-xs);
+      background: transparent;
+      font-family: var(--font-family);
+      font-size: var(--typescale-body-large-size);
+      color: var(--md-on-surface);
+      padding: 0 var(--spacing-4);
+      outline: none;
+      transition: border-color var(--motion-duration-short2);
+    }
+
+    .regla-field input[type="number"]:focus {
+      border-color: var(--md-primary);
+      border-width: 2px;
+    }
+
+    /* Remove spinners */
+    .regla-field input[type=number]::-webkit-inner-spin-button,
+    .regla-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .regla-field input[type=number] { -moz-appearance: textfield; }
+
+    /* Nominal predictions list */
+    .nominal-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) var(--spacing-4);
+      border-bottom: 1px solid var(--md-outline-variant);
+    }
+    .nominal-row:last-child { border-bottom: none; }
+
+    .nominal-pred {
+      font-size: var(--typescale-title-medium-size);
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--md-on-surface);
+    }
+
+    /* Secret panel */
+    .secret-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-4);
+      padding: var(--spacing-8) var(--spacing-4);
+      text-align: center;
+    }
+
+    .secret-icon { font-size: 48px; }
+
+    /* Phase badge in match card */
+    .phase-label {
+      font-size: var(--typescale-label-small-size);
+      color: var(--md-on-surface-variant);
+      background-color: var(--md-surface-container-highest);
+      padding: 2px var(--spacing-2);
+      border-radius: var(--shape-full);
+      white-space: nowrap;
+    }
+
+    /* Result comparison */
+    .result-compare {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      font-size: var(--typescale-body-small-size);
+      color: var(--md-on-surface-variant);
+    }
+
+    .result-arrow { font-size: 10px; }
+
+    /* Top app bar branding (for login) hidden on desktop */
+    .login-header-logo { margin-bottom: var(--spacing-8); }
+
+    /* Disabled text */
+    .text-disabled { color: var(--md-on-surface); opacity: 0.38; }
+
+    /* Section group in wizard partidos */
+    .wizard-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: var(--spacing-4);
+    }
+
+    /* Group card position badge */
+    .position-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px var(--spacing-2);
+      border-radius: var(--shape-full);
+      font-size: var(--typescale-label-small-size);
+      font-weight: 600;
+      background-color: var(--md-primary-container);
+      color: var(--md-on-primary-container);
+    }
+
+    /* Search input large */
+    .search-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      background-color: var(--md-surface-container-highest);
+      border-radius: var(--shape-full);
+      padding: 0 var(--spacing-4);
+      height: 56px;
+      border: 1px solid var(--md-outline-variant);
+      transition: border-color var(--motion-duration-short2);
+    }
+
+    .search-input-wrap:focus-within {
+      border-color: var(--md-primary);
+      outline: 2px solid var(--md-primary);
+      outline-offset: -1px;
+    }
+
+    .search-input-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-family);
+      font-size: var(--typescale-body-large-size);
+      color: var(--md-on-surface);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* Group preview card */
+    .preview-card {
+      background-color: var(--md-surface-container-low);
+      border-radius: var(--shape-xl);
+      padding: var(--spacing-6);
+      border: 1px solid var(--md-outline-variant);
+      box-shadow: var(--elevation-1);
+    }
+
+    /* App content area scroll */
+    .app-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Tabs sticky adjustment when no header above */
+    .tabs-top { top: 0; }
+
+    /* Wizard action bar */
+    .wizard-actions {
+      display: flex;
+      gap: var(--spacing-3);
+      padding: var(--spacing-4);
+      background-color: var(--md-surface-container-low);
+      border-top: 1px solid var(--md-outline-variant);
+      padding-bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (min-width: 1024px) {
+      .wizard-actions { padding-bottom: var(--spacing-4); }
+    }
+
+    /* Rules table */
+    .rules-section { margin-bottom: var(--spacing-6); }
+
+    .rules-section-title {
+      font-size: var(--typescale-title-small-size);
+      font-weight: 600;
+      color: var(--md-primary);
+      padding: var(--spacing-3) var(--spacing-4) var(--spacing-2);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 11px;
+    }
+
+    /* Regla item */
+    .regla-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-3) var(--spacing-4);
+      border-bottom: 1px solid var(--md-outline-variant);
+    }
+    .regla-item:last-child { border-bottom: none; }
+
+    .regla-valor {
+      font-weight: 700;
+      font-size: var(--typescale-title-medium-size);
+      color: var(--md-primary);
+    }
+
+    /* Config form */
+    .config-section {
+      margin: var(--spacing-4);
+      background-color: var(--md-surface-container-low);
+      border-radius: var(--shape-md);
+      border: 1px solid var(--md-outline-variant);
+      overflow: hidden;
+    }
+
+    .config-section-header {
+      padding: var(--spacing-4);
+      border-bottom: 1px solid var(--md-outline-variant);
+      font-size: var(--typescale-title-small-size);
+      font-weight: 600;
+      color: var(--md-on-surface);
+    }
+
+    .config-section-body { padding: var(--spacing-4); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation Rail (desktop) -->
+    <nav class="nav-rail" id="navRail" aria-label="Navegación principal">
+      <div style="padding:12px 0 20px; width:100%; display:flex; flex-direction:column; align-items:center; gap:4px;">
+        <div class="brand-icon" style="width:36px;height:36px;font-size:18px;">⚽</div>
+      </div>
+      <a class="nav-rail-item" href="#/dashboard" aria-label="Inicio" data-route="/dashboard">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-rail-label">Inicio</span>
+      </a>
+      <a class="nav-rail-item" href="#/buscar" aria-label="Buscar" data-route="/buscar">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-rail-label">Buscar</span>
+      </a>
+      <a class="nav-rail-item" href="#/crear" aria-label="Crear grupo" data-route="/crear">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-rail-label">Crear</span>
+      </a>
+      <!-- Dark mode toggle -->
+      <div style="margin-top:auto; padding:16px 0; display:flex; flex-direction:column; align-items:center; gap:4px;">
+        <button class="icon-btn" id="themeToggleRail" aria-label="Cambiar tema" title="Cambiar tema claro/oscuro">
+          <svg id="themeIconRail" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" fill="currentColor"/></svg>
+        </button>
+        <span style="font-size:9px;color:var(--md-on-surface-variant);">Tema</span>
+      </div>
+    </nav>
+
+    <!-- View container -->
+    <div id="view" class="app-content">
+      <!-- Rendered by router -->
+    </div>
+
+    <!-- Bottom Navigation Bar (mobile) -->
+    <nav class="nav-bar" id="navBar" aria-label="Navegación principal">
+      <a class="nav-bar-item" href="#/dashboard" aria-label="Inicio" data-route="/dashboard">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-bar-label">Inicio</span>
+      </a>
+      <a class="nav-bar-item" href="#/buscar" aria-label="Buscar grupo" data-route="/buscar">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-bar-label">Buscar</span>
+      </a>
+      <a class="nav-bar-item" href="#/crear" aria-label="Crear grupo" data-route="/crear">
+        <div class="nav-indicator">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-bar-label">Crear</span>
+      </a>
+      <button class="nav-bar-item" id="themeToggleBar" aria-label="Cambiar tema">
+        <div class="nav-indicator">
+          <svg id="themeIconBar" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" fill="currentColor"/></svg>
+        </div>
+        <span class="nav-bar-label">Tema</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Snackbar (toast) -->
+  <div class="snackbar" id="snackbar" role="status" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

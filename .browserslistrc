@@ -1,0 +1,7 @@
+# Compatibilidad objetivo (CLAUDE.md §3.3): iOS 15+, Android 10+ Chrome.
+iOS >= 15
+Safari >= 15
+Android >= 10
+Chrome >= 90
+last 2 versions
+not dead
