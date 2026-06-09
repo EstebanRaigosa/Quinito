@@ -7,6 +7,7 @@ import { IlustracionFutbolHero } from "@/components/auth/IlustracionFutbolHero";
 import { PanelEstadio } from "@/components/auth/PanelEstadio";
 import { ReflectoresFondo } from "@/components/auth/ReflectoresFondo";
 import { Logo } from "@/components/shared/Logo";
+import { destinoSeguro } from "@/lib/utils/next-redirect";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión",
@@ -34,19 +35,24 @@ function Separador({ texto }: { texto: string }) {
 }
 
 /** Campos + Google + link — orden compartido entre mobile y desktop. */
-function ContenidoLogin() {
+function ContenidoLogin({ destino }: { destino: string }) {
+  const esDefault = destino === "/dashboard";
+  const registroHref = esDefault
+    ? "/registro"
+    : `/registro?next=${encodeURIComponent(destino)}`;
+
   return (
     <>
       <div className="space-y-5">
-        <FormularioLogin />
+        <FormularioLogin destino={destino} />
         <Separador texto="O inicia con Google" />
-        <BotonGoogle />
+        <BotonGoogle next={destino} />
       </div>
 
       <p className="t-body-sm text-center text-fg-muted">
         ¿No tienes cuenta?{" "}
         <Link
-          href="/registro"
+          href={registroHref}
           className="font-semibold text-primary underline-offset-2 hover:underline"
         >
           Registrarse
@@ -56,7 +62,14 @@ function ContenidoLogin() {
   );
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const destino = destinoSeguro(next);
+
   return (
     <>
       {/* ───────── Mobile: hero de color + hoja blanca ───────── */}
@@ -78,7 +91,7 @@ export default function LoginPage() {
               <BadgeMundial />
               <h2 className="t-h2 text-fg-strong">Iniciar sesión</h2>
             </div>
-            <ContenidoLogin />
+            <ContenidoLogin destino={destino} />
             <p className="t-caption text-center text-fg-subtle">
               Al continuar aceptas los términos y la política de privacidad de Polla.
             </p>
@@ -107,7 +120,7 @@ export default function LoginPage() {
                     Ingresa tus datos para acceder a tus grupos.
                   </p>
                 </div>
-                <ContenidoLogin />
+                <ContenidoLogin destino={destino} />
                 <p className="t-caption text-fg-subtle">
                   Al continuar aceptas los términos y la política de privacidad de Polla.
                 </p>

@@ -4,11 +4,9 @@ import { redirect } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { Plus, Search, Users, Bell } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getPerfilActual, getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getMisGrupos } from "@/lib/queries/grupos";
-import { getPrediccionesPendientesHoy } from "@/lib/queries/predicciones-hoy";
-import { getProximoPartidoPorGrupo } from "@/lib/queries/proximo-por-grupo";
+import { getInicioDashboard } from "@/lib/queries/inicio";
 import { TarjetaGrupo } from "@/components/grupos/TarjetaGrupo";
 import { PrediccionesPendientes } from "@/components/partidos/PrediccionesPendientes";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -32,28 +30,19 @@ function saludoPorHora(ahora: Date): string {
 export default async function DashboardPage() {
   const user = await getUsuarioActual();
   if (!user) redirect("/login");
-  const supabase = await createClient();
 
   const ahora = new Date();
 
-  // Perfil, grupos y predicciones de hoy son independientes entre sí → en
-  // paralelo (antes corrían en serie). Solo `proximoPorGrupo` necesita los ids
-  // de los grupos, así que va después.
-  const [perfilRes, grupos, pendientesHoy] = await Promise.all([
-    supabase
-      .from("tblProfiles")
-      .select("nombre_completo")
-      .eq("id", user.id)
-      .single(),
+  // Todo cacheado/compartido con el layout o resuelto en una sola llamada:
+  // `getPerfilActual` y `getMisGrupos` se comparten con el shell, y
+  // `getInicioDashboard` trae las predicciones de hoy y el próximo partido por
+  // polla en UNA sola consulta a la base.
+  const [perfil, grupos, inicio] = await Promise.all([
+    getPerfilActual(),
     getMisGrupos(),
-    getPrediccionesPendientesHoy(ahora),
+    getInicioDashboard(ahora),
   ]);
-  const perfil = perfilRes.data;
-
-  const proximoPorGrupo = await getProximoPartidoPorGrupo(
-    grupos.map((g) => g.id),
-    ahora,
-  );
+  const { pendientesHoy, proximoPorGrupo } = inicio;
 
   const primerNombre = (perfil?.nombre_completo ?? user.email ?? "").split(
     " ",

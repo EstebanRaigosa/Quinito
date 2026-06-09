@@ -181,6 +181,9 @@
 
   html {
     height: 100%;
+    /* Mismo fondo que la app: evita que asome blanco en el overscroll de iOS
+       y en el área segura inferior (home indicator). Sigue al tema (claro/oscuro). */
+    background-color: var(--bg-app);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -391,7 +394,11 @@
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .pl-safe { padding-left: env(safe-area-inset-left); }
   .pr-safe { padding-right: env(safe-area-inset-right); }
-  .min-h-dvh { min-height: 100vh; min-height: 100dvh; min-height: -webkit-fill-available; }
+  /* Orden importa (gana la última válida): 100dvh de último para que los
+     navegadores modernos —incl. Chrome desktop— lo usen. `-webkit-fill-available`
+     queda solo como fallback de iOS sin soporte de dvh; si va de último, en divs
+     anidados se mide contra el padre y deja una franja blanca abajo. */
+  .min-h-dvh { min-height: 100vh; min-height: -webkit-fill-available; min-height: 100dvh; }
   .h-dvh { height: 100vh; height: 100dvh; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   /* Scroll táctil suave en iOS (§4) para contenedores con overflow interno. */

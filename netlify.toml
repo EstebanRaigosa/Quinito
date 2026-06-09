@@ -1,0 +1,10 @@
+# Configuración de build para Netlify.
+[build]
+  # Usa el script de package.json, que corre `next build --webpack`.
+  # serwist (v9) aún no soporta Turbopack (default en Next 16); sin webpack
+  # el service worker no se genera y la PWA no es instalable.
+  command = "pnpm run build"
+
+[build.environment]
+  # Next 16 requiere Node moderno.
+  NODE_VERSION = "20"

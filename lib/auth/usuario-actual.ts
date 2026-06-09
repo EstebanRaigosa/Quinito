@@ -15,3 +15,20 @@ export const getUsuarioActual = cache(async () => {
   } = await supabase.auth.getUser();
   return user;
 });
+
+/**
+ * Perfil (`tblProfiles`) del usuario autenticado, también cacheado por request.
+ * El layout `(app)` y el dashboard lo necesitan; sin esto cada uno hacía su
+ * propia consulta a `tblProfiles`. Devuelve `null` si no hay sesión.
+ */
+export const getPerfilActual = cache(async () => {
+  const user = await getUsuarioActual();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tblProfiles")
+    .select("nombre_completo, email, avatar_url, nombre_confirmado")
+    .eq("id", user.id)
+    .single();
+  return data;
+});

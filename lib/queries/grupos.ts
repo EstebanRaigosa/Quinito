@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { EstadoGrupo, Grupo } from "@/lib/types/dominio";
 
@@ -22,8 +23,12 @@ function derivarEstado(inicio: string, fin: string): EstadoGrupo {
 /**
  * Grupos del usuario autenticado, con datos para las tarjetas y la tira de
  * estado del dashboard. Una sola llamada al RPC `mis_grupos` (sin N+1).
+ *
+ * Envuelto en `cache()` de React: el layout `(app)` y el dashboard la llaman en
+ * el mismo render de servidor; así el RPC pesado se ejecuta una sola vez por
+ * request en vez de dos.
  */
-export async function getMisGrupos(): Promise<GrupoConResumen[]> {
+export const getMisGrupos = cache(async (): Promise<GrupoConResumen[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("mis_grupos");
   if (error || !data) return [];
@@ -52,4 +57,4 @@ export async function getMisGrupos(): Promise<GrupoConResumen[]> {
     mis_aciertos: Number(g.mis_aciertos ?? 0),
     mis_exactos: Number(g.mis_exactos ?? 0),
   }));
-}
+});

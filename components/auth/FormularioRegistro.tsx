@@ -23,7 +23,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-export function FormularioRegistro() {
+/** `destino`: a dónde redirigir tras crear la cuenta (default `/dashboard`). */
+export function FormularioRegistro({ destino = "/dashboard" }: { destino?: string }) {
   const router = useRouter();
   const [verPassword, setVerPassword] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -48,7 +49,7 @@ export function FormularioRegistro() {
       password: values.password,
       options: {
         data: { full_name: values.nombre_completo },
-        emailRedirectTo: `${SITE_URL}/auth/callback`,
+        emailRedirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent(destino)}`,
       },
     });
     if (error) {
@@ -56,10 +57,21 @@ export function FormularioRegistro() {
       setEnviando(false);
       return;
     }
+    // Con "Confirm email" activado, si el correo YA existe, Supabase no devuelve
+    // error (evita enumeración de emails): retorna un user con `identities: []`
+    // y sin sesión. Lo tratamos como "ya tienes cuenta" en vez de mostrar
+    // "revisa tu correo", que sería engañoso.
+    if (data.user && data.user.identities?.length === 0) {
+      toast.error(
+        "Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña o con Google.",
+      );
+      setEnviando(false);
+      return;
+    }
     // Si la confirmación de email está desactivada, ya hay sesión → al dashboard.
     if (data.session) {
       toast.success("Cuenta creada");
-      router.push("/dashboard");
+      router.push(destino);
       router.refresh();
       return;
     }

@@ -32,7 +32,14 @@ function GoogleIcon() {
   );
 }
 
-export function BotonGoogle({ texto = "Continuar con Google" }: { texto?: string }) {
+export function BotonGoogle({
+  texto = "Continuar con Google",
+  next = "/dashboard",
+}: {
+  texto?: string;
+  /** Destino interno tras autenticar (deep-link de invitación, etc.). */
+  next?: string;
+}) {
   const [enviando, setEnviando] = useState(false);
 
   async function handleClick() {
@@ -41,7 +48,7 @@ export function BotonGoogle({ texto = "Continuar con Google" }: { texto?: string
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${SITE_URL}/auth/callback?next=/dashboard`,
+        redirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     // Si no hubo error, el navegador ya redirige a Google (no se llega aquí).

@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Eye, EyeOff, Loader2, Mail, MailCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema, type LoginInput } from "@/lib/schemas/auth";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeErrorAuth } from "@/lib/supabase/auth-errores";
-import { SITE_URL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,44 +21,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-export function FormularioLogin() {
+/** `destino`: a dónde redirigir tras autenticar (default `/dashboard`). */
+export function FormularioLogin({ destino = "/dashboard" }: { destino?: string }) {
   const router = useRouter();
   const [verPassword, setVerPassword] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [enviandoEnlace, setEnviandoEnlace] = useState(false);
-  const [enlaceEnviado, setEnlaceEnviado] = useState<string | null>(null);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
-
-  /**
-   * Acceso sin contraseña (magic link / OTP). Fallback recomendado para PWA
-   * standalone en iOS, donde el OAuth puede romper (COMPATIBILIDAD-MOVIL.md §14).
-   * Reusa el callback PKCE existente. `shouldCreateUser: false` → solo entra
-   * a cuentas ya registradas (esto es la pantalla de inicio de sesión).
-   */
-  async function enviarEnlace() {
-    const ok = await form.trigger("email");
-    if (!ok) return;
-    const email = form.getValues("email");
-    setEnviandoEnlace(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${SITE_URL}/auth/callback?next=/dashboard`,
-      },
-    });
-    setEnviandoEnlace(false);
-    if (error) {
-      toast.error(mensajeErrorAuth(error));
-      return;
-    }
-    setEnlaceEnviado(email);
-  }
 
   async function onSubmit(values: LoginInput) {
     setEnviando(true);
@@ -74,7 +45,7 @@ export function FormularioLogin() {
       return;
     }
     toast.success("Sesión iniciada");
-    router.push("/dashboard");
+    router.push(destino);
     router.refresh();
   }
 
@@ -157,48 +128,6 @@ export function FormularioLogin() {
             </>
           )}
         </Button>
-
-        {enlaceEnviado ? (
-          <div
-            role="status"
-            className="flex items-start gap-3 rounded-xl bg-primary-soft/60 p-3"
-          >
-            <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" />
-            <p className="t-body-sm text-fg">
-              Te enviamos un enlace de acceso a{" "}
-              <strong className="font-bold text-fg-strong">{enlaceEnviado}</strong>.
-              Ábrelo en este dispositivo para entrar.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3" aria-hidden>
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-2xs font-bold uppercase tracking-widest text-fg-subtle">
-                o
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            {/* Acceso sin contraseña: fallback robusto para iOS standalone (§14). */}
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={enviarEnlace}
-              disabled={enviandoEnlace}
-            >
-              {enviandoEnlace ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <Mail className="size-4" />
-                  Enviarme un enlace de acceso
-                </>
-              )}
-            </Button>
-          </>
-        )}
       </form>
     </Form>
   );

@@ -15,7 +15,7 @@ export function mensajeErrorAuth(error: AuthError | null): string {
   if (code === "email_not_confirmed" || msg.includes("email not confirmed"))
     return "Confirma tu correo antes de iniciar sesión.";
   if (code === "user_already_exists" || msg.includes("already registered"))
-    return "Ya existe una cuenta con este email.";
+    return "Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña o con Google; si no la recuerdas, usa '¿Olvidaste tu contraseña?'.";
   if (code === "weak_password" || msg.includes("password"))
     return "La contraseña no cumple los requisitos (mínimo 8 caracteres y 1 número).";
   if (code === "over_email_send_rate_limit" || msg.includes("rate limit"))

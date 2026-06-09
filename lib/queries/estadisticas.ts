@@ -8,24 +8,31 @@ const DIST_VACIA: DistribucionGanador = {
   visitante_pct: 0,
 };
 
-/** Distribución de ganador + top marcadores GLOBAL (toda la plataforma). */
-export function useEstadisticasGlobal(partidoId: string) {
+/**
+ * Resumen agregado de la POLLA para un partido: distribución de ganador + top
+ * marcadores, solo del grupo (no de la plataforma). Anónimo (sin PII). El umbral
+ * de privacidad lo aplica la UI antes del cierre (ver EstadisticasGrupoResumen).
+ */
+export function useEstadisticasGrupoResumen(grupoId: string, partidoId: string) {
   return useQuery({
-    queryKey: ["estadisticas-global", partidoId],
+    queryKey: ["estadisticas-grupo-resumen", grupoId, partidoId],
     queryFn: async (): Promise<{
       distribucion: DistribucionGanador;
       marcadores: MarcadorComun[];
+      total: number;
     }> => {
       const supabase = createClient();
       const [dist, marc] = await Promise.all([
         supabase
-          .from("vwEstadisticasPartidoGanadorGlobal")
-          .select("pct_local, pct_empate, pct_visitante")
+          .from("vwEstadisticasPartidoGanadorGrupo")
+          .select("pct_local, pct_empate, pct_visitante, total_predicciones")
+          .eq("grupo_id", grupoId)
           .eq("partido_id", partidoId)
           .maybeSingle(),
         supabase
-          .from("vwEstadisticasPartidoMarcadoresGlobal")
+          .from("vwEstadisticasPartidoMarcadoresGrupo")
           .select("goles_local, goles_visitante, porcentaje, cantidad")
+          .eq("grupo_id", grupoId)
           .eq("partido_id", partidoId)
           .order("porcentaje", { ascending: false })
           .limit(8),
@@ -45,6 +52,7 @@ export function useEstadisticasGlobal(partidoId: string) {
           porcentaje: Number(m.porcentaje ?? 0),
           cantidad: Number(m.cantidad ?? 0),
         })),
+        total: Number(dist.data?.total_predicciones ?? 0),
       };
     },
     staleTime: 60_000,

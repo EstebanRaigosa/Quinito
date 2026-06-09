@@ -1,25 +1,42 @@
 import { cn } from "@/lib/utils";
 
-/** Marca "P" verde esmeralda sobre cuadro navy (Polla Design System · Spring Turf). */
+/**
+ * Isotipo de Polla: un check que se eleva y lanza un balón ("acertá el
+ * marcador"). SVG inline (nítido, escalable) sobre cuadro navy bento.
+ * Geometría espejo de `marca/isotipo/isotipo-navy.svg`.
+ */
 export function LogoMark({ size = 28, className }: { size?: number; className?: string }) {
   return (
-    <span
-      className={cn("inline-flex items-center justify-center", className)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 9,
-        background: "var(--clay-900, #0B1C30)",
-        color: "#22C55E",
-        fontWeight: 900,
-        fontSize: size * 0.55,
-        letterSpacing: "-0.04em",
-        flexShrink: 0,
-      }}
-      aria-hidden
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      className={cn("shrink-0", className)}
+      role="img"
+      aria-label="Polla"
     >
-      P
-    </span>
+      <rect width="100" height="100" rx="22.5" fill="#0B1C30" />
+      <polyline
+        points="26 54 43 69 66 40"
+        fill="none"
+        stroke="#22C55E"
+        strokeWidth="10.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="74.5" cy="30" r="12" fill="#22C55E" />
+      <polygon
+        points="74.5,25.2 79.07,28.52 77.32,33.88 71.68,33.88 69.93,28.52"
+        fill="#0B1C30"
+      />
+      <g stroke="#0B1C30" strokeWidth="1.6" strokeLinecap="round">
+        <line x1="74.5" y1="25.2" x2="74.5" y2="18" />
+        <line x1="79.07" y1="28.52" x2="85.91" y2="26.29" />
+        <line x1="77.32" y1="33.88" x2="81.55" y2="39.71" />
+        <line x1="71.68" y1="33.88" x2="67.45" y2="39.71" />
+        <line x1="69.93" y1="28.52" x2="63.09" y2="26.29" />
+      </g>
+    </svg>
   );
 }
 

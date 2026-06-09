@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ClipboardCheck,
   ListOrdered,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCerrarSesion } from "@/lib/auth/use-cerrar-sesion";
@@ -216,6 +217,19 @@ export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
               >
                 <ListOrdered className="size-[18px] text-primary" />
                 Clasificación
+              </Link>
+              <Link
+                href="/admin/pollas"
+                role="menuitem"
+                onClick={() => setAdminAbierto(false)}
+                aria-current={pathname === "/admin/pollas" ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
+                  pathname === "/admin/pollas" ? "text-primary" : "text-fg",
+                )}
+              >
+                <Trophy className="size-[18px] text-primary" />
+                Pollas
               </Link>
             </div>
           </>

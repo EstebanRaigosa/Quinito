@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Check, Copy, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SITE_URL } from "@/lib/constants";
 
 const noop = () => () => {};
 
@@ -32,7 +33,13 @@ export function BotonCompartirCodigo({
     () => false,
   );
 
-  const mensaje = `Únete a mi polla "${nombreGrupo}" del Mundial 2026. Código: ${codigo}`;
+  // Link de invitación: abre la landing pública con preview del estadio (OG).
+  const enlace = `${SITE_URL}/unirse/${codigo}`;
+  // Mensaje con estilo (es-CO) que acompaña al link al compartir.
+  const mensaje =
+    `⚽️ ¡Te invito a mi polla *${nombreGrupo}* del Mundial 2026!\n\n` +
+    `🔑 Código: ${codigo}\n` +
+    `👉 Únete aquí: ${enlace}`;
 
   async function copiar() {
     try {
@@ -45,16 +52,30 @@ export function BotonCompartirCodigo({
     }
   }
 
+  async function copiarInvitacion() {
+    try {
+      await navigator.clipboard.writeText(mensaje);
+      toast.success("Invitación copiada");
+    } catch {
+      toast.error("No se pudo copiar");
+    }
+  }
+
   async function compartir() {
     if (puedeCompartir) {
       try {
-        await navigator.share({ title: "Polla Mundial 2026", text: mensaje });
+        // El link va dentro de `mensaje` (no como `url` aparte) para que no
+        // aparezca duplicado: varias apps (WhatsApp) anexan `url` al `text`.
+        await navigator.share({
+          title: `Únete a ${nombreGrupo} · Polla Mundial 2026`,
+          text: mensaje,
+        });
         return;
       } catch {
         /* usuario canceló — cae al copy */
       }
     }
-    await copiar();
+    await copiarInvitacion();
   }
 
   return (

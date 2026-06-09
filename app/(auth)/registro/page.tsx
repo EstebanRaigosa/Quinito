@@ -7,6 +7,7 @@ import { IlustracionFutbolHero } from "@/components/auth/IlustracionFutbolHero";
 import { PanelEstadio } from "@/components/auth/PanelEstadio";
 import { ReflectoresFondo } from "@/components/auth/ReflectoresFondo";
 import { Logo } from "@/components/shared/Logo";
+import { destinoSeguro } from "@/lib/utils/next-redirect";
 
 export const metadata: Metadata = {
   title: "Crear cuenta",
@@ -34,19 +35,24 @@ function Separador({ texto }: { texto: string }) {
 }
 
 /** Campos + Google + link — orden compartido entre mobile y desktop. */
-function ContenidoRegistro() {
+function ContenidoRegistro({ destino }: { destino: string }) {
+  const esDefault = destino === "/dashboard";
+  const loginHref = esDefault
+    ? "/login"
+    : `/login?next=${encodeURIComponent(destino)}`;
+
   return (
     <>
       <div className="space-y-5">
-        <FormularioRegistro />
+        <FormularioRegistro destino={destino} />
         <Separador texto="O regístrate con Google" />
-        <BotonGoogle texto="Registrarse con Google" />
+        <BotonGoogle texto="Registrarse con Google" next={destino} />
       </div>
 
       <p className="t-body-sm text-center text-fg-muted">
         ¿Ya tienes cuenta?{" "}
         <Link
-          href="/login"
+          href={loginHref}
           className="font-semibold text-primary underline-offset-2 hover:underline"
         >
           Iniciar sesión
@@ -56,7 +62,14 @@ function ContenidoRegistro() {
   );
 }
 
-export default function RegistroPage() {
+export default async function RegistroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const destino = destinoSeguro(next);
+
   return (
     <>
       {/* ───────── Mobile: hero de color + hoja blanca ───────── */}
@@ -65,7 +78,7 @@ export default function RegistroPage() {
           <IlustracionFutbolHero className="absolute inset-0" />
           <div className="relative animate-fade-up">
             <Link
-              href="/login"
+              href={destino === "/dashboard" ? "/login" : `/login?next=${encodeURIComponent(destino)}`}
               className="t-body-sm inline-flex min-h-11 items-center gap-1.5 font-semibold text-white/90 transition-colors hover:text-white"
             >
               <ArrowLeft className="size-4" /> Volver a iniciar sesión
@@ -83,7 +96,7 @@ export default function RegistroPage() {
               <BadgeMundial />
               <h2 className="t-h2 text-fg-strong">Crear cuenta</h2>
             </div>
-            <ContenidoRegistro />
+            <ContenidoRegistro destino={destino} />
             <p className="t-caption text-center text-fg-subtle">
               Al continuar aceptas los términos y la política de privacidad de Polla.
             </p>
@@ -113,7 +126,7 @@ export default function RegistroPage() {
                     Completa tus datos para empezar a jugar.
                   </p>
                 </div>
-                <ContenidoRegistro />
+                <ContenidoRegistro destino={destino} />
                 <p className="t-caption text-fg-subtle">
                   Al continuar aceptas los términos y la política de privacidad de Polla.
                 </p>

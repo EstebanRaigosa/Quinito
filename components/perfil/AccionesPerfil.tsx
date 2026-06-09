@@ -10,6 +10,7 @@ import {
   LogOut,
   Loader2,
   ChevronRight,
+  UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +18,14 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { FormularioNombre } from "@/components/perfil/FormularioNombre";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const OPCIONES: { Icono: LucideIcon; etiqueta: string }[] = [
   { Icono: Bell, etiqueta: "Notificaciones" },
@@ -25,9 +34,10 @@ const OPCIONES: { Icono: LucideIcon; etiqueta: string }[] = [
 ];
 
 /** Opciones y cierre de sesión del perfil (parte interactiva). */
-export function AccionesPerfil() {
+export function AccionesPerfil({ nombre }: { nombre: string }) {
   const router = useRouter();
   const [saliendo, setSaliendo] = useState(false);
+  const [editandoNombre, setEditandoNombre] = useState(false);
 
   async function cerrarSesion() {
     setSaliendo(true);
@@ -45,6 +55,26 @@ export function AccionesPerfil() {
   return (
     <div className="space-y-4">
       <Card className="divide-y divide-border overflow-hidden">
+        {/* Nombre de usuario: editable (el que ven los demás en las pollas) */}
+        <button
+          type="button"
+          onClick={() => setEditandoNombre(true)}
+          className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-sunken active:bg-sunken"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-fg-muted">
+            <UserRound className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="t-body-sm block font-semibold text-fg-strong">
+              Nombre de usuario
+            </span>
+            <span className="block truncate text-xs text-fg-muted">
+              {nombre}
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-fg-subtle" aria-hidden />
+        </button>
+
         {/* Apariencia: tema claro / oscuro / sistema (segmented control) */}
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <span className="flex items-center gap-3">
@@ -92,6 +122,27 @@ export function AccionesPerfil() {
         )}
         Cerrar sesión
       </Button>
+
+      {/* Diálogo para editar el nombre visible */}
+      <Dialog open={editandoNombre} onOpenChange={setEditandoNombre}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nombre de usuario</DialogTitle>
+            <DialogDescription>
+              Así te verán los demás en las pollas y las tablas de posiciones.
+            </DialogDescription>
+          </DialogHeader>
+          <FormularioNombre
+            nombreInicial={nombre}
+            textoBoton="Guardar"
+            onGuardado={() => {
+              setEditandoNombre(false);
+              router.refresh();
+            }}
+            onCancelar={() => setEditandoNombre(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

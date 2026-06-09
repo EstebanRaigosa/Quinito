@@ -3,11 +3,10 @@ import type {
   FilaTablaPosiciones,
   Participante,
   Partido,
-  Perfil,
   Prediccion,
   ReglasGrupo,
 } from "@/lib/types/dominio";
-import { SELECT_PARTIDOS, mapPartidoRow } from "@/lib/queries/_partido-map";
+import { mapPartidoRow } from "@/lib/queries/_partido-map";
 
 export type GrupoDetalle = {
   grupo: {
@@ -27,93 +26,87 @@ export type GrupoDetalle = {
   misPredicciones: Prediccion[];
 };
 
-function perfilDe(u: unknown): Perfil {
-  const x = (Array.isArray(u) ? u[0] : u) as {
+/** Shape crudo que devuelve el RPC `grupo_detalle` (jsonb). */
+type RawDetalle = {
+  miParticipanteId: string;
+  esAdmin: boolean;
+  grupo: {
     id: string;
-    nombre_completo: string | null;
-    email: string | null;
-    avatar_url: string | null;
-  } | null;
-  return {
-    id: x?.id ?? "",
-    nombre_completo: x?.nombre_completo ?? "",
-    email: x?.email ?? "",
-    avatar_url: x?.avatar_url ?? null,
+    nombre: string;
+    descripcion: string | null;
+    codigo_invitacion: string;
+    creador_id: string;
   };
-}
+  reglas: Record<string, number | string | null>;
+  participantes: {
+    id: string;
+    rol: Participante["rol"];
+    pago_realizado: boolean;
+    usuario: {
+      id: string;
+      nombre_completo: string | null;
+      email: string | null;
+      avatar_url: string | null;
+    } | null;
+  }[];
+  tabla: {
+    participante_id: string;
+    posicion: number;
+    nombre_completo: string | null;
+    avatar_url: string | null;
+    puntos_totales: number;
+    aciertos: number;
+    marcadores_exactos: number;
+  }[];
+  partidos: Parameters<typeof mapPartidoRow>[0][];
+  misPredicciones: {
+    id: string;
+    participante_id: string;
+    partido_id: string;
+    goles_local: number;
+    goles_visitante: number;
+    puntos_obtenidos: number;
+    prediccion_unica: boolean;
+  }[];
+};
 
 /**
- * Carga todo el detalle de un grupo (con verificación de membresía). Devuelve
- * `null` si el usuario no es miembro o el grupo no existe.
+ * Carga todo el detalle de un grupo (con verificación de membresía) en UNA sola
+ * llamada a la base (RPC `grupo_detalle`). Devuelve `null` si el usuario no es
+ * miembro o el grupo no existe.
+ *
+ * Antes esto eran ~4 olas de latencia de red (membresía → 6 queries en paralelo
+ * → partidos); ahora es una. El RPC ya impone la puerta de membresía y la
+ * privacidad de predicciones (CLAUDE.md §3.4).
  */
 export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
 
-  // Puerta de membresía: solo miembros ven el detalle.
-  const { data: miPart } = await supabase
-    .from("tblParticipantes")
-    .select("id, rol")
-    .eq("grupo_id", id)
-    .eq("usuario_id", user.id)
-    .maybeSingle();
-  if (!miPart) return null;
+  const { data, error } = await supabase.rpc("grupo_detalle", {
+    p_grupo_id: id,
+  });
+  // `null` → no es miembro o no existe (la puerta vive en el RPC).
+  if (error || !data) return null;
 
-  const [grupoRes, reglasRes, partsRes, tablaRes, gpRes, predsRes] =
-    await Promise.all([
-      supabase
-        .from("tblGrupos")
-        .select("id, nombre, descripcion, codigo_invitacion, creador_id")
-        .eq("id", id)
-        .single(),
-      supabase.from("tblReglasGrupo").select("*").eq("grupo_id", id).single(),
-      supabase
-        .from("tblParticipantes")
-        .select(
-          "id, rol, pago_realizado, usuario:tblProfiles(id, nombre_completo, email, avatar_url)",
-        )
-        .eq("grupo_id", id),
-      supabase
-        .from("vwTablaPosiciones")
-        .select(
-          "participante_id, posicion, nombre_completo, avatar_url, puntos_totales, aciertos, marcadores_exactos",
-        )
-        .eq("grupo_id", id)
-        .order("posicion", { ascending: true }),
-      supabase.from("tblGrupoPartidos").select("partido_id").eq("grupo_id", id),
-      supabase
-        .from("tblPredicciones")
-        .select(
-          "id, participante_id, partido_id, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica",
-        )
-        .eq("participante_id", miPart.id),
-    ]);
+  const d = data as unknown as RawDetalle;
 
-  if (grupoRes.error || !grupoRes.data || reglasRes.error || !reglasRes.data) {
-    return null;
-  }
-
-  // Puntos por participante (desde la tabla de posiciones).
-  const puntosPorParticipante = new Map<string, number>(
-    (tablaRes.data ?? []).map((f) => [
-      f.participante_id ?? "",
-      Number(f.puntos_totales ?? 0),
-    ]),
-  );
-
-  const participantes: Participante[] = (partsRes.data ?? []).map((p) => ({
+  const participantes: Participante[] = d.participantes.map((p) => ({
     id: p.id,
     grupo_id: id,
-    usuario: perfilDe(p.usuario),
+    usuario: {
+      id: p.usuario?.id ?? "",
+      nombre_completo: p.usuario?.nombre_completo ?? "",
+      email: p.usuario?.email ?? "",
+      avatar_url: p.usuario?.avatar_url ?? null,
+    },
     rol: p.rol,
     pago_realizado: p.pago_realizado,
-    puntos_totales: puntosPorParticipante.get(p.id) ?? 0,
+    // Puntos por participante desde la tabla de posiciones.
+    puntos_totales:
+      d.tabla.find((f) => f.participante_id === p.id)?.puntos_totales ?? 0,
   }));
 
-  const tabla: FilaTablaPosiciones[] = (tablaRes.data ?? []).map((f) => ({
+  const tabla: FilaTablaPosiciones[] = d.tabla.map((f) => ({
     participante_id: f.participante_id ?? "",
     posicion: Number(f.posicion ?? 0),
     nombre_completo: f.nombre_completo ?? "",
@@ -121,22 +114,12 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     puntos_totales: Number(f.puntos_totales ?? 0),
     aciertos: Number(f.aciertos ?? 0),
     marcadores_exactos: Number(f.marcadores_exactos ?? 0),
-    es_actual: f.participante_id === miPart.id,
+    es_actual: f.participante_id === d.miParticipanteId,
   }));
 
-  // Partidos del grupo (por ids de tblGrupoPartidos).
-  const ids = (gpRes.data ?? []).map((r) => r.partido_id);
-  let partidos: Partido[] = [];
-  if (ids.length > 0) {
-    const { data } = await supabase
-      .from("tblPartidos")
-      .select(SELECT_PARTIDOS)
-      .in("id", ids)
-      .order("fecha_hora", { ascending: true });
-    partidos = (data ?? []).map(mapPartidoRow);
-  }
+  const partidos: Partido[] = d.partidos.map(mapPartidoRow);
 
-  const misPredicciones: Prediccion[] = (predsRes.data ?? []).map((p) => ({
+  const misPredicciones: Prediccion[] = d.misPredicciones.map((p) => ({
     id: p.id,
     participante_id: p.participante_id,
     partido_id: p.partido_id,
@@ -146,39 +129,38 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     prediccion_unica: p.prediccion_unica,
   }));
 
-  // Postgres devuelve `numeric` (valor_apuesta) como string vía PostgREST; lo
-  // normalizamos a número para que el formulario lo precargue y el guardado
-  // valide con `reglasSchema` (que espera números).
+  // `numeric` llega como número en JSON; `Number(...)` normaliza por si acaso.
+  const r = d.reglas;
   const reglas: ReglasGrupo = {
-    grupo_id: reglasRes.data.grupo_id,
-    pts_marcador_exacto: Number(reglasRes.data.pts_marcador_exacto),
-    pts_ganador: Number(reglasRes.data.pts_ganador),
-    pts_gol_acertado: Number(reglasRes.data.pts_gol_acertado),
-    pts_prediccion_unica: Number(reglasRes.data.pts_prediccion_unica),
-    bono_dieciseisavos: Number(reglasRes.data.bono_dieciseisavos),
-    bono_octavos: Number(reglasRes.data.bono_octavos),
-    bono_cuartos: Number(reglasRes.data.bono_cuartos),
-    bono_semifinales: Number(reglasRes.data.bono_semifinales),
-    bono_final: Number(reglasRes.data.bono_final),
-    valor_apuesta: Number(reglasRes.data.valor_apuesta),
-    premio_primer_lugar: Number(reglasRes.data.premio_primer_lugar),
-    premio_segundo_lugar: Number(reglasRes.data.premio_segundo_lugar),
-    premio_tercer_lugar: Number(reglasRes.data.premio_tercer_lugar),
-    minutos_cierre_prediccion: Number(reglasRes.data.minutos_cierre_prediccion),
+    grupo_id: String(r.grupo_id ?? id),
+    pts_marcador_exacto: Number(r.pts_marcador_exacto),
+    pts_ganador: Number(r.pts_ganador),
+    pts_gol_acertado: Number(r.pts_gol_acertado),
+    pts_prediccion_unica: Number(r.pts_prediccion_unica),
+    bono_dieciseisavos: Number(r.bono_dieciseisavos),
+    bono_octavos: Number(r.bono_octavos),
+    bono_cuartos: Number(r.bono_cuartos),
+    bono_semifinales: Number(r.bono_semifinales),
+    bono_final: Number(r.bono_final),
+    valor_apuesta: Number(r.valor_apuesta),
+    premio_primer_lugar: Number(r.premio_primer_lugar),
+    premio_segundo_lugar: Number(r.premio_segundo_lugar),
+    premio_tercer_lugar: Number(r.premio_tercer_lugar),
+    minutos_cierre_prediccion: Number(r.minutos_cierre_prediccion),
   };
 
   return {
     grupo: {
-      id: grupoRes.data.id,
-      nombre: grupoRes.data.nombre,
-      descripcion: grupoRes.data.descripcion,
-      codigo_invitacion: grupoRes.data.codigo_invitacion,
-      creador_id: grupoRes.data.creador_id,
+      id: d.grupo.id,
+      nombre: d.grupo.nombre,
+      descripcion: d.grupo.descripcion,
+      codigo_invitacion: d.grupo.codigo_invitacion,
+      creador_id: d.grupo.creador_id,
       total_participantes: participantes.length,
     },
     reglas,
-    esAdmin: miPart.rol === "admin",
-    miParticipanteId: miPart.id,
+    esAdmin: d.esAdmin,
+    miParticipanteId: d.miParticipanteId,
     participantes,
     tabla,
     partidos,

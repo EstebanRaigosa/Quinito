@@ -31,9 +31,9 @@ const PLACA =
 /** Alturas escalonadas: el 1.º domina, plata y bronce más bajos. En móvil son
  *  más bajas para que el podio respire y no se vea apeñuscado. */
 const ALTURA: Record<number, string> = {
-  1: "h-28 -mt-3 sm:h-36 sm:-mt-4",
-  2: "h-24 sm:h-32",
-  3: "h-20 sm:h-28",
+  1: "h-32 -mt-3 sm:h-40 sm:-mt-4",
+  2: "h-28 sm:h-36",
+  3: "h-24 sm:h-32",
 };
 
 function Pedestal({

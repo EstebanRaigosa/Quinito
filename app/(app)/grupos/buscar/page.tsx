@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -18,115 +18,62 @@ import { PageContainer } from "@/components/shared/PageContainer";
 
 const LARGO = 6;
 
-function CodigoOtp({
-  value,
-  onChange,
-  invalido,
-  onEnter,
-}: {
-  value: string[];
-  onChange: (v: string[]) => void;
-  invalido?: boolean;
-  onEnter?: () => void;
-}) {
-  const refs = useRef<(HTMLInputElement | null)[]>([]);
-
-  function setChar(i: number, char: string) {
-    const limpio = char.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const next = [...value];
-    next[i] = limpio.slice(-1) ?? "";
-    onChange(next);
-    if (limpio && i < LARGO - 1) refs.current[i + 1]?.focus();
-  }
-
-  function onKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !value[i] && i > 0) {
-      refs.current[i - 1]?.focus();
-    }
-    if (e.key === "Enter") onEnter?.();
-  }
-
-  function onPaste(e: React.ClipboardEvent) {
-    e.preventDefault();
-    const texto = e.clipboardData
-      .getData("text")
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, LARGO);
-    const next = Array.from({ length: LARGO }, (_, i) => texto[i] ?? "");
-    onChange(next);
-    refs.current[Math.min(texto.length, LARGO - 1)]?.focus();
-  }
-
-  return (
-    <div
-      className="flex justify-center gap-2 sm:gap-2.5"
-      onPaste={onPaste}
-      role="group"
-      aria-label="Código de invitación de 6 caracteres"
-    >
-      {Array.from({ length: LARGO }).map((_, i) => (
-        <input
-          key={i}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          value={value[i] ?? ""}
-          onChange={(e) => setChar(i, e.target.value)}
-          onKeyDown={(e) => onKeyDown(i, e)}
-          inputMode="text"
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          maxLength={1}
-          aria-label={`Carácter ${i + 1} del código`}
-          aria-invalid={invalido || undefined}
-          className={cn(
-            "h-14 w-11 rounded-xl border-2 bg-sunken text-center text-2xl font-extrabold uppercase text-fg-strong transition-colors sm:h-16 sm:w-12",
-            "focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-soft",
-            invalido
-              ? "border-destructive"
-              : value[i]
-                ? "border-primary"
-                : "border-input",
-          )}
-        />
-      ))}
-    </div>
-  );
+/** Normaliza a mayúsculas, solo alfanuméricos, máx. 6 caracteres. */
+function normalizarCodigo(valor: string): string {
+  return valor
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, LARGO);
 }
 
-export default function BuscarGrupoPage() {
+function BuscarGrupoContenido() {
   const router = useRouter();
-  const [chars, setChars] = useState<string[]>(Array(LARGO).fill(""));
+  const searchParams = useSearchParams();
+  // Código pre-cargado desde el deep-link de invitación (/unirse/[codigo]).
+  const codigoInicial = normalizarCodigo(searchParams.get("codigo") ?? "");
+
+  const [codigo, setCodigo] = useState(codigoInicial);
   const [buscando, setBuscando] = useState(false);
   const [grupo, setGrupo] = useState<GrupoPreview | null>(null);
   const [noEncontrado, setNoEncontrado] = useState(false);
   const [uniendo, setUniendo] = useState(false);
 
-  const codigo = chars.join("");
   const completo = codigo.length === LARGO;
 
-  function actualizarCodigo(v: string[]) {
-    setChars(v);
+  function actualizarCodigo(valor: string) {
+    setCodigo(normalizarCodigo(valor));
     // Limpia los estados de resultado al editar el código.
     if (noEncontrado) setNoEncontrado(false);
     if (grupo) setGrupo(null);
   }
 
-  async function buscar() {
-    if (!completo) {
+  async function buscarCon(valor: string) {
+    if (valor.length !== LARGO) {
       toast.error("Completa el código de 6 caracteres");
       return;
     }
     setBuscando(true);
     setNoEncontrado(false);
     setGrupo(null);
-    const encontrado = await buscarGrupo(codigo);
+    const encontrado = await buscarGrupo(valor);
     if (encontrado) setGrupo(encontrado);
     else setNoEncontrado(true);
     setBuscando(false);
   }
+
+  function buscar() {
+    void buscarCon(codigo);
+  }
+
+  // Auto-búsqueda una sola vez si llegó con código en la URL (invitación).
+  const autoBuscado = useRef(false);
+  useEffect(() => {
+    if (!autoBuscado.current && codigoInicial.length === LARGO) {
+      autoBuscado.current = true;
+      void buscarCon(codigoInicial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function unirme() {
     if (!grupo) return;
@@ -158,14 +105,33 @@ export default function BuscarGrupoPage() {
 
       <div className="surface-card animate-fade-up space-y-5 rounded-2xl p-5 [animation-delay:80ms] sm:p-6">
         <div className="space-y-2">
-          <span className="overline block text-center">
+          <label htmlFor="codigo-invitacion" className="overline block text-center">
             Código de invitación
-          </span>
-          <CodigoOtp
-            value={chars}
-            onChange={actualizarCodigo}
-            invalido={noEncontrado}
-            onEnter={buscar}
+          </label>
+          <input
+            id="codigo-invitacion"
+            value={codigo}
+            onChange={(e) => actualizarCodigo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") buscar();
+            }}
+            inputMode="text"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={LARGO}
+            placeholder="ABC123"
+            aria-invalid={noEncontrado || undefined}
+            aria-label="Código de invitación de 6 caracteres"
+            className={cn(
+              "h-14 w-full rounded-xl border-2 bg-sunken text-center text-2xl font-extrabold uppercase tracking-[0.4em] text-fg-strong transition-colors placeholder:tracking-[0.4em] placeholder:text-fg-muted/40 sm:h-16",
+              "focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-soft",
+              noEncontrado
+                ? "border-destructive"
+                : codigo
+                  ? "border-primary"
+                  : "border-input",
+            )}
           />
         </div>
 
@@ -240,5 +206,22 @@ export default function BuscarGrupoPage() {
         )}
       </div>
     </PageContainer>
+  );
+}
+
+export default function BuscarGrupoPage() {
+  // `useSearchParams` exige un límite de Suspense en Next (App Router).
+  return (
+    <Suspense
+      fallback={
+        <PageContainer ancho="estrecho">
+          <div className="grid min-h-[40dvh] place-items-center">
+            <Loader2 className="size-6 animate-spin text-fg-subtle" />
+          </div>
+        </PageContainer>
+      }
+    >
+      <BuscarGrupoContenido />
+    </Suspense>
   );
 }

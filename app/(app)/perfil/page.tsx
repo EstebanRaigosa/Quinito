@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getMisGrupos } from "@/lib/queries/grupos";
+import { getPerfilActual, getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { PageContainer } from "@/components/shared/PageContainer";
+import { BotonInstalarPWA } from "@/components/shared/BotonInstalarPWA";
 import { Card } from "@/components/ui/card";
 import { AccionesPerfil } from "@/components/perfil/AccionesPerfil";
 
@@ -22,23 +23,18 @@ function StatPerfil({ valor, etiqueta }: { valor: string | number; etiqueta: str
 }
 
 export default async function PerfilPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Reutiliza los helpers cacheados por request (`cache()` de React): el layout
+  // `(app)` ya resolvió usuario, perfil y grupos en este mismo render, así que
+  // aquí son aciertos de caché en vez de 3 round-trips nuevos a la base.
+  const [user, perfil, grupos] = await Promise.all([
+    getUsuarioActual(),
+    getPerfilActual(),
+    getMisGrupos(),
+  ]);
   if (!user) redirect("/login");
-
-  const { data: perfil } = await supabase
-    .from("tblProfiles")
-    .select("nombre_completo, email")
-    .eq("id", user.id)
-    .single();
 
   const nombre = perfil?.nombre_completo ?? user.email ?? "Usuario";
   const email = perfil?.email ?? user.email ?? "";
-
-  // Resumen global del usuario (real).
-  const grupos = await getMisGrupos();
   const puntosTotales = grupos.reduce((acc, g) => acc + g.mis_puntos, 0);
   const mejorPosicionNum = grupos.length
     ? Math.min(...grupos.map((g) => g.mi_posicion ?? Infinity))
@@ -72,9 +68,14 @@ export default async function PerfilPage() {
         </Card>
       )}
 
+      {/* Instalar como app (PWA): solo aparece si es elegible y no está instalada */}
+      <div className="animate-fade-up [animation-delay:100ms]">
+        <BotonInstalarPWA />
+      </div>
+
       {/* Ajustes + cerrar sesión (interactivo) */}
       <div className="animate-fade-up [animation-delay:120ms]">
-        <AccionesPerfil />
+        <AccionesPerfil nombre={nombre} />
       </div>
     </PageContainer>
   );

@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { AppleSplashLinks } from "@/components/shared/AppleSplashLinks";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { SITE_URL } from "@/lib/constants";
 
 const mulish = Mulish({
   subsets: ["latin"],
@@ -14,6 +15,8 @@ const mulish = Mulish({
 });
 
 export const metadata: Metadata = {
+  // Base para resolver URLs absolutas de Open Graph / Twitter (previews de link).
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Polla Mundial 2026",
     template: "%s · Polla Mundial 2026",
@@ -21,6 +24,28 @@ export const metadata: Metadata = {
   description:
     "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores, compite con tu grupo y sube en la tabla.",
   applicationName: "Polla",
+  openGraph: {
+    type: "website",
+    siteName: "Polla Mundial 2026",
+    locale: "es_CO",
+    title: "Polla Mundial 2026",
+    description:
+      "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores, compite con tu grupo y sube en la tabla.",
+    images: [
+      {
+        url: "/images/estadio.png",
+        width: 1200,
+        height: 630,
+        alt: "Estadio de fútbol lleno visto desde la grada, con las luces encendidas",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Polla Mundial 2026",
+    description: "Crea y participa en pollas grupales del Mundial 2026.",
+    images: ["/images/estadio.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, Plus, ShieldCheck, ListOrdered, LogOut, Loader2 } from "lucide-react";
+import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, LogOut, Loader2 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
@@ -105,6 +105,25 @@ export function Sidebar({
               strokeWidth={pathname === "/admin/clasificacion" ? 2.5 : 2}
             />
             Clasificación
+          </Link>
+        )}
+
+        {esAdmin && (
+          <Link
+            href="/admin/pollas"
+            aria-current={pathname === "/admin/pollas" ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+              pathname === "/admin/pollas"
+                ? "bg-primary-soft text-primary"
+                : "text-fg-muted hover:bg-sunken",
+            )}
+          >
+            <Trophy
+              className={cn("size-[18px]", pathname === "/admin/pollas" && "text-primary")}
+              strokeWidth={pathname === "/admin/pollas" ? 2.5 : 2}
+            />
+            Pollas
           </Link>
         )}
       </nav>

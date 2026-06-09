@@ -2,7 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Rutas accesibles sin sesión (PLAN.md §Fase 1). */
-const RUTAS_PUBLICAS = ["/", "/login", "/forgot-password", "/reset-password"];
+const RUTAS_PUBLICAS = [
+  "/",
+  "/login",
+  "/registro",
+  "/forgot-password",
+  "/reset-password",
+];
 
 /**
  * Refresca la sesión de Supabase en cada request y protege rutas.
@@ -58,8 +64,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Con sesión entrando al login → al dashboard.
-  if (user && pathname === "/login") {
+  // Con sesión entrando al login/registro → al dashboard.
+  if (user && (pathname === "/login" || pathname === "/registro")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

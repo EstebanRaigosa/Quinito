@@ -5,10 +5,12 @@ import { Logo } from "@/components/shared/Logo";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
-import { createClient } from "@/lib/supabase/server";
+import { BotonInstalarPWA } from "@/components/shared/BotonInstalarPWA";
+import { OnboardingNombre } from "@/components/perfil/OnboardingNombre";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import type { Perfil } from "@/lib/types/dominio";
 import { getMisGrupos } from "@/lib/queries/grupos";
+import { getPerfilActual, getUsuarioActual } from "@/lib/auth/usuario-actual";
 
 /**
  * Shell autenticado responsive: sidebar en desktop (≥ md), top bar + bottom nav
@@ -21,17 +23,11 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUsuarioActual();
   if (!user) redirect("/login");
 
-  const { data: perfil } = await supabase
-    .from("tblProfiles")
-    .select("nombre_completo, email, avatar_url")
-    .eq("id", user.id)
-    .single();
+  // Cacheado por request: lo comparten layout y página (una sola consulta).
+  const perfil = await getPerfilActual();
 
   const usuario: Perfil = {
     id: user.id,
@@ -54,6 +50,8 @@ export default async function AppLayout({
               <Logo size={18} />
             </Link>
             <div className="flex items-center gap-1">
+              {/* Instalar PWA: solo aparece si el navegador es elegible y no está instalada */}
+              <BotonInstalarPWA variant="icon" />
               {superAdmin && (
                 <Link
                   href="/admin"
@@ -84,6 +82,12 @@ export default async function AppLayout({
           <BottomNav esAdmin={superAdmin} />
         </div>
       </div>
+
+      {/* Onboarding: pide configurar el nombre visible en el primer ingreso
+          (tras registrarse o entrar con Google) hasta que se confirme. */}
+      {!perfil?.nombre_confirmado && (
+        <OnboardingNombre nombreInicial={usuario.nombre_completo} />
+      )}
     </div>
   );
 }

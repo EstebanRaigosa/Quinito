@@ -8,7 +8,7 @@ import { prediccionCerrada, puedePredecir } from "@/lib/utils/prediccion";
 import { tiempoRestante } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { FormularioPrediccion } from "@/components/partidos/FormularioPrediccion";
-import { EstadisticasGlobales } from "@/components/partidos/EstadisticasGlobales";
+import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -178,8 +178,11 @@ export function TarjetaPrediccion({
                   <TabsTrigger value="grupo">Por persona</TabsTrigger>
                 </TabsList>
                 <TabsContent value="global">
-                  <EstadisticasGlobales
+                  <EstadisticasGrupoResumen
+                    grupoId={grupoId}
                     partido={partido}
+                    reglas={reglas}
+                    ahora={ahora}
                     miPrediccion={miPrediccion}
                   />
                 </TabsContent>

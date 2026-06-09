@@ -9,6 +9,7 @@ import {
   ListOrdered,
   Scroll,
   Users,
+  Eye,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { TablaPosiciones } from "@/components/grupos/TablaPosiciones";
+import { RevelarJornadas } from "@/components/grupos/RevelarJornadas";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
 import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
@@ -315,6 +317,9 @@ export default async function GrupoDetallePage({
   );
   // Stats del usuario en la cabecera (derivadas de la tabla de posiciones real).
   const miFila = tabla.find((f) => f.es_actual);
+  // Superadmin de plataforma viendo una polla de la que NO es miembro: puede
+  // verlo y administrarlo todo, pero no participa (no tiene predicciones).
+  const soloVistaAdmin = !miParticipanteId;
 
   // ── Agrupación de "Jugar" ─────────────────────────────────────────────────
   const abiertos = partidos.filter((p) =>
@@ -344,82 +349,114 @@ export default async function GrupoDetallePage({
           <span className="text-fg-strong">{grupo.nombre}</span>
         </Link>
 
-        <div className="rounded-2xl border border-strong bg-elevated p-4 shadow-md sm:p-5">
-          {/* Fila superior: identidad + acciones (compartir / configurar) */}
-          <div className="flex items-start gap-3 sm:gap-4">
+        {/* Hero de la polla: banner protagonista de la página (no una card más).
+            Sangra a los bordes en móvil y va con degradado ink→esmeralda de marca. */}
+        <div className="relative mx-[calc(50%-50vw)] overflow-hidden rounded-b-[28px] bg-gradient-to-br from-[var(--clay-900)] via-[var(--clay-800)] to-[var(--mustard-700)] px-5 pb-5 pt-5 shadow-xl sm:mx-0 sm:rounded-3xl sm:px-6 sm:pb-6 sm:pt-6">
+          {/* Glow + marca de agua decorativos (puramente estéticos) */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-16 size-56 rounded-full bg-[var(--mustard-400)]/30 blur-3xl"
+          />
+          <Trophy
+            aria-hidden
+            className="pointer-events-none absolute -right-5 -top-3 size-32 rotate-12 text-white/[0.07]"
+          />
+
+          {/* Identidad */}
+          <div className="relative flex items-start gap-3 sm:gap-4">
             <AvatarGrupo
               nombre={grupo.nombre}
               size="xl"
-              className="shadow-md ring-2 ring-app"
+              className="shadow-lg ring-2 ring-white/25"
             />
             <div className="min-w-0 flex-1">
-              <h1 className="t-h1">{grupo.nombre}</h1>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-fg-muted">
-                <Badge variant="success" dot>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-white/20">
+                  <span
+                    aria-hidden
+                    className="size-1.5 animate-pulse rounded-full bg-[var(--mustard-300)]"
+                  />
                   Activo
-                </Badge>
+                </span>
+                <span className="inline-flex items-center gap-1 text-2xs font-semibold text-white/70">
+                  <Users className="size-3" aria-hidden />
+                  {grupo.total_participantes}{" "}
+                  {grupo.total_participantes === 1
+                    ? "participante"
+                    : "participantes"}
+                </span>
               </div>
+              <h1 className="t-h1 mt-1.5 text-balance text-white">
+                {grupo.nombre}
+              </h1>
             </div>
           </div>
 
-          {/* Stats del usuario (posición / puntos / aciertos) */}
+          {/* Stats del usuario (posición / puntos / aciertos), glassy sobre el hero */}
           {miFila && (
-            <div className="mt-4 grid w-full grid-cols-3 divide-x divide-[var(--border-strong)] rounded-2xl bg-sunken px-2 py-2.5 sm:py-3.5">
+            <div className="relative mt-5 grid w-full grid-cols-3 divide-x divide-white/10 rounded-2xl border-t border-white/20 bg-black/30 px-2 py-3.5 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.7)] ring-1 ring-inset ring-white/10 sm:py-4">
               <div className="px-2 text-center">
-                <p className="text-xs font-bold text-fg-default sm:text-sm">Tu posición</p>
-                <p className="mt-1 flex items-baseline justify-center gap-0.5 sm:mt-1.5">
+                <p className="text-2xs font-extrabold uppercase tracking-wider text-white/55 sm:text-xs">
+                  Tu posición
+                </p>
+                <p className="mt-1.5 flex items-baseline justify-center gap-0.5 sm:mt-2">
                   <span
                     className={cn(
-                      "text-xl font-black tracking-tight sm:text-2xl",
+                      "text-2xl font-black tracking-tight sm:text-3xl",
                       miFila.posicion === 1
                         ? "text-gradient-gold"
-                        : "text-fg-strong",
+                        : "text-white",
                     )}
                   >
                     #{miFila.posicion}
                   </span>
-                  <span className="t-caption font-bold">
+                  <span className="text-base font-bold text-white/75">
                     /{grupo.total_participantes}
                   </span>
                 </p>
               </div>
               <div className="px-2 text-center">
-                <p className="text-xs font-bold text-fg-default sm:text-sm">Tus puntos</p>
-                <p className="mt-1 text-xl font-black tracking-tight text-fg-strong sm:mt-1.5 sm:text-2xl">
+                <p className="text-2xs font-extrabold uppercase tracking-wider text-white/55 sm:text-xs">
+                  Tus puntos
+                </p>
+                <p className="mt-1.5 text-2xl font-black tracking-tight text-white sm:mt-2 sm:text-3xl">
                   {miFila.puntos_totales}
                 </p>
               </div>
               <div className="px-2 text-center">
-                <p className="text-xs font-bold text-fg-default sm:text-sm">Aciertos</p>
-                <p className="mt-1 text-xl font-black tracking-tight text-fg-strong sm:mt-1.5 sm:text-2xl">
+                <p className="text-2xs font-extrabold uppercase tracking-wider text-white/55 sm:text-xs">
+                  Aciertos
+                </p>
+                <p className="mt-1.5 text-2xl font-black tracking-tight text-white sm:mt-2 sm:text-3xl">
                   {miFila.aciertos}
                 </p>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Acciones de la polla: código + compartir + configurar */}
-          <div className="mt-4 flex items-center justify-between gap-2">
-            <BotonCompartirCodigo
-              codigo={grupo.codigo_invitacion}
-              nombreGrupo={grupo.nombre}
-            />
-            {esAdmin && (
-              <Button
-                asChild
-                variant="secondary"
-                className="w-11 shrink-0 px-0 sm:w-auto sm:px-5"
+        {/* Acciones de la polla: código + compartir + configurar (sobre el fondo
+            de la app, donde estos controles claros se ven correctos) */}
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <BotonCompartirCodigo
+            codigo={grupo.codigo_invitacion}
+            nombreGrupo={grupo.nombre}
+          />
+          {esAdmin && (
+            <Button
+              asChild
+              variant="secondary"
+              className="w-11 shrink-0 px-0 sm:w-auto sm:px-5"
+            >
+              <Link
+                href={`/grupos/${grupo.id}/configurar`}
+                aria-label="Configurar polla"
               >
-                <Link
-                  href={`/grupos/${grupo.id}/configurar`}
-                  aria-label="Configurar polla"
-                >
-                  <Settings className="size-4" />
-                  <span className="hidden sm:inline">Configurar</span>
-                </Link>
-              </Button>
-            )}
-          </div>
+                <Settings className="size-4" />
+                <span className="hidden sm:inline">Configurar</span>
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -437,25 +474,33 @@ export default async function GrupoDetallePage({
 
         {/* MIS PREDICCIONES */}
         <TabsContent value="jugar" className="space-y-6">
-          {totalJugables === 0 ? (
+          {soloVistaAdmin ? (
+            <EmptyState
+              icono={Eye}
+              titulo="Estás viendo como administrador"
+              descripcion="No participas en esta polla, así que no puedes hacer predicciones. Puedes revisar la tabla, los partidos, las reglas y los participantes."
+            />
+          ) : totalJugables === 0 ? (
             <EmptyState
               icono={CalendarDays}
               titulo="No hay partidos por predecir"
               descripcion="Cuando se programen nuevos partidos aparecerán aquí."
             />
           ) : (
-            diasPrediccion.map(([dia, lista]) => (
-              <DiaDePredicciones
-                key={dia}
-                partidos={lista}
-                grupoId={grupo.id}
-                participanteId={miParticipanteId}
-                reglas={reglas}
-                prediccionPorPartido={prediccionPorPartido}
-                ahora={ahora}
-                esHoy={dia === claveHoy}
-              />
-            ))
+            <RevelarJornadas inicial={2}>
+              {diasPrediccion.map(([dia, lista]) => (
+                <DiaDePredicciones
+                  key={dia}
+                  partidos={lista}
+                  grupoId={grupo.id}
+                  participanteId={miParticipanteId}
+                  reglas={reglas}
+                  prediccionPorPartido={prediccionPorPartido}
+                  ahora={ahora}
+                  esHoy={dia === claveHoy}
+                />
+              ))}
+            </RevelarJornadas>
           )}
         </TabsContent>
 
@@ -466,15 +511,17 @@ export default async function GrupoDetallePage({
 
         {/* PARTIDOS */}
         <TabsContent value="partidos" className="space-y-6">
-          {diasPartidos.map(([dia, lista]) => (
-            <DiaDePartidos
-              key={dia}
-              partidos={lista}
-              reglas={reglas}
-              prediccionPorPartido={prediccionPorPartido}
-              esHoy={dia === claveHoy}
-            />
-          ))}
+          <RevelarJornadas inicial={3}>
+            {diasPartidos.map(([dia, lista]) => (
+              <DiaDePartidos
+                key={dia}
+                partidos={lista}
+                reglas={reglas}
+                prediccionPorPartido={prediccionPorPartido}
+                esHoy={dia === claveHoy}
+              />
+            ))}
+          </RevelarJornadas>
         </TabsContent>
 
         {/* REGLAS (+ config de admin) */}
@@ -534,6 +581,13 @@ export default async function GrupoDetallePage({
                   <p className="t-body-sm truncate font-bold text-fg-strong">
                     {part.usuario.nombre_completo}
                   </p>
+                  {/* El correo solo lo recibe el admin del grupo (o superadmin):
+                      el RPC lo envía como null al resto. */}
+                  {esAdmin && part.usuario.email && (
+                    <p className="t-caption truncate text-fg-muted">
+                      {part.usuario.email}
+                    </p>
+                  )}
                   <p className="t-caption">
                     {part.pago_realizado ? "Pago al día" : "Pago pendiente"}
                   </p>

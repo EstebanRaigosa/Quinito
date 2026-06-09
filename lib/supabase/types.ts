@@ -380,6 +380,7 @@ export type Database = {
           email: string
           id: string
           nombre_completo: string | null
+          nombre_confirmado: boolean
         }
         Insert: {
           actualizado_en?: string
@@ -388,6 +389,7 @@ export type Database = {
           email: string
           id: string
           nombre_completo?: string | null
+          nombre_confirmado?: boolean
         }
         Update: {
           actualizado_en?: string
@@ -396,6 +398,7 @@ export type Database = {
           email?: string
           id?: string
           nombre_completo?: string | null
+          nombre_confirmado?: boolean
         }
         Relationships: []
       }
@@ -466,6 +469,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tblSuperadmins: {
+        Row: {
+          creado_en: string
+          email: string
+        }
+        Insert: {
+          creado_en?: string
+          email: string
+        }
+        Update: {
+          creado_en?: string
+          email?: string
+        }
+        Relationships: []
       }
       tblTorneos: {
         Row: {
@@ -678,6 +696,7 @@ export type Database = {
       }
       es_admin_grupo: { Args: { p_grupo_id: string }; Returns: boolean }
       es_miembro_grupo: { Args: { p_grupo_id: string }; Returns: boolean }
+      es_superadmin: { Args: never; Returns: boolean }
       finalizar_partido: {
         Args: {
           p_goles_local: number
@@ -691,6 +710,8 @@ export type Database = {
         Returns: string
       }
       generar_codigo_invitacion: { Args: never; Returns: string }
+      grupo_detalle: { Args: { p_grupo_id: string }; Returns: Json }
+      inicio_extras: { Args: { p_desde: string }; Returns: Json }
       mis_grupos: {
         Args: never
         Returns: {
@@ -761,6 +782,7 @@ export type Database = {
         Returns: string
       }
       revertir_partido: { Args: { p_partido_id: string }; Returns: undefined }
+      superadmin_listar_pollas: { Args: never; Returns: Json }
     }
     Enums: {
       fase_torneo:
