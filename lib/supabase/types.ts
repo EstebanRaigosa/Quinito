@@ -411,6 +411,7 @@ export type Database = {
           bono_octavos: number
           bono_semifinales: number
           creado_en: string
+          criterios_desempate: string[]
           grupo_id: string
           minutos_cierre_prediccion: number
           premio_primer_lugar: number
@@ -430,6 +431,7 @@ export type Database = {
           bono_octavos?: number
           bono_semifinales?: number
           creado_en?: string
+          criterios_desempate?: string[]
           grupo_id: string
           minutos_cierre_prediccion?: number
           premio_primer_lugar?: number
@@ -449,6 +451,7 @@ export type Database = {
           bono_octavos?: number
           bono_semifinales?: number
           creado_en?: string
+          criterios_desempate?: string[]
           grupo_id?: string
           minutos_cierre_prediccion?: number
           premio_primer_lugar?: number
@@ -657,6 +660,7 @@ export type Database = {
           participante_id: string | null
           posicion: number | null
           puntos_totales: number | null
+          unicas_acertadas: number | null
         }
         Relationships: [
           {

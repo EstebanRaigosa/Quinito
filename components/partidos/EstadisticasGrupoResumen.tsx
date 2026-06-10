@@ -133,6 +133,8 @@ export function EstadisticasGrupoResumen({
                 key={`${m.goles_local}-${m.goles_visitante}`}
                 golesLocal={m.goles_local}
                 golesVisitante={m.goles_visitante}
+                isoLocal={partido.equipo_local?.codigo_iso}
+                isoVisitante={partido.equipo_visitante?.codigo_iso}
                 pct={m.porcentaje}
                 max={maxPct}
                 cantidad={m.cantidad}

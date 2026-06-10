@@ -241,6 +241,10 @@
     *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
+      /* Sin esto, los animation-delay (entradas escalonadas) dejarían el
+         contenido invisible su retraso completo antes de aparecer. */
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
     }
   }
 }

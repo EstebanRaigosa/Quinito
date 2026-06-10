@@ -3,7 +3,7 @@ import { ArrowRight, Check, Clock } from "lucide-react";
 import type { PrediccionPendiente } from "@/lib/queries/predicciones-hoy";
 import { Flag } from "@/components/shared/Flag";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
-import { cuentaRegresivaCorta } from "@/lib/utils/fechas";
+import { CuentaRegresiva } from "@/components/shared/CuentaRegresiva";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,7 +44,7 @@ export function PrediccionPendienteCard({
           )}
         >
           <Clock className="size-3" aria-hidden />
-          {cuentaRegresivaCorta(cierre, ahora)}
+          <CuentaRegresiva iso={cierre} ahoraInicial={ahora} etiquetaCerrada="cerrada" />
         </span>
       </div>
 

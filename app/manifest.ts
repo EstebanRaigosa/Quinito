@@ -10,12 +10,16 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Polla",
     description:
       "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores y compite con tu parche.",
-    start_url: "/dashboard",
+    // Raíz (no /dashboard, que es protegida): RootPage decide a dónde llevar
+    // según haya sesión. Evita un redirect a /login en cada cold start si ITP
+    // evictó la sesión (COMPATIBILIDAD-STACK §1/§8).
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#F8FAFC",
-    theme_color: "#16A34A",
+    // Alineado con el themeColor (light) del viewport en app/layout.tsx.
+    theme_color: "#F8FAFC",
     lang: "es-CO",
     categories: ["sports", "games", "social"],
     icons: [

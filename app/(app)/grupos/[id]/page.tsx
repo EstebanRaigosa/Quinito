@@ -17,7 +17,8 @@ import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import { puedePredecir } from "@/lib/utils/prediccion";
 import { formatearMonto } from "@/lib/utils/texto";
 import { claveDiaBogota, formatearFechaLarga } from "@/lib/utils/fechas";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsConRefresh } from "@/components/grupos/TabsConRefresh";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,35 +167,28 @@ function EncabezadoFecha({
   // La fecha viene en minúsculas (locale es); capitalizamos la inicial.
   const titulo = fecha.charAt(0).toUpperCase() + fecha.slice(1);
   return (
-    <h3 className="mb-4 flex items-center gap-2.5">
-      <span className="inline-flex items-center gap-2 rounded-full border border-clay-200 bg-clay-100 py-1.5 pl-3 pr-1.5 text-clay-800 shadow-sm">
-        <CalendarDays className="size-3.5 shrink-0 text-primary" aria-hidden />
-        <span className="text-sm font-bold">{titulo}</span>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-2xs font-bold",
-            esHoy
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-primary text-primary-foreground",
-          )}
-        >
-          {count} {count === 1 ? "partido" : "partidos"}
-        </span>
-      </span>
-      {esHoy && (
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-destructive-soft px-2.5 py-1 text-2xs font-extrabold uppercase tracking-wide text-destructive">
+    <div className="mb-4">
+      <h3 className="flex items-center gap-2.5">
+        <span className="inline-flex items-center gap-2 rounded-full border border-clay-200 bg-clay-100 py-1.5 pl-3 pr-1.5 text-clay-800 shadow-sm">
+          <CalendarDays className="size-3.5 shrink-0 text-primary" aria-hidden />
+          <span className="text-sm font-bold">{titulo}</span>
           <span
-            aria-hidden
-            className="size-1.5 animate-pulse rounded-full bg-destructive"
-          />
-          ¡Es hoy!
+            className={cn(
+              "rounded-full px-2 py-0.5 text-2xs font-bold",
+              esHoy
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-primary text-primary-foreground",
+            )}
+          >
+            {count} {count === 1 ? "partido" : "partidos"}
+          </span>
         </span>
-      )}
-      <span
-        aria-hidden
-        className="h-px flex-1 bg-gradient-to-r from-border to-transparent"
-      />
-    </h3>
+        <span
+          aria-hidden
+          className="h-px flex-1 bg-gradient-to-r from-border to-transparent"
+        />
+      </h3>
+    </div>
   );
 }
 
@@ -241,17 +235,23 @@ function DiaDePredicciones({
   );
 }
 
-/** Grilla de partidos de un día (pestaña "Partidos"), con encabezado de fecha. */
+/**
+ * Grilla de partidos de un día (pestaña "Partidos"), con encabezado de fecha.
+ * A diferencia de la pestaña "Predecir", aquí NO se resalta el día de hoy
+ * (sin badge rojo ni chip "¡Es hoy!"): eso es exclusivo de predecir.
+ */
 function DiaDePartidos({
   partidos,
+  grupoId,
   reglas,
   prediccionPorPartido,
-  esHoy,
+  ahora,
 }: {
   partidos: Partido[];
+  grupoId: string;
   reglas: ReglasGrupo;
   prediccionPorPartido: Map<string, Prediccion>;
-  esHoy: boolean;
+  ahora: Date;
 }) {
   if (partidos.length === 0) return null;
   return (
@@ -259,7 +259,6 @@ function DiaDePartidos({
       <EncabezadoFecha
         fecha={formatearFechaLarga(partidos[0]!.fecha_hora)}
         count={partidos.length}
-        esHoy={esHoy}
       />
       <div className="grid gap-2.5 md:grid-cols-2">
         {partidos.map((p) => (
@@ -268,6 +267,8 @@ function DiaDePartidos({
             partido={p}
             miPrediccion={prediccionPorPartido.get(p.id)}
             reglas={reglas}
+            ahora={ahora}
+            grupoId={grupoId}
           />
         ))}
       </div>
@@ -461,14 +462,23 @@ export default async function GrupoDetallePage({
       </div>
 
       {/* Tabs principales */}
-      <Tabs defaultValue="jugar">
-        <div className="sticky top-14 z-30 -mx-4 mb-5 bg-app/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
-          <TabsList className="grid h-auto w-full grid-cols-5 gap-1 rounded-2xl border border-border/60 bg-muted p-1.5 shadow-sm md:flex md:h-auto md:items-stretch md:justify-start md:gap-1 md:rounded-none md:border-0 md:border-b md:border-border md:bg-transparent md:p-0 md:shadow-none">
+      <TabsConRefresh defaultValue="jugar">
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 mb-5 bg-app/95 px-4 py-2 backdrop-blur md:static md:top-0 md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+          <TabsList
+            className={cn(
+              "grid h-auto w-full gap-1 rounded-2xl border border-border/60 bg-muted p-1.5 shadow-sm md:flex md:h-auto md:items-stretch md:justify-start md:gap-1 md:rounded-none md:border-0 md:border-b md:border-border md:bg-transparent md:p-0 md:shadow-none",
+              // La pestaña "Gente" solo existe para el admin de la polla, así que
+              // la grilla baja a 4 columnas cuando no eres admin.
+              esAdmin ? "grid-cols-5" : "grid-cols-4",
+            )}
+          >
             <PestanaTab value="jugar" icono={Target} corto="Predecir" largo="Predicciones" />
-            <PestanaTab value="tabla" icono={ListOrdered} corto="Tabla" largo="Posiciones" />
             <PestanaTab value="partidos" icono={CalendarDays} corto="Partidos" largo="Partidos" />
+            <PestanaTab value="tabla" icono={ListOrdered} corto="Tabla" largo="Posiciones" />
             <PestanaTab value="reglas" icono={Scroll} corto="Reglas" largo="Reglas" />
-            <PestanaTab value="gente" icono={Users} corto="Gente" largo="Participantes" />
+            {esAdmin && (
+              <PestanaTab value="gente" icono={Users} corto="Gente" largo="Participantes" />
+            )}
           </TabsList>
         </div>
 
@@ -504,11 +514,6 @@ export default async function GrupoDetallePage({
           )}
         </TabsContent>
 
-        {/* TABLA */}
-        <TabsContent value="tabla">
-          <TablaPosiciones filas={tabla} />
-        </TabsContent>
-
         {/* PARTIDOS */}
         <TabsContent value="partidos" className="space-y-6">
           <RevelarJornadas inicial={3}>
@@ -516,12 +521,21 @@ export default async function GrupoDetallePage({
               <DiaDePartidos
                 key={dia}
                 partidos={lista}
+                grupoId={grupo.id}
                 reglas={reglas}
                 prediccionPorPartido={prediccionPorPartido}
-                esHoy={dia === claveHoy}
+                ahora={ahora}
               />
             ))}
           </RevelarJornadas>
+        </TabsContent>
+
+        {/* TABLA */}
+        <TabsContent value="tabla">
+          <TablaPosiciones
+            filas={tabla}
+            criterios={reglas.criterios_desempate}
+          />
         </TabsContent>
 
         {/* REGLAS (+ config de admin) */}
@@ -559,7 +573,8 @@ export default async function GrupoDetallePage({
           )}
         </TabsContent>
 
-        {/* PARTICIPANTES */}
+        {/* PARTICIPANTES — solo visible para el administrador de la polla */}
+        {esAdmin && (
         <TabsContent value="gente" className="space-y-4">
           <SectionHeader
             titulo="Participantes"
@@ -604,7 +619,8 @@ export default async function GrupoDetallePage({
             ))}
           </div>
         </TabsContent>
-      </Tabs>
+        )}
+      </TabsConRefresh>
     </PageContainer>
   );
 }

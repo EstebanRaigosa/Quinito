@@ -11,8 +11,7 @@ import { formatearHoraBogota } from "@/lib/utils/fechas";
 import { Flag } from "@/components/shared/Flag";
 import { IconoEmpate } from "@/components/shared/IconoEmpate";
 import { StatBar } from "@/components/partidos/StatBar";
-import { AvatarNotion } from "@/components/shared/AvatarNotion";
-import { Badge } from "@/components/ui/badge";
+import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
 import { cn } from "@/lib/utils";
 
 const UMBRAL_PRIVACIDAD = 5;
@@ -129,6 +128,8 @@ export function EstadisticasGrupo({
     goles_local: number;
     goles_visitante: number;
     puntos: number | null;
+    /** El marcador fue predicción única (mismo valor para todo el grupo). */
+    prediccion_unica: boolean;
     personas: string[];
   };
   const grupos: GrupoMarcador[] = Object.values(
@@ -139,8 +140,10 @@ export function EstadisticasGrupo({
         goles_local: n.goles_local,
         goles_visitante: n.goles_visitante,
         puntos: n.puntos,
+        prediccion_unica: false,
         personas: [],
       };
+      acc[clave].prediccion_unica ||= n.prediccion_unica;
       acc[clave].personas.push(n.participante);
       return acc;
     }, {}),
@@ -154,43 +157,80 @@ export function EstadisticasGrupo({
     <div className="flex flex-col gap-3">
       {grupos.map((g) => {
         const acerto = g.puntos != null && g.puntos > 0;
+        const finalizado = partido.estado === "finalizado";
         return (
           <div
             key={g.clave}
             className={cn(
-              "overflow-hidden rounded-xl border",
-              acerto ? "border-success/40 bg-success-soft/40" : "border-border",
+              "overflow-hidden rounded-xl border shadow-md",
+              acerto
+                ? "border-success/45 bg-success-soft/15"
+                : "border-border bg-surface",
             )}
           >
-            {/* Cabecera: marcador (resultado) + puntos + cuántos lo pusieron */}
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+            {/* Cabecera del resultado: barra tintada con borde inferior grueso,
+                claramente separada de la lista de usuarios de abajo. */}
+            <div
+              className={cn(
+                "flex items-center justify-between gap-2 border-b-2 px-3 py-2.5",
+                acerto
+                  ? "border-success/30 bg-success-soft/60"
+                  : "border-clay-200/60 bg-clay-100/60",
+              )}
+            >
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 min-w-[3.5rem] place-items-center rounded-lg border border-border bg-surface px-2 text-base font-extrabold tabular-nums text-fg-strong shadow-xs">
-                  {g.goles_local} - {g.goles_visitante}
+                {/* Banderas a cada lado del marcador: queda claro qué goles son
+                    del local (izq) y cuáles del visitante (der). */}
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-base font-extrabold tabular-nums text-fg-strong shadow-xs">
+                  <Flag code={partido.equipo_local?.codigo_iso} size={16} />
+                  {g.goles_local}
+                  <span className="text-fg-subtle">-</span>
+                  {g.goles_visitante}
+                  <Flag code={partido.equipo_visitante?.codigo_iso} size={16} />
                 </span>
-                {g.puntos != null && (
-                  <Badge variant={g.puntos > 0 ? "success" : "neutral"}>
-                    +{g.puntos} pts
-                  </Badge>
+                {/* Finalizado: badge con desglose de puntos (igual que en el
+                    partido). Antes (en juego) aún no hay puntos que mostrar. */}
+                {finalizado && g.puntos != null && (
+                  <PuntajeDesglose
+                    prediccion={{
+                      id: g.clave,
+                      participante_id: "",
+                      partido_id: partido.id,
+                      goles_local: g.goles_local,
+                      goles_visitante: g.goles_visitante,
+                      puntos_obtenidos: g.puntos,
+                      prediccion_unica: g.prediccion_unica,
+                    }}
+                    partido={partido}
+                    reglas={reglas}
+                  />
                 )}
               </div>
-              <span className="t-caption shrink-0 font-semibold text-fg-muted">
+              <span className="t-caption shrink-0 font-bold text-fg-muted">
                 {g.personas.length}{" "}
                 {g.personas.length === 1 ? "persona" : "personas"}
               </span>
             </div>
 
-            {/* Personas que pusieron ese marcador */}
-            <ul className="divide-y divide-border border-t border-border bg-sunken/40">
+            {/* Usuarios que pusieron ese marcador: una fila por persona, con
+                líneas divisorias visibles y un punto guía que la indenta. */}
+            <ul
+              className={cn(
+                "divide-y",
+                acerto ? "divide-success/20" : "divide-border",
+              )}
+            >
               {g.personas.map((nombre, i) => (
                 <li
                   key={`${g.clave}-${i}`}
-                  className="flex items-center gap-2.5 px-3 py-2"
+                  className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-sunken/40"
                 >
-                  <AvatarNotion
-                    nombre={nombre}
-                    size="sm"
-                    className="ring-2 ring-app"
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      acerto ? "bg-success" : "bg-clay-400",
+                    )}
                   />
                   <span className="truncate text-sm font-semibold text-fg-strong">
                     {nombre}

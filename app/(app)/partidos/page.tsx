@@ -53,7 +53,7 @@ export default async function PartidosPage() {
             // `position: sticky` del <h2> en iOS (§12). La animación va en la
             // grilla interna, no aquí.
             <section key={dia}>
-              <h2 className="sticky top-14 z-10 -mx-1 mb-3 flex items-center gap-2.5 bg-app/95 px-1 py-1.5 backdrop-blur md:top-0">
+              <h2 className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-10 -mx-1 mb-3 flex items-center gap-2.5 bg-app/95 px-1 py-1.5 backdrop-blur md:top-0">
                 <span
                   aria-hidden
                   className="h-4 w-1 shrink-0 rounded-full bg-primary"

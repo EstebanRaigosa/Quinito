@@ -89,7 +89,10 @@ export default function CrearGrupoPage() {
   const { paso, reset } = useWizardGrupo();
 
   useEffect(() => {
-    reset();
+    // Recupera un borrador que haya sobrevivido a un cierre abrupto (iOS mata
+    // la PWA en segundo plano). En salida normal del wizard, el cleanup limpia
+    // el borrador (también tras crear el grupo, al navegar fuera).
+    void useWizardGrupo.persist.rehydrate();
     return () => reset();
   }, [reset]);
 

@@ -59,7 +59,7 @@ export function FormularioReglas({
         <CamposReglas control={form.control} />
 
         {/* Footer de acción */}
-        <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-border bg-app/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:rounded-2xl md:border md:bg-surface md:px-5 md:py-4">
+        <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] -mx-4 flex items-center gap-3 border-t border-border bg-app/95 px-4 py-3 backdrop-blur md:static md:bottom-auto md:mx-0 md:rounded-2xl md:border md:bg-surface md:px-5 md:py-4">
           <Button
             type="button"
             variant="outline"

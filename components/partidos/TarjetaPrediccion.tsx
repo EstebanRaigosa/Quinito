@@ -5,8 +5,10 @@ import { BarChart3, Clock, Check } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { prediccionCerrada, puedePredecir } from "@/lib/utils/prediccion";
-import { tiempoRestante } from "@/lib/utils/fechas";
+import { claveDiaBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
+import { Flag } from "@/components/shared/Flag";
+import { CuentaRegresiva } from "@/components/shared/CuentaRegresiva";
 import { FormularioPrediccion } from "@/components/partidos/FormularioPrediccion";
 import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
@@ -38,6 +40,8 @@ export function TarjetaPrediccion({
 }) {
   const equiposDefinidos = !!partido.equipo_local && !!partido.equipo_visitante;
   const cerrada = prediccionCerrada(partido, reglas.minutos_cierre_prediccion, ahora);
+  // El partido se juega hoy (zona Bogotá): se resalta con el badge "¡Es hoy!".
+  const esHoy = claveDiaBogota(partido.fecha_hora) === claveDiaBogota(ahora);
   const sePuede = puedePredecir(partido, reglas.minutos_cierre_prediccion, ahora);
   const finalizado = partido.estado === "finalizado";
   // Estado "guardado" reactivo: parte de la predicción del server y se actualiza
@@ -69,10 +73,10 @@ export function TarjetaPrediccion({
   return (
     <div
       className={cn(
-        "group overflow-hidden rounded-2xl shadow-md transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-0.5 hover:shadow-lg",
-        estado === "pendiente"
-          ? "border-2 border-warning/70 bg-warning-soft/60 ring-2 ring-warning/25 shadow-lg"
-          : "surface-card",
+        // Marco SIEMPRE igual (tener o no predicción no lo cambia, en claro ni
+        // oscuro). Borde visible + sombra para dar relieve; el estado se
+        // comunica en la cabecera/pie (badges, "Cierra en", "Guardada").
+        "surface-card group overflow-hidden rounded-2xl border-strong shadow-md transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-0.5 hover:shadow-lg",
         estado === "cerrada" && "opacity-80",
       )}
     >
@@ -101,10 +105,12 @@ export function TarjetaPrediccion({
         ) : estado === "pendiente" ? (
           <span className="t-caption inline-flex items-center gap-1 font-bold text-warning">
             <Clock className="size-3.5" />
-            {tiempoRestante(partido.fecha_hora, ahora).replace(
-              "en ",
-              "Cierra en ",
-            )}
+            <CuentaRegresiva
+              iso={partido.fecha_hora}
+              ahoraInicial={ahora}
+              prefijo="Cierra en "
+              etiquetaCerrada="cerrada"
+            />
           </span>
         ) : estado === "guardada" ? (
           <span className="flex items-center gap-2">
@@ -113,10 +119,12 @@ export function TarjetaPrediccion({
             </Badge>
             <span className="t-caption inline-flex items-center gap-1 font-bold text-success">
               <Clock className="size-3.5" />
-              {tiempoRestante(partido.fecha_hora, ahora).replace(
-                "en ",
-                "Cierra en ",
-              )}
+              <CuentaRegresiva
+                iso={partido.fecha_hora}
+                ahoraInicial={ahora}
+                prefijo="Cierra en "
+                etiquetaCerrada="cerrada"
+              />
             </span>
           </span>
         ) : (
@@ -129,8 +137,12 @@ export function TarjetaPrediccion({
         {(partido.estado === "en_vivo" || finalizado) && equiposDefinidos && (
           <div className="mb-2.5 flex items-center justify-center gap-2">
             <span className="t-caption">Resultado</span>
-            <span className="rounded-md bg-gradient-to-b from-sunken to-muted px-2.5 py-0.5 text-base font-extrabold tabular-nums text-fg-strong shadow-xs">
-              {partido.goles_local} - {partido.goles_visitante}
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-sunken to-muted px-2.5 py-0.5 text-base font-extrabold tabular-nums text-fg-strong shadow-xs">
+              <Flag code={partido.equipo_local?.codigo_iso} size={14} />
+              {partido.goles_local}
+              <span className="text-fg-subtle">-</span>
+              {partido.goles_visitante}
+              <Flag code={partido.equipo_visitante?.codigo_iso} size={14} />
             </span>
             {finalizado && miPrediccion && (
               <Badge variant={miPrediccion.puntos_obtenidos > 0 ? "gold" : "neutral"}>
@@ -147,6 +159,8 @@ export function TarjetaPrediccion({
           golesVisitanteInicial={miPrediccion?.goles_visitante}
           bloqueado={!sePuede}
           motivoBloqueo={motivoBloqueo}
+          equiposDefinidos={equiposDefinidos}
+          esHoy={esHoy}
           onGuardado={() => setGuardada(true)}
         />
 
@@ -171,7 +185,7 @@ export function TarjetaPrediccion({
                 {partido.equipo_visitante?.nombre}
               </SheetTitle>
             </SheetHeader>
-            <div className="px-5 pb-8">
+            <div className="px-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
               <Tabs defaultValue="global">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="global">General</TabsTrigger>

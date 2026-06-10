@@ -43,7 +43,7 @@ export function ThemeToggle() {
             aria-checked={activo}
             onClick={() => setPreferencia(valor)}
             className={cn(
-              "flex min-h-9 items-center justify-center gap-1.5 rounded-md text-sm font-semibold transition-all duration-200",
+              "flex min-h-11 items-center justify-center gap-1.5 rounded-md text-sm font-semibold transition-all duration-200",
               activo
                 ? "bg-card text-fg-strong shadow-sm"
                 : "text-fg-muted hover:text-fg-strong",

@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  CriterioDesempate,
   FilaTablaPosiciones,
   Participante,
   Partido,
   Prediccion,
   ReglasGrupo,
 } from "@/lib/types/dominio";
+
+/** Criterios válidos de desempate, para sanear el array crudo del RPC. */
+const CRITERIOS_VALIDOS: CriterioDesempate[] = ["exactos", "unicas", "aciertos"];
 import { mapPartidoRow } from "@/lib/queries/_partido-map";
 
 export type GrupoDetalle = {
@@ -37,7 +41,7 @@ type RawDetalle = {
     codigo_invitacion: string;
     creador_id: string;
   };
-  reglas: Record<string, number | string | null>;
+  reglas: Record<string, number | string | string[] | null>;
   participantes: {
     id: string;
     rol: Participante["rol"];
@@ -57,6 +61,7 @@ type RawDetalle = {
     puntos_totales: number;
     aciertos: number;
     marcadores_exactos: number;
+    unicas_acertadas: number;
   }[];
   partidos: Parameters<typeof mapPartidoRow>[0][];
   misPredicciones: {
@@ -114,6 +119,7 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     puntos_totales: Number(f.puntos_totales ?? 0),
     aciertos: Number(f.aciertos ?? 0),
     marcadores_exactos: Number(f.marcadores_exactos ?? 0),
+    unicas_acertadas: Number(f.unicas_acertadas ?? 0),
     es_actual: f.participante_id === d.miParticipanteId,
   }));
 
@@ -131,8 +137,17 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
 
   // `numeric` llega como número en JSON; `Number(...)` normaliza por si acaso.
   const r = d.reglas;
+  const criteriosCrudos = Array.isArray(r.criterios_desempate)
+    ? r.criterios_desempate
+    : [];
+  // Saneamos valores inválidos PRESERVANDO el orden configurado del grupo.
+  const criterios = criteriosCrudos.filter((c): c is CriterioDesempate =>
+    (CRITERIOS_VALIDOS as string[]).includes(c),
+  );
   const reglas: ReglasGrupo = {
     grupo_id: String(r.grupo_id ?? id),
+    criterios_desempate:
+      criterios.length > 0 ? criterios : [...CRITERIOS_VALIDOS],
     pts_marcador_exacto: Number(r.pts_marcador_exacto),
     pts_ganador: Number(r.pts_ganador),
     pts_gol_acertado: Number(r.pts_gol_acertado),

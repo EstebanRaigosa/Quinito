@@ -33,6 +33,18 @@ export type PartidoAdmin = {
 const inputCls =
   "h-11 w-12 rounded-lg border-2 border-primary/50 bg-surface text-center text-lg font-extrabold tabular-nums text-fg-strong focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+/**
+ * En táctil (iOS) el teclado flota y puede tapar el input/botón en una lista
+ * larga; al enfocar, esperamos la animación del teclado y centramos la fila
+ * (COMPATIBILIDAD-MOVIL.md §4.1).
+ */
+function centrarEnFoco(e: React.FocusEvent<HTMLInputElement>) {
+  if (typeof window === "undefined") return;
+  if (!window.matchMedia("(pointer: coarse)").matches) return;
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+}
+
 export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
   const [gl, setGl] = useState(partido.golesLocal?.toString() ?? "");
   const [gv, setGv] = useState(partido.golesVisitante?.toString() ?? "");
@@ -107,18 +119,24 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
       <div className="flex shrink-0 items-center gap-2">
         <input
           inputMode="numeric"
+          pattern="[0-9]*"
+          enterKeyHint="next"
           aria-label={`Goles ${partido.localNombre}`}
           value={gl}
           onChange={(e) => setGl(limpiar(e.target.value))}
+          onFocus={centrarEnFoco}
           placeholder="–"
           className={inputCls}
         />
         <span className="font-extrabold text-fg-subtle">-</span>
         <input
           inputMode="numeric"
+          pattern="[0-9]*"
+          enterKeyHint="done"
           aria-label={`Goles ${partido.visitanteNombre}`}
           value={gv}
           onChange={(e) => setGv(limpiar(e.target.value))}
+          onFocus={centrarEnFoco}
           placeholder="–"
           className={inputCls}
         />

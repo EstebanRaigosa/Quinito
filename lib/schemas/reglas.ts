@@ -32,6 +32,10 @@ export const reglasSchema = z
     premio_segundo_lugar: porcentaje("Premio 2do lugar"),
     premio_tercer_lugar: porcentaje("Premio 3er lugar"),
     minutos_cierre_prediccion: enteroNoNegativo("Minutos de cierre"),
+    // Orden de desempate (a igualdad de puntos). Puede ir vacío → alfabético.
+    criterios_desempate: z
+      .array(z.enum(["exactos", "unicas", "aciertos"]))
+      .max(3, "Máximo 3 criterios"),
   })
   .refine(
     (r) =>
@@ -59,4 +63,5 @@ export const reglasDefault: ReglasInput = {
   premio_segundo_lugar: 30,
   premio_tercer_lugar: 10,
   minutos_cierre_prediccion: 5,
+  criterios_desempate: ["exactos", "unicas", "aciertos"],
 };

@@ -8,7 +8,6 @@ import { getPerfilActual, getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getMisGrupos } from "@/lib/queries/grupos";
 import { getInicioDashboard } from "@/lib/queries/inicio";
 import { TarjetaGrupo } from "@/components/grupos/TarjetaGrupo";
-import { PrediccionesPendientes } from "@/components/partidos/PrediccionesPendientes";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -50,7 +49,6 @@ export default async function DashboardPage() {
   const grupoFoco = grupos[0];
 
   const totalHoy = pendientesHoy.length;
-  const pendientes = pendientesHoy.filter((i) => !i.miPrediccion).length;
   const gruposActivos = grupos.filter((g) => g.estado === "activo").length;
 
   const fechaHoy = formatInTimeZone(ahora, ZONA_BOGOTA, "EEEE d 'de' MMMM", {
@@ -66,36 +64,13 @@ export default async function DashboardPage() {
           <h1 className="t-display mt-1 text-balance">
             {saludoPorHora(ahora)}, {primerNombre}
           </h1>
-          {grupoFoco && (
+          {grupoFoco && totalHoy > 0 && (
             <p className="t-body-sm mt-1.5 text-fg-muted">
-              {totalHoy > 0 ? (
-                <>
-                  Tienes{" "}
-                  <strong className="font-bold text-fg-strong">
-                    {totalHoy} {totalHoy === 1 ? "partido" : "partidos"} hoy
-                  </strong>
-                  {pendientes > 0 ? (
-                    <>
-                      {" "}
-                      y{" "}
-                      {pendientes === 1
-                        ? "1 predicción pendiente"
-                        : `${pendientes} predicciones pendientes`}
-                      .
-                    </>
-                  ) : (
-                    <>
-                      {" "}
-                      <span className="font-bold text-success">— al día ✓</span>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  Vas al día con tus predicciones{" "}
-                  <span className="font-bold text-success">✓</span>
-                </>
-              )}
+              Hoy se juegan{" "}
+              <strong className="font-bold text-fg-strong">
+                {totalHoy} {totalHoy === 1 ? "partido" : "partidos"}
+              </strong>{" "}
+              de tus pollas.
             </p>
           )}
         </div>
@@ -144,10 +119,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* 3 · Predicciones pendientes (cross-polla) */}
-      <PrediccionesPendientes items={pendientesHoy} ahora={ahora} />
-
-      {/* 5 · Mis pollas */}
+      {/* Mis pollas — la urgencia de predecir vive en la boleta de cada tarjeta */}
       <section className="animate-fade-up [animation-delay:200ms]">
         <SectionHeader
           titulo="Mis pollas"

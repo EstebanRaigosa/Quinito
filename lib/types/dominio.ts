@@ -71,8 +71,13 @@ export type Partido = {
   estado: EstadoPartido;
 };
 
+/** Criterios de desempate de la tabla (a igualdad de puntos), en orden. */
+export type CriterioDesempate = "exactos" | "unicas" | "aciertos";
+
 export type ReglasGrupo = {
   grupo_id: string;
+  /** Orden de desempate cuando hay igualdad de puntos. */
+  criterios_desempate: CriterioDesempate[];
   pts_marcador_exacto: number;
   pts_ganador: number;
   pts_gol_acertado: number;
@@ -130,6 +135,8 @@ export type FilaTablaPosiciones = {
   puntos_totales: number;
   aciertos: number;
   marcadores_exactos: number;
+  /** Predicciones únicas acertadas (para el desempate). */
+  unicas_acertadas: number;
   /** True si es el usuario que está consultando. */
   es_actual: boolean;
 };

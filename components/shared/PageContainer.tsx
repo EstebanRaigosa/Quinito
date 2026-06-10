@@ -18,7 +18,9 @@ export function PageContainer({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-md px-4 py-5 md:px-9 md:py-8",
+        // Padding lateral ≥16px que respeta el notch en Safari landscape
+        // (no standalone). En desktop manda md:px-9.
+        "mx-auto w-full max-w-md py-5 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:px-9 md:py-8",
         max,
         className,
       )}

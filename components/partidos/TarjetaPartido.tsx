@@ -1,11 +1,23 @@
-import { Clock } from "lucide-react";
+import { Ban, BarChart3, Clock } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
+import { prediccionCerrada } from "@/lib/utils/prediccion";
 import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
+import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
+import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 
 function Lado({
   iso,
@@ -49,14 +61,36 @@ export function TarjetaPartido({
   partido,
   miPrediccion,
   reglas,
+  ahora,
+  grupoId,
 }: {
   partido: Partido;
   miPrediccion?: Prediccion;
   /** Reglas del grupo: habilitan el desglose de puntos al hacer clic. */
   reglas?: ReglasGrupo;
+  /** Momento actual (servidor) para calcular si la polla ya cerró. */
+  ahora?: Date;
+  /** Grupo al que pertenece la tarjeta: habilita el panel de estadísticas. */
+  grupoId?: string;
 }) {
-  const jugado = partido.estado === "finalizado" || partido.estado === "en_vivo";
   const finalizado = partido.estado === "finalizado";
+  const cancelado = partido.estado === "cancelado";
+  // La polla cierra `minutos_cierre` antes del kickoff. Sin reglas/ahora (ej.
+  // calendario global del torneo) caemos al estado de la BD.
+  const cerrada =
+    reglas && ahora
+      ? prediccionCerrada(partido, reglas.minutos_cierre_prediccion, ahora)
+      : partido.estado !== "programado";
+  // "En juego": la polla ya cerró pero aún no hay resultado cargado.
+  const enJuego = cerrada && !finalizado && !cancelado;
+  const equiposDefinidos = !!partido.equipo_local && !!partido.equipo_visitante;
+  // Tras el cierre las predicciones de los integrantes ya son públicas para el
+  // grupo: mostramos el panel de estadísticas (agregados + lista nominal).
+  const mostrarEstadisticas =
+    cerrada && equiposDefinidos && !!grupoId && !!reglas && !!ahora;
+  // El marcador real solo se muestra cuando ya hay resultado.
+  const tieneResultado =
+    partido.goles_local != null && partido.goles_visitante != null;
   const etiquetaFase =
     partido.fase === "fase_grupos" && partido.grupo
       ? `Grupo ${partido.grupo}`
@@ -68,7 +102,7 @@ export function TarjetaPartido({
         "surface-card hover-lift relative overflow-hidden rounded-xl p-3.5 pl-4",
         // Acento verde a la izquierda (estilo "Spring Turf").
         "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary",
-        partido.estado === "en_vivo" && "before:bg-destructive before:animate-live-pulse",
+        enJuego && "before:bg-warning",
         finalizado && "before:bg-border",
       )}
     >
@@ -76,15 +110,17 @@ export function TarjetaPartido({
         <span className="text-2xs font-bold uppercase tracking-wide text-fg-subtle">
           {etiquetaFase}
         </span>
-        {partido.estado === "en_vivo" ? (
-          <Badge variant="live">
-            <span className="size-1.5 animate-live-pulse rounded-full bg-current" />
-            En vivo
+        {finalizado ? (
+          <Badge variant="success" dot>
+            Finalizado
           </Badge>
-        ) : finalizado ? (
-          <span className="text-2xs font-semibold uppercase tracking-wide text-fg-muted">
-            Final
-          </span>
+        ) : cancelado ? (
+          <Badge variant="neutral">Cancelado</Badge>
+        ) : enJuego ? (
+          <Badge variant="playing">
+            <span className="size-1.5 animate-live-pulse rounded-full bg-current" />
+            En juego
+          </Badge>
         ) : (
           <span className="inline-flex items-center gap-1 text-2xs font-medium text-fg-muted">
             <Clock className="size-3" aria-hidden />
@@ -103,13 +139,13 @@ export function TarjetaPartido({
         <div
           className={cn(
             "min-w-14 rounded-lg px-2.5 py-1 text-center text-base font-extrabold tabular-nums",
-            jugado
+            tieneResultado
               ? "bg-sunken text-fg-strong shadow-xs"
               : "text-xs font-bold uppercase tracking-widest text-fg-subtle",
           )}
         >
-          {jugado
-            ? `${partido.goles_local ?? 0} - ${partido.goles_visitante ?? 0}`
+          {tieneResultado
+            ? `${partido.goles_local} - ${partido.goles_visitante}`
             : "vs"}
         </div>
         <div className="flex min-w-0 justify-end">
@@ -122,7 +158,7 @@ export function TarjetaPartido({
         </div>
       </div>
 
-      {miPrediccion && (
+      {miPrediccion ? (
         <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2.5 text-2xs">
           <span className="text-fg-muted">
             Tu predicción:{" "}
@@ -138,6 +174,67 @@ export function TarjetaPartido({
             />
           )}
         </div>
+      ) : (
+        // Ya empezó (o terminó) sin que pusieras marcador: se avisa en rojo.
+        (enJuego || finalizado) && (
+          <div className="mt-2.5 border-t border-border pt-2.5 text-2xs">
+            <span className="inline-flex items-center gap-1.5 font-bold text-destructive">
+              <Ban className="size-3.5 shrink-0" aria-hidden />
+              No pusiste predicción
+            </span>
+          </div>
+        )
+      )}
+
+      {mostrarEstadisticas && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2.5 w-full text-primary"
+            >
+              <BarChart3 className="size-4" /> Ver estadísticas
+            </Button>
+          </SheetTrigger>
+          {/* Móvil: hoja anclada abajo. Desktop: tarjeta centrada y acotada. */}
+          <SheetContent
+            side="bottom"
+            className="max-h-[85dvh] overflow-y-auto scroll-touch md:inset-0 md:m-auto md:h-fit md:w-full md:max-w-lg md:rounded-2xl md:border"
+          >
+            <SheetHeader>
+              <SheetTitle>
+                {partido.equipo_local?.nombre} vs{" "}
+                {partido.equipo_visitante?.nombre}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="px-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
+              <Tabs defaultValue="grupo">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="global">General</TabsTrigger>
+                  <TabsTrigger value="grupo">Por persona</TabsTrigger>
+                </TabsList>
+                <TabsContent value="global">
+                  <EstadisticasGrupoResumen
+                    grupoId={grupoId!}
+                    partido={partido}
+                    reglas={reglas!}
+                    ahora={ahora!}
+                    miPrediccion={miPrediccion}
+                  />
+                </TabsContent>
+                <TabsContent value="grupo">
+                  <EstadisticasGrupo
+                    grupoId={grupoId!}
+                    partido={partido}
+                    reglas={reglas!}
+                    ahora={ahora!}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
     </div>
   );

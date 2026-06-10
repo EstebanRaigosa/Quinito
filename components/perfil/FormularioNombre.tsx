@@ -67,7 +67,22 @@ export function FormularioNombre({
                 <Input
                   autoComplete="name"
                   autoFocus
+                  enterKeyHint="done"
                   placeholder="¿Cómo quieres que te vean?"
+                  onFocus={(e) => {
+                    // En táctil, centra el campo sobre el teclado iOS (§4.1).
+                    if (
+                      typeof window !== "undefined" &&
+                      window.matchMedia("(pointer: coarse)").matches
+                    ) {
+                      const el = e.currentTarget;
+                      setTimeout(
+                        () =>
+                          el.scrollIntoView({ block: "center", behavior: "smooth" }),
+                        300,
+                      );
+                    }
+                  }}
                   {...field}
                 />
               </FormControl>

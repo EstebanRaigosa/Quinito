@@ -114,13 +114,15 @@ export function BotonInstalarPWA({
   return (
     <>
       {variant === "icon" ? (
+        // Píldora verde llamativa con texto, para que se note en la barra.
         <button
           type="button"
           onClick={onInstalar}
-          aria-label="Instalar la app"
-          className="grid size-9 place-items-center rounded-full text-fg-muted transition-colors hover:bg-sunken hover:text-primary"
+          aria-label="Descargar la app"
+          className="inline-flex h-9 animate-pop items-center gap-1.5 whitespace-nowrap rounded-full bg-primary pl-2.5 pr-3.5 text-sm font-bold text-primary-foreground shadow-glow transition-all duration-200 ease-out hover:bg-primary-hover hover:-translate-y-0.5 hover:shadow-glow-lg active:scale-95"
         >
-          <Download className="size-5" aria-hidden />
+          <Download className="size-4" strokeWidth={2.5} aria-hidden />
+          Descargar
         </button>
       ) : (
         <Card className="flex items-center gap-3 p-4">
@@ -128,13 +130,13 @@ export function BotonInstalarPWA({
             <Download className="size-5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="t-body-sm font-bold text-fg-strong">Instalar la app</p>
+            <p className="t-body-sm font-bold text-fg-strong">Descargar la app</p>
             <p className="t-caption text-fg-muted">
               Acceso directo en tu pantalla de inicio, a pantalla completa.
             </p>
           </div>
           <Button size="sm" onClick={onInstalar} className="shrink-0">
-            Instalar
+            <Download className="size-4" /> Descargar
           </Button>
         </Card>
       )}

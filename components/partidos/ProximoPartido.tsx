@@ -3,8 +3,8 @@ import { ArrowRight } from "lucide-react";
 import type { Partido } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { Flag } from "@/components/shared/Flag";
+import { CuentaRegresiva } from "@/components/shared/CuentaRegresiva";
 import {
-  cuentaRegresivaCorta,
   formatearFechaHoraBogota,
   formatearHoraBogota,
 } from "@/lib/utils/fechas";
@@ -78,7 +78,11 @@ export function ProximoPartido({
             Empieza en
           </div>
           <div className="mt-1 text-2xl font-extrabold tabular-nums tracking-tight md:text-3xl">
-            {cuentaRegresivaCorta(partido.fecha_hora, ahora)}
+            <CuentaRegresiva
+              iso={partido.fecha_hora}
+              ahoraInicial={ahora}
+              etiquetaCerrada="¡Ya empezó!"
+            />
           </div>
         </div>
       </div>

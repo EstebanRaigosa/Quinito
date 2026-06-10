@@ -116,6 +116,8 @@ function BuscarGrupoContenido() {
               if (e.key === "Enter") buscar();
             }}
             inputMode="text"
+            enterKeyHint="search"
+            autoComplete="off"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}

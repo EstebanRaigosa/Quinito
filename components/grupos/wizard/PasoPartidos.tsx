@@ -178,12 +178,16 @@ export function PasoPartidos() {
               key={fase}
               className="surface-card overflow-hidden rounded-2xl"
             >
-              <div className="flex items-center gap-3 bg-sunken px-4 py-3">
-                <Checkbox
-                  checked={estadoFase}
-                  onCheckedChange={(v) => toggleFase(ids, v === true)}
-                  aria-label={`Seleccionar todos los partidos de ${ETIQUETA_FASE[fase]}`}
-                />
+              <div className="flex items-center gap-1 bg-sunken px-4 py-3">
+                {/* Área táctil de 44px alrededor del checkbox (§6); el margen
+                    negativo evita que crezca la altura de la fila. */}
+                <label className="-my-3 -ml-2 grid size-11 cursor-pointer place-items-center">
+                  <Checkbox
+                    checked={estadoFase}
+                    onCheckedChange={(v) => toggleFase(ids, v === true)}
+                    aria-label={`Seleccionar todos los partidos de ${ETIQUETA_FASE[fase]}`}
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => toggleAbierta(fase)}
@@ -255,7 +259,7 @@ export function PasoPartidos() {
       </div>
 
       {/* Footer de navegación */}
-      <div className="sticky bottom-0 -mx-4 border-t border-border bg-app/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:rounded-2xl md:border md:bg-surface md:px-5 md:py-4">
+      <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] -mx-4 border-t border-border bg-app/95 px-4 py-3 backdrop-blur md:static md:bottom-auto md:mx-0 md:rounded-2xl md:border md:bg-surface md:px-5 md:py-4">
         <p className="t-caption mb-2.5 text-center tabular-nums">
           <span className="font-bold text-fg-strong">
             {totalSeleccionados} de {totalPartidos}

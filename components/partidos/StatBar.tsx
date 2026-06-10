@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Flag } from "@/components/shared/Flag";
 
 /** Barra de estadística agregada (DS): etiqueta + % arriba, barra abajo. */
 export function StatBar({
@@ -53,6 +54,8 @@ export function ScoreRow({
   max,
   cantidad,
   destacado = false,
+  isoLocal,
+  isoVisitante,
 }: {
   golesLocal: number;
   golesVisitante: number;
@@ -60,18 +63,25 @@ export function ScoreRow({
   max: number;
   cantidad?: number;
   destacado?: boolean;
+  /** ISO de cada selección: dibuja una banderita junto a sus goles. */
+  isoLocal?: string | null;
+  isoVisitante?: string | null;
 }) {
   return (
     <div className="flex items-center gap-3">
       <span
         className={cn(
-          "grid h-9 w-14 shrink-0 place-items-center rounded-lg text-sm font-extrabold tabular-nums text-fg-strong",
+          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-extrabold tabular-nums text-fg-strong",
           destacado
             ? "border-2 border-primary bg-primary-soft"
             : "border border-border bg-sunken",
         )}
       >
-        {golesLocal}-{golesVisitante}
+        <Flag code={isoLocal} size={14} />
+        {golesLocal}
+        <span className="text-fg-subtle">-</span>
+        {golesVisitante}
+        <Flag code={isoVisitante} size={14} />
       </span>
       <div className="h-2.5 flex-1 overflow-hidden rounded-pill bg-sunken">
         <div

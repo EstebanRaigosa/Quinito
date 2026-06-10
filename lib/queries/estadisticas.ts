@@ -95,6 +95,8 @@ export type PrediccionNominal = {
   goles_local: number;
   goles_visitante: number;
   puntos: number | null;
+  /** Si fue predicción única (para el bono en el desglose de puntos). */
+  prediccion_unica: boolean;
 };
 
 /**
@@ -114,7 +116,9 @@ export function usePrediccionesNominales(
       const supabase = createClient();
       const { data } = await supabase
         .from("vwPrediccionesGrupoPartido")
-        .select("nombre_completo, goles_local, goles_visitante, puntos_obtenidos")
+        .select(
+          "nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica",
+        )
         .eq("grupo_id", grupoId)
         .eq("partido_id", partidoId);
 
@@ -123,6 +127,7 @@ export function usePrediccionesNominales(
         goles_local: n.goles_local ?? 0,
         goles_visitante: n.goles_visitante ?? 0,
         puntos: n.puntos_obtenidos ?? null,
+        prediccion_unica: n.prediccion_unica ?? false,
       }));
     },
     staleTime: 60_000,

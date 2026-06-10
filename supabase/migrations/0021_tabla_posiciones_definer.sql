@@ -1,0 +1,20 @@
+-- 0021_tabla_posiciones_definer.sql
+--
+-- Fix: la tabla de posiciones (y el podio, que derivan de "vwTablaPosiciones")
+-- solo mostraban los puntos del usuario que consulta; el resto aparecía en 0.
+--
+-- Causa: en 0008 §2 esta vista quedó como `security_invoker = on`, junto a las
+-- vistas de "identidad". Pero "vwTablaPosiciones" AGREGA predicciones
+-- (sum(puntos_obtenidos), conteos), así que con security_invoker heredaba la
+-- RLS de "tblPredicciones" — política que oculta las predicciones ajenas hasta
+-- el cierre del partido. Resultado: la suma solo veía las filas del propio
+-- usuario.
+--
+-- Esta vista pertenece a la misma categoría que las 4 vistas de estadísticas
+-- (agregados, definer): solo expone totales/conteos por participante
+-- (puntos_totales, aciertos, marcadores_exactos), nunca el marcador individual
+-- que alguien predijo en un partido abierto — los puntos solo existen para
+-- partidos finalizados. La puerta de privacidad se mantiene vía la cláusula
+-- `where es_miembro_grupo(p.grupo_id)` que ya tiene la vista (SECURITY DEFINER),
+-- así que un usuario solo ve la tabla de los grupos a los que pertenece.
+alter view public."vwTablaPosiciones" set (security_invoker = off);

@@ -1,12 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import { useWatch, type Control } from "react-hook-form";
-import { Check } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Plus,
+  X,
+} from "lucide-react";
 import type { ReglasInput } from "@/lib/schemas/reglas";
+import type { CriterioDesempate } from "@/lib/types/dominio";
 import { cn } from "@/lib/utils";
 import { FormField } from "@/components/ui/form";
 
 type CampoKey = keyof ReglasInput;
+
+/** Catálogo de criterios de desempate (etiqueta + ayuda). */
+const CRITERIOS_META: {
+  key: CriterioDesempate;
+  etiqueta: string;
+  ayuda: string;
+}[] = [
+  {
+    key: "exactos",
+    etiqueta: "Marcadores exactos",
+    ayuda: "Quien clavó más resultados exactos va arriba.",
+  },
+  {
+    key: "unicas",
+    etiqueta: "Predicciones únicas",
+    ayuda: "Más marcadores exactos que nadie más del grupo acertó.",
+  },
+  {
+    key: "aciertos",
+    etiqueta: "Aciertos totales",
+    ayuda: "Más predicciones que sumaron algún punto.",
+  },
+];
 
 /**
  * Campo numérico editable directamente con el teclado (sin botones − / +).
@@ -18,11 +50,14 @@ function CampoNumero({
   control,
   name,
   sufijo,
+  etiqueta,
   ancho = "w-[7.5rem]",
 }: {
   control: Control<ReglasInput>;
   name: CampoKey;
   sufijo?: string;
+  /** Etiqueta legible para a11y (evita exponer la clave técnica del campo). */
+  etiqueta?: string;
   ancho?: string;
 }) {
   return (
@@ -52,7 +87,7 @@ function CampoNumero({
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              aria-label={`Valor de ${name}`}
+              aria-label={`Valor de ${etiqueta ?? name}`}
               value={valor}
               onChange={(e) => {
                 const limpio = e.target.value.replace(/[^0-9]/g, "");
@@ -94,7 +129,12 @@ function RuleField({
         <p className="text-sm font-bold text-fg-strong">{etiqueta}</p>
         <p className="mt-0.5 text-xs leading-snug text-fg-muted">{ayuda}</p>
       </div>
-      <CampoNumero control={control} name={name} sufijo={sufijo} />
+      <CampoNumero
+        control={control}
+        name={name}
+        sufijo={sufijo}
+        etiqueta={etiqueta}
+      />
     </div>
   );
 }
@@ -130,6 +170,175 @@ function SeccionHeader({ titulo, sub }: { titulo: string; sub: string }) {
 }
 
 /**
+ * Lista de criterios de desempate: **arrastrable tipo tarjeta** (Pointer Events,
+ * sin librería — funciona en touch y mouse) y también con flechas ↑/↓ para
+ * precisión/accesibilidad. Chips para volver a agregar los que se quitaron. El
+ * valor (`activos`) es el array ordenado de criterios activos.
+ */
+function ListaDesempate({
+  activos,
+  onChange,
+}: {
+  activos: CriterioDesempate[];
+  onChange: (next: CriterioDesempate[]) => void;
+}) {
+  const [arrastrando, setArrastrando] = useState<CriterioDesempate | null>(null);
+  const meta = (k: CriterioDesempate) =>
+    CRITERIOS_META.find((m) => m.key === k)!;
+  const inactivos = CRITERIOS_META.filter((m) => !activos.includes(m.key));
+  const btn =
+    "grid size-8 shrink-0 place-items-center rounded-lg border border-border text-fg-muted transition-colors hover:bg-sunken disabled:pointer-events-none disabled:opacity-35";
+
+  const mover = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= activos.length) return;
+    const next = [...activos];
+    [next[i], next[j]] = [next[j]!, next[i]!];
+    onChange(next);
+  };
+
+  // Arrastre: al pasar el puntero sobre otra tarjeta, mueve la arrastrada a esa
+  // posición. `elementFromPoint` es robusto en touch (no depende de rects).
+  const alArrastrar = (e: React.PointerEvent) => {
+    if (!arrastrando) return;
+    const sobre = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest("[data-criterio]")
+      ?.getAttribute("data-criterio") as CriterioDesempate | null;
+    if (!sobre || sobre === arrastrando) return;
+    const from = activos.indexOf(arrastrando);
+    const to = activos.indexOf(sobre);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...activos];
+    next.splice(from, 1);
+    next.splice(to, 0, arrastrando);
+    onChange(next);
+  };
+  const finArrastre = () => setArrastrando(null);
+
+  return (
+    <div className="space-y-3">
+      <ul className="flex flex-col gap-2">
+        {activos.map((k, i) => (
+          <li
+            key={k}
+            data-criterio={k}
+            className={cn(
+              "flex select-none items-center gap-2 rounded-xl border bg-surface p-2.5 transition-shadow",
+              arrastrando === k
+                ? "border-primary/50 shadow-lg ring-2 ring-primary/30"
+                : "border-border",
+            )}
+          >
+            {/* Handle de arrastre. `touch-none` evita que el navegador haga
+                scroll al arrastrar en móvil. */}
+            <button
+              type="button"
+              aria-label={`Arrastrar ${meta(k).etiqueta}`}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setArrastrando(k);
+              }}
+              onPointerMove={alArrastrar}
+              onPointerUp={finArrastre}
+              onPointerCancel={finArrastre}
+              className="grid size-8 shrink-0 cursor-grab touch-none select-none place-items-center rounded-lg text-fg-subtle [-webkit-touch-callout:none] hover:bg-sunken active:cursor-grabbing"
+            >
+              <GripVertical className="size-4" />
+            </button>
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-2xs font-black text-primary-foreground">
+              {i + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-fg-strong">
+                {meta(k).etiqueta}
+              </p>
+              <p className="mt-0.5 text-2xs leading-snug text-fg-muted">
+                {meta(k).ayuda}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                aria-label={`Subir ${meta(k).etiqueta}`}
+                disabled={i === 0}
+                onClick={() => mover(i, -1)}
+                className={btn}
+              >
+                <ChevronUp className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={`Bajar ${meta(k).etiqueta}`}
+                disabled={i === activos.length - 1}
+                onClick={() => mover(i, 1)}
+                className={btn}
+              >
+                <ChevronDown className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={`Quitar ${meta(k).etiqueta}`}
+                onClick={() => onChange(activos.filter((x) => x !== k))}
+                className={btn}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </li>
+        ))}
+        {activos.length === 0 && (
+          <li className="rounded-xl border border-dashed border-border bg-sunken/40 p-3 text-center text-xs font-medium text-fg-muted">
+            Sin criterios: los empates se resolverán por orden alfabético.
+          </li>
+        )}
+      </ul>
+
+      {inactivos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-2xs font-bold uppercase tracking-wide text-fg-subtle">
+            Agregar:
+          </span>
+          {inactivos.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => onChange([...activos, m.key])}
+              className="inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-3 py-1.5 text-xs font-bold text-fg-muted transition-colors hover:bg-sunken"
+            >
+              <Plus className="size-3.5" />
+              {m.etiqueta}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Sección de criterios de desempate. Reusada en wizard y edición. */
+function SeccionDesempate({ control }: { control: Control<ReglasInput> }) {
+  return (
+    <section className="surface-card rounded-2xl p-5 sm:p-6">
+      <SeccionHeader
+        titulo="Criterios de desempate"
+        sub="Si dos quedan con los mismos puntos, se ordenan por estos criterios, en este orden. Arrástralos o usa las flechas. Si aún empatan, manda el orden alfabético."
+      />
+      <FormField
+        control={control}
+        name="criterios_desempate"
+        render={({ field }) => (
+          <ListaDesempate
+            activos={(field.value ?? []) as CriterioDesempate[]}
+            onChange={field.onChange}
+          />
+        )}
+      />
+    </section>
+  );
+}
+
+/**
  * Campos de configuración de reglas (puntajes, bonos, pozo, premios y cierre).
  * Presentacional: recibe el `control` de RHF y se reusa tanto en el wizard de
  * creación (`PasoReglas`) como en la edición de una polla existente
@@ -159,6 +368,9 @@ export function CamposReglas({ control }: { control: Control<ReglasInput> }) {
           ))}
         </div>
       </section>
+
+      {/* Criterios de desempate */}
+      <SeccionDesempate control={control} />
 
       {/* Bonos */}
       <section className="surface-card rounded-2xl p-5 sm:p-6">
@@ -206,6 +418,7 @@ export function CamposReglas({ control }: { control: Control<ReglasInput> }) {
                 control={control}
                 name={p.name}
                 sufijo="%"
+                etiqueta={`Premio ${p.lugar}`}
                 ancho="w-full"
               />
             </div>

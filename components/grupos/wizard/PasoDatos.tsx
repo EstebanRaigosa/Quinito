@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Trophy } from "lucide-react";
 import { datosGrupoSchema, type DatosGrupoInput } from "@/lib/schemas/grupo";
@@ -30,8 +30,10 @@ export function PasoDatos() {
     mode: "onTouched",
   });
 
-  const nombre = form.watch("nombre") ?? "";
-  const descripcion = form.watch("descripcion") ?? "";
+  // useWatch aislado (no `form.watch()` global, que re-renderiza en cada tecla).
+  const nombre = useWatch({ control: form.control, name: "nombre" }) ?? "";
+  const descripcion =
+    useWatch({ control: form.control, name: "descripcion" }) ?? "";
 
   function onSubmit(values: DatosGrupoInput) {
     setDatos(values);
@@ -57,6 +59,8 @@ export function PasoDatos() {
                   <Input
                     placeholder="Ej. La oficina · Mundial 2026"
                     maxLength={MAX_NOMBRE}
+                    autoCapitalize="sentences"
+                    enterKeyHint="next"
                     {...field}
                   />
                 </FormControl>

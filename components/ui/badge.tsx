@@ -19,6 +19,7 @@ const badgeVariants = cva(
         accent: "bg-accent-soft text-accent",
         // Sólidas para momentos deportivos (en vivo, líder).
         live: "bg-destructive text-destructive-foreground shadow-xs",
+        playing: "bg-info text-info-foreground shadow-xs",
         gold: "bg-gradient-to-b from-mustard-300 to-primary text-primary-foreground shadow-xs",
       },
     },

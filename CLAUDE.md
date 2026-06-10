@@ -56,6 +56,7 @@ Inspirado en `pollamundial.org`. Para detalles funcionales completos consulta [`
 - **En los tipos generados de Supabase**, las tablas aparecen con su nombre tal cual (`Database['public']['Tables']['tblGrupos']`) — no requieren comillas porque ya son strings en TS.
 
 ### 3.3 Mobile-first y compatibilidad
+- **REGLA DURA — validar compatibilidad en CADA cambio:** ninguna modificación (UI, CSS, modal, formulario, animación, gesto/drag, dependencia nueva o capa PWA/auth/datos) se da por terminada sin verificar que **NO rompe la compatibilidad con Safari, iOS, iPhone y Android**. Esto aplica a *todo* cambio, por pequeño que parezca. Ante la duda, revisa el checklist de abajo y los docs de compatibilidad **antes** de cerrar el cambio; si algo es riesgoso en WebKit/iOS, decláralo y propón la alternativa segura.
 - Siempre diseñar primero para mobile (`< 640px`) y escalar arriba.
 - **Probar en Safari iOS** antes de dar por terminada una vista. Atender:
   - Safe areas (`env(safe-area-inset-*)`)
@@ -68,6 +69,7 @@ Inspirado en `pollamundial.org`. Para detalles funcionales completos consulta [`
 - **Antes de crear/modificar UI, modales, formularios o la capa PWA/auth/datos, consulta:**
   - [`COMPATIBILIDAD-MOVIL.md`](./COMPATIBILIDAD-MOVIL.md) — bugs de CSS/WebKit (viewport, safe-area, modales, scroll lock, teclado, inputs).
   - [`COMPATIBILIDAD-STACK.md`](./COMPATIBILIDAD-STACK.md) — issues por tecnología del stack (Next.js, PWA/serwist, Tailwind, shadcn/Radix, RHF, TanStack Query, Zustand, Supabase). Incluye las decisiones clave (§0) y el plan de pruebas en dispositivo (§10).
+  - [**`COMPATIBILIDAD-MOVIL.md` › "Estado implementado — NO ROMPER"**](./COMPATIBILIDAD-MOVIL.md#estado-implementado--no-romper) — **registro de invariantes ya verificados + decisiones tomadas** (auditoría jun 2026). **Léelo antes de refactorizar/"simplificar"** `app/sw.ts`, `app/globals.css`, footers/sticky, `CuentaRegresiva`, el guardado de predicción (`useMutation`), el middleware (`/unirse`) o el store del wizard (`persist`): revertir esos patrones reintroduce bugs reales de iPhone/Android. Si cambiás uno, **actualiza ese registro**.
 
 ### 3.4 Seguridad
 - **Nunca** usar `service_role` key en cliente. Solo en Edge Functions / route handlers server-side.
@@ -203,6 +205,9 @@ npx supabase db push           # aplica migraciones a remoto
 1. **Confirmar el scope** con el usuario si la tarea es ambigua o tiene varias rutas posibles.
 2. **Revisar `REQUIREMENTS.md`** para asegurar alineación con lo definido.
 3. **Listar los pasos** brevemente antes de ejecutar (no para cada cambio mínimo, sí para features completas).
+
+### 7.1.1 Al cerrar CUALQUIER cambio
+- **Validar compatibilidad móvil (regla dura §3.3):** confirmar que el cambio no rompe **Safari, iOS, iPhone ni Android**. Si tocaste UI/CSS/modales/gestos, revisa el checklist de §3.3 y [`COMPATIBILIDAD-MOVIL.md`](./COMPATIBILIDAD-MOVIL.md) / [`COMPATIBILIDAD-STACK.md`](./COMPATIBILIDAD-STACK.md). Reporta explícitamente qué validaste (o qué quedó por probar en dispositivo real).
 
 ### 7.2 Migraciones SQL
 - **Una migración por feature lógica.** No mezclar cambios de schema con seed data.

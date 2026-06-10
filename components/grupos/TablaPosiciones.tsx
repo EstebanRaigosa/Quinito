@@ -1,11 +1,77 @@
-import { BarChart3 } from "lucide-react";
-import type { FilaTablaPosiciones } from "@/lib/types/dominio";
-import { AvatarNotion } from "@/components/shared/AvatarNotion";
+import { BarChart3, Equal, Info } from "lucide-react";
+import type {
+  CriterioDesempate,
+  FilaTablaPosiciones,
+} from "@/lib/types/dominio";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+/** Métrica y etiqueta de cada criterio de desempate. */
+const METRICA_CRITERIO: Record<
+  CriterioDesempate,
+  (f: FilaTablaPosiciones) => number
+> = {
+  exactos: (f) => f.marcadores_exactos,
+  unicas: (f) => f.unicas_acertadas,
+  aciertos: (f) => f.aciertos,
+};
+const LABEL_CRITERIO: Record<CriterioDesempate, string> = {
+  exactos: "marcadores exactos",
+  unicas: "predicciones únicas",
+  aciertos: "aciertos",
+};
+/** Etiqueta corta para la leyenda del orden de desempate. */
+const LABEL_CORTO: Record<CriterioDesempate, string> = {
+  exactos: "exactos",
+  unicas: "únicas",
+  aciertos: "aciertos",
+};
+
+/**
+ * Si la fila empata en puntos con un vecino, devuelve la etiqueta del primer
+ * criterio (en el orden configurado) que la diferencia — el que decide el
+ * desempate. `null` si no hay empate de puntos o todo coincide (orden alfabético).
+ */
+function motivoDesempate(
+  filas: FilaTablaPosiciones[],
+  i: number,
+  criterios: CriterioDesempate[],
+): { criterio: CriterioDesempate; valor: number } | null {
+  const f = filas[i]!;
+  const arriba =
+    i > 0 && filas[i - 1]!.puntos_totales === f.puntos_totales
+      ? filas[i - 1]!
+      : null;
+  const abajo =
+    i < filas.length - 1 && filas[i + 1]!.puntos_totales === f.puntos_totales
+      ? filas[i + 1]!
+      : null;
+  const vecino = arriba ?? abajo;
+  if (!vecino) return null;
+  for (const c of criterios) {
+    if (METRICA_CRITERIO[c](f) !== METRICA_CRITERIO[c](vecino)) {
+      return { criterio: c, valor: METRICA_CRITERIO[c](f) };
+    }
+  }
+  return null;
+}
+
 const MEDALLA: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+/** Chip con el color de la medalla en la columna de puesto de la tabla.
+ *  Oro · plata · bronce. */
+const MEDALLA_CHIP: Record<1 | 2 | 3, string> = {
+  1: "bg-gradient-to-b from-[#FCD34D] to-[#F59E0B] text-[#5A3E00] ring-1 ring-[#F59E0B]/60 shadow-sm",
+  2: "bg-gradient-to-b from-clay-200 to-clay-400 text-clay-900 ring-1 ring-clay-400/60 shadow-sm",
+  3: "bg-gradient-to-b from-[#E8B27D] to-[#B26B2E] text-white ring-1 ring-[#B26B2E]/60 shadow-sm",
+};
+
+/** Medallón del podio: moneda clara con brillo superior, filo hairline y sombra
+ *  suave que despega el emoji del escalón. Contrasta sobre cualquier color de
+ *  medalla sin el aspecto tosco de un círculo blanco plano. */
+const MEDALLON =
+  "grid place-items-center rounded-full bg-gradient-to-b from-white via-white to-clay-100 shadow-[0_6px_16px_-5px_rgba(31,20,0,0.55)] ring-1 ring-black/[0.06]";
 
 /** Tonos del podio acordes a la medalla: oro · plata · bronce. */
 const PODIO = {
@@ -58,14 +124,15 @@ function Pedestal({
           ALTURA[posicion],
         )}
       >
-        <div
-          className="text-xl leading-none opacity-40 grayscale sm:text-2xl"
-          aria-hidden
-        >
-          {MEDALLA[posicion]}
-        </div>
-        <div className="text-xl font-black leading-none tabular-nums text-fg-subtle sm:text-2xl">
-          —
+        <div className="animate-pop" aria-hidden>
+          <span
+            className={cn(
+              MEDALLON,
+              "size-12 text-2xl leading-none opacity-50 grayscale sm:size-16 sm:text-4xl",
+            )}
+          >
+            {MEDALLA[posicion]}
+          </span>
         </div>
         <div className="max-w-full truncate rounded-full border border-dashed border-border bg-surface/70 px-2.5 py-0.5 text-2xs font-bold text-fg-subtle sm:text-xs">
           Libre
@@ -91,18 +158,17 @@ function Pedestal({
       )}
       <div
         style={{ animationDelay: `${orden * 90 + 250}ms` }}
-        className="animate-pop text-xl leading-none sm:text-2xl"
+        className="animate-pop"
         aria-hidden
       >
-        {MEDALLA[posicion]}
-      </div>
-      <div
-        className={cn(
-          "text-2xl font-black leading-none tracking-tight tabular-nums sm:text-3xl",
-          tono.texto,
-        )}
-      >
-        {fila.puntos_totales}
+        <span
+          className={cn(
+            MEDALLON,
+            "size-12 text-2xl leading-none drop-shadow-sm sm:size-16 sm:text-4xl",
+          )}
+        >
+          {MEDALLA[posicion]}
+        </span>
       </div>
       {/* Nombre dentro del escalón, en placa de alto contraste. */}
       <div className={PLACA}>{fila.nombre_completo}</div>
@@ -111,18 +177,23 @@ function Pedestal({
 }
 
 // Rejilla compartida por el encabezado y las filas (alinea las columnas).
-// En móvil la barra se oculta, así que la última columna es angosta (solo nº).
+// Columnas: # · Jugador · Exactos · Únicas · Aciertos · Puntos.
+// En móvil las 3 métricas van en columnas angostas (2rem) y los puntos sin barra
+// (2.75rem); en sm se ensanchan y la última columna (12rem) aloja número + barra.
 const GRID =
-  "grid grid-cols-[1.5rem_1fr_2.75rem_2.75rem] items-center gap-2 sm:grid-cols-[2.25rem_1fr_4.5rem_12rem] sm:gap-4";
+  "grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2.75rem] items-center gap-1.5 sm:grid-cols-[2.25rem_1fr_4.5rem_4.5rem_4.5rem_12rem] sm:gap-4";
 
 function FilaTabla({
   fila,
   max,
   indice,
+  motivo,
 }: {
   fila: FilaTablaPosiciones;
   max: number;
   indice: number;
+  /** Criterio (y valor de esta fila) que desempata, si empata en puntos. */
+  motivo?: { criterio: CriterioDesempate; valor: number } | null;
 }) {
   return (
     <li
@@ -133,23 +204,30 @@ function FilaTabla({
         fila.es_actual ? "bg-primary-soft" : "hover:bg-sunken",
       )}
     >
-      {/* # */}
-      <span
-        className={cn(
-          "text-sm font-extrabold tabular-nums",
-          fila.es_actual ? "text-primary" : "text-fg-subtle",
-        )}
-      >
-        #{fila.posicion}
-      </span>
+      {/* # — top 3 con el color de su medalla; el resto en texto simple. */}
+      {fila.posicion <= 3 ? (
+        <span
+          aria-label={`Puesto ${fila.posicion}`}
+          className={cn(
+            "grid size-6 place-items-center rounded-full text-xs font-black tabular-nums sm:size-7 sm:text-sm",
+            MEDALLA_CHIP[fila.posicion as 1 | 2 | 3],
+          )}
+        >
+          {fila.posicion}
+        </span>
+      ) : (
+        <span
+          className={cn(
+            "text-sm font-extrabold tabular-nums",
+            fila.es_actual ? "text-primary" : "text-fg-subtle",
+          )}
+        >
+          #{fila.posicion}
+        </span>
+      )}
 
-      {/* Jugador */}
-      <div className="flex min-w-0 items-center gap-2.5">
-        <AvatarNotion
-          nombre={fila.nombre_completo}
-          size="sm"
-          className="ring-2 ring-app"
-        />
+      {/* Jugador (sin avatar: nombre + motivo de desempate si aplica) */}
+      <div className="flex min-w-0 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-sm font-bold text-fg-strong">
             {fila.nombre_completo}
@@ -160,10 +238,40 @@ function FilaTabla({
             </Badge>
           )}
         </span>
+        {motivo && (
+          <span className="mt-0.5 flex items-center gap-1 text-2xs font-medium text-fg-subtle">
+            <Equal className="size-3 shrink-0" aria-hidden />
+            <span className="truncate">
+              Empate a {fila.puntos_totales} pts ·{" "}
+              <strong className="font-bold text-fg-muted">
+                {motivo.valor} {LABEL_CRITERIO[motivo.criterio]}
+              </strong>
+            </span>
+          </span>
+        )}
       </div>
 
+      {/* Marcadores exactos */}
+      <span
+        aria-label={`${fila.marcadores_exactos} marcadores exactos`}
+        className="text-right text-sm font-bold tabular-nums text-fg-muted"
+      >
+        {fila.marcadores_exactos}
+      </span>
+
+      {/* Predicciones únicas acertadas */}
+      <span
+        aria-label={`${fila.unicas_acertadas} predicciones únicas`}
+        className="text-right text-sm font-bold tabular-nums text-fg-muted"
+      >
+        {fila.unicas_acertadas}
+      </span>
+
       {/* Aciertos */}
-      <span className="text-right text-sm font-bold tabular-nums text-fg-muted">
+      <span
+        aria-label={`${fila.aciertos} aciertos`}
+        className="text-right text-sm font-bold tabular-nums text-fg-muted"
+      >
         {fila.aciertos}
       </span>
 
@@ -186,7 +294,14 @@ function FilaTabla({
   );
 }
 
-export function TablaPosiciones({ filas }: { filas: FilaTablaPosiciones[] }) {
+export function TablaPosiciones({
+  filas,
+  criterios = ["exactos", "unicas", "aciertos"],
+}: {
+  filas: FilaTablaPosiciones[];
+  /** Orden de criterios de desempate del grupo (para explicar el motivo). */
+  criterios?: CriterioDesempate[];
+}) {
   if (filas.length === 0) {
     return (
       <EmptyState
@@ -210,9 +325,19 @@ export function TablaPosiciones({ filas }: { filas: FilaTablaPosiciones[] }) {
     <div className="space-y-5">
       {/* Encabezado de la sección con estado "En vivo" */}
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className="t-h3">Tabla de posiciones</h2>
           <p className="t-body-sm text-fg-muted">Actualizada en tiempo real</p>
+          {/* Leyenda visible para todos: cómo se rompen los empates de puntos. */}
+          {criterios.length > 0 && (
+            <p className="t-caption mt-1.5 flex items-center gap-1 text-fg-subtle">
+              <Info className="size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0">
+                <span className="font-semibold">Desempate:</span>{" "}
+                {criterios.map((c) => LABEL_CORTO[c]).join(" › ")}
+              </span>
+            </p>
+          )}
         </div>
         <Badge variant="success" dot className="mt-1 shrink-0">
           En vivo
@@ -231,18 +356,35 @@ export function TablaPosiciones({ filas }: { filas: FilaTablaPosiciones[] }) {
         <div
           className={cn(
             GRID,
-            "border-b border-border bg-sunken px-3 py-2.5 text-2xs font-extrabold uppercase tracking-wide text-fg-subtle",
+            "border-b border-border bg-sunken px-3 py-2.5 text-2xs font-extrabold uppercase tracking-normal text-fg-subtle sm:tracking-wide",
           )}
         >
           <span>#</span>
           <span>Jugador</span>
-          <span className="text-right">Aciertos</span>
+          <span className="text-right">
+            <span className="sm:hidden">Exa</span>
+            <span className="hidden sm:inline">Exactos</span>
+          </span>
+          <span className="text-right">
+            <span className="sm:hidden">Úni</span>
+            <span className="hidden sm:inline">Únicas</span>
+          </span>
+          <span className="text-right">
+            <span className="sm:hidden">Aci</span>
+            <span className="hidden sm:inline">Aciertos</span>
+          </span>
           <span>Puntos</span>
         </div>
 
         <ul className="divide-y divide-border">
           {filas.map((f, i) => (
-            <FilaTabla key={f.participante_id} fila={f} max={max} indice={i} />
+            <FilaTabla
+              key={f.participante_id}
+              fila={f}
+              max={max}
+              indice={i}
+              motivo={motivoDesempate(filas, i, criterios)}
+            />
           ))}
         </ul>
       </div>

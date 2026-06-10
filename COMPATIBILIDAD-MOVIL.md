@@ -535,3 +535,56 @@ navegador no muestra en `<img>` y muchos backends no procesan.
 | 10 | Teclado tapa input/submit | Botón "Guardar" inalcanzable | VisualViewport + `scrollIntoView` |
 | 11 | PWA sin `apple-touch-icon` | Pantalla blanca / icono feo | `apple-touch-icon` + splash screens |
 | 12 | Cámara iPhone sube HEIC | Imagen no se muestra/procesa | Convertir o `accept` restringido |
+
+---
+
+## Estado implementado — NO ROMPER (registro de invariantes)
+
+> Resultado de la auditoría profunda iOS/Safari + Android (jun 2026). Esto **ya
+> está implementado y verificado**. Antes de "simplificar" o refactorizar
+> cualquiera de estos puntos, entendé por qué está así: revertirlo reintroduce
+> un bug real de iPhone/Android. Si de verdad hay que cambiarlo, actualizá
+> también este registro.
+
+### Fundaciones globales
+- **`app/globals.css` tiene un bloque `@supports (-webkit-touch-callout: none)`** (proxy de iOS) con: `touch-action: manipulation` + `button *,a * { pointer-events:none }` (§6, mata el delay de 300 ms y hace que el tap caiga en el botón), `overscroll-behavior-y: contain` (§11) y **anulación de `backdrop-filter`** en `.backdrop-blur*` (§8 — los fondos translúcidos ya usan opacidad alta `/95`). **No re-habilitar blur en iOS.**
+- **`input/textarea/select:disabled { opacity:1; -webkit-text-fill-color: var(--fg-muted) }`** (§9). Por eso los primitivos `Input`/`Textarea` usan `disabled:bg-muted` y **NO** `disabled:opacity-*` (la capa utilities pisa la regla base y deja el input ilegible en iOS). Lo mismo el `<select>` de admin.
+- **Cascada de altura**: `body`/`.min-h-dvh`/`.h-dvh` = `100vh → 100dvh → -webkit-fill-available`. Utilidad `.scroll-touch` (`-webkit-overflow-scrolling:touch`) en contenedores con overflow.
+- **`prefers-reduced-motion`** resetea `animation-duration`, `transition-duration`, `animation-delay` e `iteration-count` (si no, las entradas escalonadas dejan contenido invisible su delay completo).
+- **Keyframes** (`tailwind.config.ts`) usan `translate3d`/`scale3d` (GPU iOS).
+- **Inputs ≥16px** global (sin zoom). Autofill neutralizado en dark.
+
+### Viewport / PWA (`app/layout.tsx`, `app/manifest.ts`, `app/sw.ts`)
+- `viewport`: `viewportFit:"cover"`, `interactiveWidget:"resizes-visual"`, `maximumScale:5`, `userScalable:true`, `colorScheme:"light dark"`, `themeColor` por esquema. Todo por Metadata API (no `<meta>` crudos).
+- `formatDetection: { telephone,date,email,address: false }` — **crítico**: sin esto iOS convierte marcadores ("2-1") y códigos en enlaces y rompe la hidratación.
+- `apple-icon.png` (180) + **12 splash screens** (`AppleSplashLinks.tsx` + `public/splash/`) → sin pantalla blanca al abrir la PWA instalada. `manifest`: `start_url:"/"` (no `/dashboard`, protegida), íconos PNG 192/512/maskable.
+- **`app/sw.ts`: runtimeCaching CURADO, NUNCA `defaultCache`.** Solo cachea estáticos inmutables (fuentes, `_next/static`, imágenes). Navegaciones/RSC/datos van **siempre a la red** → no cachea predicciones nominales (PII, regla de oro §3.4). **No volver a `defaultCache`.**
+- `BotonInstalarPWA`: detección de standalone por `display-mode` + `navigator.standalone`; no depende de `beforeinstallprompt` en iOS.
+
+### Layout móvil
+- **Footers de formularios full-screen** (wizard, editar reglas) van `sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] md:bottom-auto` para **no quedar tapados por el `BottomNav` fijo** (`z-[200]`). El `main` reserva `pb-[calc(4.25rem+env(safe-area-inset-bottom))]`.
+- **Elementos `sticky` superiores** (tabs de grupo, encabezados de fecha) van `top-[calc(3.5rem+env(safe-area-inset-top))] md:top-0` — el header móvil es `h-14 + pt-safe`. Usar `top-14` los mete bajo el notch.
+- **Contenido scrolleable interno de Sheets**: `pb-[max(2rem,env(safe-area-inset-bottom))]` (no `pb-8` fijo) para respetar el home indicator.
+- **Sticky NUNCA dentro de un ancestro con `transform`** (incluye `animate-*` con `transform`): rompe el sticky en iOS. Patrón: animar un wrapper interno, no el ancestro del sticky.
+- **Tap targets ≥44px**: botones cerrar de Dialog/Sheet (`size-11`), toggles de contraseña, tabs (`h-11 sm:h-10` + trigger `h-full`), `ThemeToggle` (`min-h-11`), checkbox "seleccionar fase" (envuelto en `<label>` de 44px). `PageContainer` usa `pl/pr-[max(1rem,env(safe-area-inset-*))]` (landscape con notch).
+
+### Datos / runtime
+- **Cuenta regresiva = `components/shared/CuentaRegresiva.tsx`** (cliente): late cada segundo y **re-sincroniza en `pageshow`/`visibilitychange`** (iOS congela timers en background). Recibe `ahoraInicial` del server para no romper hidratación. **No volver a renderizar countdowns estáticos en el server.**
+- **`app/providers.tsx`**: `focusManager` propio que escucha `pageshow`+`visibilitychange` + `refetchOnWindowFocus:true` → refresca datos al volver de background en PWA standalone.
+- **Guardado de predicción = `useMutation` con `networkMode:"online"`** (`FormularioPrediccion`): sin red, la mutación se pausa y reintenta al reconectar (no se pierde). `lib/queries` siguen siendo insert/update explícito (no `upsert`, por los grants de RLS).
+- **`lib/supabase/client.ts`**: `auth.flowType:'pkce'` explícito + `realtime.worker:true`.
+- **`/unirse/[codigo]` es ruta pública** en `lib/supabase/middleware.ts` (`esRutaPublica`) y el middleware propaga `?next=` al redirigir a login. No quitar.
+- **Draft del wizard persistido** (`lib/stores/wizard-grupo.ts` con `persist`, `skipHydration`, serializador del `Set`): `crear/page.tsx` rehidrata al montar y limpia al salir → sobrevive a un kill de la PWA. Clave: `polla-wizard-grupo`.
+- **Fechas SIEMPRE en `America/Bogota`** (`date-fns-tz`); countdowns por diff de `Date.now()`. Nunca `new Date("YYYY-MM-DD HH:MM")` (espacio = Invalid Date en Safari).
+
+### Decisiones tomadas (no re-proponer)
+- **Login por OTP/magic-link: DESCARTADO.** Se confía en email+contraseña (funciona en PWA standalone) y Google OAuth. El callback (`app/auth/callback/route.ts`) sí maneja `?code=` y `?token_hash=&type=` (para confirmación de registro y recuperación).
+- **Tailwind 3.4 (NO v4)** — v4 rompe iOS 15 (ver COMPATIBILIDAD-STACK §3).
+- **`<select>` nativo en admin** (sin `appearance:none`) — conserva el picker de iOS.
+- **`button` size `sm` = 40px** — compromiso aceptado para acciones secundarias; las primarias usan `default` (44px).
+- **Privacidad**: agregados anónimos pre-cierre (umbral ≥5), nominales solo post-cierre, garantizada por RLS/vistas (no por filtro de cliente). Sin Realtime sobre `tblPredicciones` cruda.
+
+### Pendiente real
+- Autofill de Safari en login/registro (forms controlados de RHF) podría no disparar `onChange` — bajo riesgo en Safari moderno; si aparece, migrar email/password a `register` o detectar `:-webkit-autofill` por `onAnimationStart`.
+- Subida de imágenes (avatar/foto grupo) no existe aún → al agregarla, manejar **HEIC** (§16).
+- **Verificación en iPhone físico** (Safari remote debugging) — cierre real; varios bugs WebKit solo se ven en hardware.

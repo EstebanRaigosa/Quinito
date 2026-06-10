@@ -70,7 +70,7 @@ export function ClasificacionGrupos({
                 onClick={() => setActivo(t.id)}
                 aria-pressed={sel}
                 className={cn(
-                  "flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-all active:scale-[0.97]",
+                  "flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-all active:scale-[0.97]",
                   sel
                     ? "border-primary bg-primary-soft text-primary"
                     : "border-border text-fg-muted hover:bg-sunken",
@@ -168,8 +168,8 @@ function TarjetaGrupo({
       </header>
 
       {/* Tabla de posiciones */}
-      <div className="overflow-hidden rounded-xl border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto scroll-touch rounded-xl border border-border">
+        <table className="w-full min-w-[28rem] text-sm">
           <thead>
             <tr className="bg-sunken text-fg-muted">
               <th className="px-2 py-1.5 text-left font-semibold">#</th>
