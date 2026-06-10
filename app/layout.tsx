@@ -18,17 +18,17 @@ export const metadata: Metadata = {
   // Base para resolver URLs absolutas de Open Graph / Twitter (previews de link).
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Polla Mundial 2026",
-    template: "%s · Polla Mundial 2026",
+    default: "Pollota Mundial 2026",
+    template: "%s · Pollota Mundial 2026",
   },
   description:
     "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores, compite con tu grupo y sube en la tabla.",
-  applicationName: "Polla",
+  applicationName: "Pollota",
   openGraph: {
     type: "website",
-    siteName: "Polla Mundial 2026",
+    siteName: "Pollota Mundial 2026",
     locale: "es_CO",
-    title: "Polla Mundial 2026",
+    title: "Pollota Mundial 2026",
     description:
       "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores, compite con tu grupo y sube en la tabla.",
     images: [
@@ -42,14 +42,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Polla Mundial 2026",
+    title: "Pollota Mundial 2026",
     description: "Crea y participa en pollas grupales del Mundial 2026.",
     images: ["/images/estadio.png"],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Polla",
+    title: "Pollota",
   },
   formatDetection: {
     telephone: false,

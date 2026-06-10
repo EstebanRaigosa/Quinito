@@ -1,6 +1,6 @@
 /** Constantes y textos centralizados (es-CO). */
 
-export const APP_NOMBRE = "Polla";
+export const APP_NOMBRE = "Pollota";
 export const APP_DESCRIPCION = "Pollas del Mundial 2026 con tu parche";
 
 /**
@@ -12,7 +12,7 @@ export const APP_DESCRIPCION = "Pollas del Mundial 2026 con tu parche";
  */
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  (typeof window !== "undefined" ? window.location.origin : "https://pollota.com");
 
 /** Rutas públicas (no requieren sesión). */
 export const RUTAS_PUBLICAS = ["/", "/login", "/forgot-password", "/reset-password"];

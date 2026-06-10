@@ -118,7 +118,7 @@ export default async function UnirsePage({ params }: Props) {
           </div>
 
           <p className="t-caption text-center text-fg-subtle">
-            Al continuar aceptas los términos y la política de privacidad de Polla.
+            Al continuar aceptas los términos y la política de privacidad de Pollota.
           </p>
         </div>
       </main>

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Isotipo de Polla: un check que se eleva y lanza un balón ("acertá el
+ * Isotipo de Pollota: un check que se eleva y lanza un balón ("acertá el
  * marcador"). SVG inline (nítido, escalable) sobre cuadro navy bento.
  * Geometría espejo de `marca/isotipo/isotipo-navy.svg`.
  */
@@ -13,7 +13,7 @@ export function LogoMark({ size = 28, className }: { size?: number; className?: 
       viewBox="0 0 100 100"
       className={cn("shrink-0", className)}
       role="img"
-      aria-label="Polla"
+      aria-label="Pollota"
     >
       <rect width="100" height="100" rx="22.5" fill="#0B1C30" />
       <polyline
@@ -47,7 +47,7 @@ type Props = {
   soloMarca?: boolean;
 };
 
-/** Logo completo: marca + wordmark "polla". */
+/** Logo completo: marca + wordmark "pollota". */
 export function Logo({ size = 18, className, soloMarca = false }: Props) {
   if (soloMarca) return <LogoMark size={size + 10} className={className} />;
   return (
@@ -57,7 +57,7 @@ export function Logo({ size = 18, className, soloMarca = false }: Props) {
         className="font-black text-fg-strong"
         style={{ fontSize: size, letterSpacing: "-0.04em" }}
       >
-        polla
+        pollota
       </span>
     </span>
   );

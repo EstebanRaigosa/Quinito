@@ -2,7 +2,7 @@
  * Tipos de dominio (provisionales).
  *
  * Reflejan el modelo de `REQUIREMENTS.md §5` con vocabulario en español. Cuando
- * exista el proyecto Supabase de Polla, estos se reemplazan/derivan de los tipos
+ * exista el proyecto Supabase de Pollota, estos se reemplazan/derivan de los tipos
  * generados (`lib/supabase/types.ts`). Por ahora alimentan la capa mock del frontend.
  */
 

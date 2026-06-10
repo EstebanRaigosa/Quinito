@@ -147,7 +147,7 @@ export function BotonInstalarPWA({
           <DialogHeader>
             <DialogTitle>Instalar en iPhone o iPad</DialogTitle>
             <DialogDescription>
-              En Safari, sigue estos dos pasos para añadir Polla a tu pantalla de
+              En Safari, sigue estos dos pasos para añadir Pollota a tu pantalla de
               inicio.
             </DialogDescription>
           </DialogHeader>

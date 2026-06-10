@@ -85,7 +85,7 @@ export default async function RegistroPage({
             </Link>
             <h1 className="t-display mt-3 text-white drop-shadow-sm">¡Bienvenido!</h1>
             <p className="t-body-sm mt-1 max-w-[16rem] text-white/85">
-              Crea tu cuenta en Polla, las pollas del Mundial.
+              Crea tu cuenta en Pollota, las pollas del Mundial.
             </p>
           </div>
         </header>
@@ -98,7 +98,7 @@ export default async function RegistroPage({
             </div>
             <ContenidoRegistro destino={destino} />
             <p className="t-caption text-center text-fg-subtle">
-              Al continuar aceptas los términos y la política de privacidad de Polla.
+              Al continuar aceptas los términos y la política de privacidad de Pollota.
             </p>
           </div>
         </main>
@@ -128,7 +128,7 @@ export default async function RegistroPage({
                 </div>
                 <ContenidoRegistro destino={destino} />
                 <p className="t-caption text-fg-subtle">
-                  Al continuar aceptas los términos y la política de privacidad de Polla.
+                  Al continuar aceptas los términos y la política de privacidad de Pollota.
                 </p>
               </div>
             </div>

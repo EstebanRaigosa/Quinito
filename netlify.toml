@@ -8,3 +8,7 @@
 [build.environment]
   # Next 16 requiere Node moderno.
   NODE_VERSION = "20"
+  # URL canónica de producción. Se inyecta en build (NEXT_PUBLIC_*) y alimenta
+  # los links de invitación a grupos y los redirectTo de Supabase. Sin esto, el
+  # link caería a window.location.origin (dominio *.netlify.app) o a localhost.
+  NEXT_PUBLIC_SITE_URL = "https://pollota.com"

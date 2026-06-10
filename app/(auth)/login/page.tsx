@@ -80,7 +80,7 @@ export default async function LoginPage({
             <Logo size={18} className="[&_span:last-child]:text-white" />
             <h1 className="t-display mt-6 text-white drop-shadow-sm">¡Hola!</h1>
             <p className="t-body-sm mt-1 max-w-[16rem] text-white/85">
-              Bienvenido a Polla, las pollas del Mundial.
+              Bienvenido a Pollota, las pollas del Mundial.
             </p>
           </div>
         </header>
@@ -93,7 +93,7 @@ export default async function LoginPage({
             </div>
             <ContenidoLogin destino={destino} />
             <p className="t-caption text-center text-fg-subtle">
-              Al continuar aceptas los términos y la política de privacidad de Polla.
+              Al continuar aceptas los términos y la política de privacidad de Pollota.
             </p>
           </div>
         </main>
@@ -122,7 +122,7 @@ export default async function LoginPage({
                 </div>
                 <ContenidoLogin destino={destino} />
                 <p className="t-caption text-fg-subtle">
-                  Al continuar aceptas los términos y la política de privacidad de Polla.
+                  Al continuar aceptas los términos y la política de privacidad de Pollota.
                 </p>
               </div>
             </div>

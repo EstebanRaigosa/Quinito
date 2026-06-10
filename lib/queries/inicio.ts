@@ -98,7 +98,7 @@ export async function getInicioDashboard(
       : undefined;
     pendientesHoy.push({
       grupoId: grupo_id,
-      grupoNombre: nombrePorGrupo.get(grupo_id) ?? "Polla",
+      grupoNombre: nombrePorGrupo.get(grupo_id) ?? "Pollota",
       partido,
       miPrediccion: pred
         ? { goles_local: pred.goles_local, goles_visitante: pred.goles_visitante }

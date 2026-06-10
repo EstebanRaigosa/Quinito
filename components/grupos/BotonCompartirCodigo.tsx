@@ -67,7 +67,7 @@ export function BotonCompartirCodigo({
         // El link va dentro de `mensaje` (no como `url` aparte) para que no
         // aparezca duplicado: varias apps (WhatsApp) anexan `url` al `text`.
         await navigator.share({
-          title: `Únete a ${nombreGrupo} · Polla Mundial 2026`,
+          title: `Únete a ${nombreGrupo} · Pollota Mundial 2026`,
           text: mensaje,
         });
         return;

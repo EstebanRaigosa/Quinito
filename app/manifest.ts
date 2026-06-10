@@ -6,8 +6,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Polla Mundial 2026",
-    short_name: "Polla",
+    name: "Pollota Mundial 2026",
+    short_name: "Pollota",
     description:
       "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores y compite con tu parche.",
     // Raíz (no /dashboard, que es protegida): RootPage decide a dónde llevar
