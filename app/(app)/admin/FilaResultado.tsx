@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export type PartidoAdmin = {
 };
 
 const inputCls =
-  "h-11 w-12 rounded-lg border-2 border-primary/50 bg-surface text-center text-lg font-extrabold tabular-nums text-fg-strong focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-11 w-12 rounded-lg border-2 border-primary/50 bg-surface text-center text-lg font-extrabold tabular-nums text-fg-strong shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)] focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * En táctil (iOS) el teclado flota y puede tapar el input/botón en una lista
@@ -125,8 +126,10 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
           value={gl}
           onChange={(e) => setGl(limpiar(e.target.value))}
           onFocus={centrarEnFoco}
-          placeholder="–"
-          className={inputCls}
+          className={cn(
+            inputCls,
+            gl === "" && "border-primary bg-primary/10 shadow-[inset_0_2px_7px_rgba(0,0,0,0.18)]",
+          )}
         />
         <span className="font-extrabold text-fg-subtle">-</span>
         <input
@@ -137,8 +140,10 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
           value={gv}
           onChange={(e) => setGv(limpiar(e.target.value))}
           onFocus={centrarEnFoco}
-          placeholder="–"
-          className={inputCls}
+          className={cn(
+            inputCls,
+            gv === "" && "border-primary bg-primary/10 shadow-[inset_0_2px_7px_rgba(0,0,0,0.18)]",
+          )}
         />
         <Button
           size="sm"

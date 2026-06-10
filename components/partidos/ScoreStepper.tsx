@@ -20,6 +20,9 @@ type Props = {
 
 export function ScoreStepper({ value, onChange, disabled, big, ariaLabel }: Props) {
   const sz = big ? 80 : 68;
+  // Sin predicción aún: la caja se resalta (borde sólido + relleno teñido) para
+  // que no pase desapercibida — en claro y oscuro. Al tener número, se calma.
+  const vacio = value === null;
 
   function onInput(e: React.ChangeEvent<HTMLInputElement>) {
     // Solo dígitos, máximo 2 (0–99). Vacío → null (sin predicción).
@@ -52,13 +55,14 @@ export function ScoreStepper({ value, onChange, disabled, big, ariaLabel }: Prop
           );
         }
       }}
-      placeholder="–"
       aria-label={`Goles de ${ariaLabel}`}
       className={cn(
-        "rounded-2xl border-2 bg-surface text-center font-extrabold tabular-nums text-fg-strong shadow-xs",
+        // Sombra interior → efecto "hundido" (hueco para rellenar). En claro y oscuro.
+        "rounded-2xl border-2 bg-surface text-center font-extrabold tabular-nums text-fg-strong shadow-[inset_0_2px_4px_rgba(0,0,0,0.12)]",
         "border-primary/60",
-        "placeholder:font-bold placeholder:text-fg-subtle",
-        "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // Vacío y editable: resaltado + hundido más profundo para invitar a diligenciar.
+        !disabled && vacio && "border-primary bg-primary/10 shadow-[inset_0_2px_7px_rgba(0,0,0,0.18)]",
+        "focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "disabled:border-border disabled:bg-muted disabled:text-fg-muted disabled:shadow-none",
       )}
       style={{
