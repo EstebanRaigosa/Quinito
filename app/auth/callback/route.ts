@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { SITE_URL } from "@/lib/constants";
 
 /**
  * Callback de autenticación. Cubre los DOS formatos de enlace que emite Supabase:
@@ -10,9 +11,17 @@ import { createClient } from "@/lib/supabase/server";
  *   (COMPATIBILIDAD-MOVIL.md §14, fallback de iOS standalone).
  *
  * `next` define el destino: /dashboard (login/registro), /reset-password (recuperación).
+ *
+ * **Redirecciones con `SITE_URL`, NO con `origin` de `request.url`:** detrás de un
+ * proxy (Netlify) `request.url` resuelve al host interno del deploy
+ * (`*.netlify.app`), no al dominio canónico. Redirigir a ese origin saca al
+ * usuario del dominio público y la cookie de sesión —fijada en el dominio
+ * canónico— queda inaccesible, devolviéndolo al login. Es el mismo motivo por el
+ * que el cliente usa `SITE_URL` y no `window.location.origin`
+ * (COMPATIBILIDAD-MOVIL.md §14).
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
@@ -23,7 +32,7 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${SITE_URL}${next}`);
     }
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({
@@ -31,9 +40,9 @@ export async function GET(request: Request) {
       token_hash: tokenHash,
     });
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${SITE_URL}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${SITE_URL}/login?error=auth`);
 }

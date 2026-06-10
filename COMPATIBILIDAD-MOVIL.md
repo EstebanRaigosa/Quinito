@@ -579,6 +579,7 @@ navegador no muestra en `<img>` y muchos backends no procesan.
 
 ### Decisiones tomadas (no re-proponer)
 - **Login por OTP/magic-link: DESCARTADO.** Se confía en email+contraseña (funciona en PWA standalone) y Google OAuth. El callback (`app/auth/callback/route.ts`) sí maneja `?code=` y `?token_hash=&type=` (para confirmación de registro y recuperación).
+- **El callback (`app/auth/callback/route.ts`) redirige con `SITE_URL`, NUNCA con `origin` de `new URL(request.url)`.** Detrás de Netlify, `request.url` resuelve al host interno del deploy (`*.netlify.app`), no al dominio canónico (`pollota.com`). Redirigir a ese `origin` sacaba al usuario a `*.netlify.app` tras el OAuth de Google y la cookie de sesión —fijada en `pollota.com`— quedaba inaccesible → volvía al login. Es el mismo motivo que §14 da para el cliente (`SITE_URL` vs `window.location.origin`). El middleware (`lib/supabase/middleware.ts`) sí puede usar `request.nextUrl.clone()` porque corre en el edge con el host público y redirige con path relativo.
 - **Tailwind 3.4 (NO v4)** — v4 rompe iOS 15 (ver COMPATIBILIDAD-STACK §3).
 - **`<select>` nativo en admin** (sin `appearance:none`) — conserva el picker de iOS.
 - **`button` size `sm` = 40px** — compromiso aceptado para acciones secundarias; las primarias usan `default` (44px).
