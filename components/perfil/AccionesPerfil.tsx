@@ -7,7 +7,6 @@ import {
   Bell,
   Moon,
   UserPlus,
-  Settings,
   LogOut,
   Loader2,
   ChevronRight,
@@ -126,21 +125,6 @@ export function AccionesPerfil({
             <ChevronRight className="size-4 shrink-0 text-fg-subtle" aria-hidden />
           </button>
         ))}
-
-        {/* Configuración: aún por construir */}
-        <button
-          type="button"
-          onClick={() => toast("Pronto disponible")}
-          className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-sunken active:bg-sunken"
-        >
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-fg-muted">
-            <Settings className="size-4" aria-hidden />
-          </span>
-          <span className="t-body-sm flex-1 font-semibold text-fg-strong">
-            Configuración
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-fg-subtle" aria-hidden />
-        </button>
       </Card>
 
       <Button

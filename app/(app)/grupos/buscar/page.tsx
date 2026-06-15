@@ -32,6 +32,7 @@ function BuscarGrupoContenido() {
   // Código pre-cargado desde el deep-link de invitación (/unirse/[codigo]).
   const codigoInicial = normalizarCodigo(searchParams.get("codigo") ?? "");
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const [codigo, setCodigo] = useState(codigoInicial);
   const [buscando, setBuscando] = useState(false);
   const [grupo, setGrupo] = useState<GrupoPreview | null>(null);
@@ -75,6 +76,16 @@ function BuscarGrupoContenido() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Al abrir la vista, ubicar el foco en el campo del código para que el usuario
+  // escriba de una. Se omite cuando se llegó con un código completo por deep-link
+  // (ahí se auto-busca y mostramos el resultado, no conviene robar el foco).
+  useEffect(() => {
+    if (codigoInicial.length !== LARGO) {
+      inputRef.current?.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function unirme() {
     if (!grupo) return;
     setUniendo(true);
@@ -109,6 +120,7 @@ function BuscarGrupoContenido() {
             Código de invitación
           </label>
           <input
+            ref={inputRef}
             id="codigo-invitacion"
             value={codigo}
             onChange={(e) => actualizarCodigo(e.target.value)}

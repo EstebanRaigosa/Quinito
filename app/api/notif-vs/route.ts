@@ -1,5 +1,11 @@
 import { type NextRequest } from "next/server";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { Resvg } from "@resvg/resvg-js";
 import { archivoBandera } from "@/lib/utils/banderas";
+
+/** Ruta absoluta a la fuente embebida del "VS" (no dependemos de fuentes del SO). */
+const RUTA_FUENTE = path.join(process.cwd(), "app/api/notif-vs/_assets/vs-font.ttf");
 
 /**
  * Ícono "vs" para las notificaciones push de recordatorio: una bolita circular
@@ -8,16 +14,17 @@ import { archivoBandera } from "@/lib/utils/banderas";
  *
  * GET /api/notif-vs?l=<ISO3 local>&v=<ISO3 visitante>
  *
- * IMPORTANTE — *secure static mode*: un SVG usado como ícono de notificación
- * (igual que un `<img>`) NO carga recursos externos ni `data:`/`href` remotos.
- * Por eso aquí **inlineamos** el contenido de cada bandera dentro del SVG en vez
- * de referenciarlas con `<image href>`. Los `id` internos de cada bandera se
- * prefijan para que no colisionen al unir las dos en un mismo documento.
+ * IMPORTANTE — devuelve **PNG**, no SVG. Chrome en Android NO renderiza íconos
+ * de notificación en SVG (el sistema los decodifica como bitmap): un SVG sale
+ * como notificación "sin ícono". Componemos la bolita en SVG (las banderas son
+ * `circle-flags`, viewBox 0 0 512 512) y la rasterizamos a PNG con `resvg`.
  *
- * Se compone en el espacio nativo de las banderas (`circle-flags`, viewBox
- * 0 0 512 512) SIN escalarlas con `transform`: la `mask` circular interna de
- * cada bandera no sigue bien a un `scale()` en varios renderers (queda recortada
- * a una esquina). El navegador reescala el ícono final al tamaño que necesite.
+ * Las banderas se leen del filesystem (`public/flags/`) y se **inlinean** dentro
+ * del SVG (no `<image href>`): así resvg resuelve sus `mask`/`clipPath` internos.
+ * Los `id` de cada bandera se prefijan para que no colisionen al unir las dos.
+ *
+ * El texto "VS" usa una fuente embebida (`_assets/vs-font.ttf`) en vez de fuentes
+ * del sistema: el servidor de producción puede no tener ninguna instalada.
  *
  * PRIVACIDAD (CLAUDE.md §3.4): solo expone banderas de equipos; sin PII. La ruta
  * es pública (la pide el navegador al pintar la notificación, sin sesión).
@@ -26,6 +33,8 @@ export const runtime = "nodejs";
 
 /** Lado del lienzo = viewBox nativo de las banderas circle-flags. */
 const V = 512;
+/** Tamaño del PNG de salida (suficiente para el ícono de notificación). */
+const SALIDA = 256;
 
 /** Prefija todos los `id` de un fragmento SVG para evitar colisiones al unir. */
 function prefijarIds(svg: string, prefijo: string): string {
@@ -40,18 +49,16 @@ function cuerpoSvg(svg: string): string {
   return svg.replace(/^[\s\S]*?<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
 }
 
-/** Descarga el SVG de una bandera (mismo origen) y devuelve su cuerpo inline. */
+/** Lee el SVG de una bandera del filesystem y devuelve su cuerpo inline. */
 async function leerBandera(
   iso3: string | null,
-  origin: string,
   prefijo: string,
 ): Promise<string | null> {
   const archivo = archivoBandera(iso3);
   if (!archivo) return null;
   try {
-    const res = await fetch(`${origin}/flags/${archivo}.svg`);
-    if (!res.ok) return null;
-    return prefijarIds(cuerpoSvg(await res.text()), prefijo);
+    const ruta = path.join(process.cwd(), "public", "flags", `${archivo}.svg`);
+    return prefijarIds(cuerpoSvg(await readFile(ruta, "utf8")), prefijo);
   } catch {
     return null;
   }
@@ -64,11 +71,11 @@ function mitad(cuerpo: string | null, clip: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
 
   const [bL, bR] = await Promise.all([
-    leerBandera(searchParams.get("l"), origin, "l"),
-    leerBandera(searchParams.get("v"), origin, "v"),
+    leerBandera(searchParams.get("l"), "l"),
+    leerBandera(searchParams.get("v"), "v"),
   ]);
 
   const c = V / 2; // centro
@@ -91,13 +98,19 @@ export async function GET(request: NextRequest) {
     // Badge "VS" al centro (cubre la costura entre banderas).
     `<circle cx="${c}" cy="${c}" r="${rBadge}" fill="#fff" stroke="rgba(0,0,0,0.12)" stroke-width="4"/>` +
     `<text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" ` +
-    `font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="800" ` +
+    `font-family="Geist" font-weight="700" ` +
     `font-size="${Math.round(rBadge * 1.05)}" fill="#0f172a">VS</text>` +
     `</svg>`;
 
-  return new Response(svg, {
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width", value: SALIDA },
+    font: { loadSystemFonts: false, fontFiles: [RUTA_FUENTE], defaultFontFamily: "Geist" },
+  });
+  const png = resvg.render().asPng();
+
+  return new Response(new Uint8Array(png), {
     headers: {
-      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Content-Type": "image/png",
       // Cacheable: el par de banderas es estable; aligera al push service/CDN.
       "Cache-Control": "public, max-age=86400, s-maxage=604800, immutable",
     },

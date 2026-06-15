@@ -124,20 +124,38 @@ export async function registrarAbono(
 }
 
 /**
- * Ajusta el puntaje de arranque de un participante: lo que ya traía cuando la
- * polla se manejaba por fuera (Excel u otra app) antes de migrar a mitad de
- * torneo. Se suma a los puntos ganados dentro de la app (ver `vwTablaPosiciones`).
+ * Arranque de un participante al migrar la polla a mitad de torneo: el puntaje y
+ * los contadores de desempate que ya traía por fuera (Excel u otra app). Todo se
+ * suma a lo jugado dentro de la app (ver `vwTablaPosiciones`).
+ */
+export type Arranque = {
+  /** Puntaje acumulado de arranque. */
+  puntos: number;
+  /** Marcadores exactos acertados antes de migrar. */
+  exactos: number;
+  /** Predicciones únicas acertadas antes de migrar. */
+  unicas: number;
+  /** Otros aciertos (ganador/goles) antes de migrar. */
+  aciertos: number;
+};
+
+/**
+ * Ajusta el arranque de un participante: lo que ya traía cuando la polla se
+ * manejaba por fuera (Excel u otra app) antes de migrar a mitad de torneo. Se
+ * suma a lo ganado dentro de la app (ver `vwTablaPosiciones`).
  *
- * Solo el admin del grupo puede hacerlo: el permiso y el rechazo de puntajes
+ * Solo el admin del grupo puede hacerlo: el permiso y el rechazo de valores
  * negativos viven en el RPC `actualizar_puntos_iniciales` (SECURITY DEFINER).
  */
 export async function actualizarPuntajeInicial(
   grupoId: string,
   participanteId: string,
-  puntos: number,
+  arranque: Arranque,
 ): Promise<Resultado> {
-  if (!Number.isInteger(puntos) || puntos < 0) {
-    return { ok: false, error: "El puntaje inicial debe ser un entero ≥ 0." };
+  const { puntos, exactos, unicas, aciertos } = arranque;
+  const valores = [puntos, exactos, unicas, aciertos];
+  if (valores.some((v) => !Number.isInteger(v) || v < 0)) {
+    return { ok: false, error: "Los valores de arranque deben ser enteros ≥ 0." };
   }
 
   const supabase = await createClient();
@@ -149,9 +167,12 @@ export async function actualizarPuntajeInicial(
   const { error } = await supabase.rpc("actualizar_puntos_iniciales", {
     p_participante_id: participanteId,
     p_puntos: puntos,
+    p_exactos: exactos,
+    p_unicas: unicas,
+    p_aciertos: aciertos,
   });
   if (error) {
-    return { ok: false, error: "No se pudo guardar el puntaje inicial." };
+    return { ok: false, error: "No se pudo guardar el arranque." };
   }
 
   revalidatePath(`/grupos/${grupoId}`);

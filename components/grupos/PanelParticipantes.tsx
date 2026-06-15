@@ -123,7 +123,7 @@ export function PanelParticipantes({
             return (
               <div
                 key={part.id}
-                className="surface-card hover-lift flex flex-col gap-2.5 rounded-xl border-strong p-3 shadow-md"
+                className="surface-card hover-lift flex min-w-0 flex-col gap-2.5 rounded-xl border-strong p-3 shadow-md"
               >
                 {/* Fila principal: avatar + datos + puntos. */}
                 <div className="flex items-center gap-3">
@@ -142,19 +142,6 @@ export function PanelParticipantes({
                         {part.usuario.email}
                       </p>
                     )}
-                    {/* Estado de pago + saldo (oculto si la polla no tiene costo). */}
-                    {badge && (
-                      <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                        <Badge variant={badge.variant} className="shrink-0">
-                          {badge.label}
-                        </Badge>
-                        {total !== undefined && (
-                          <span className="t-caption tabular-nums text-fg-muted">
-                            {formatearMonto(total)} / {formatearMonto(valorApuesta)}
-                          </span>
-                        )}
-                      </span>
-                    )}
                   </div>
 
                   {part.rol === "admin" && (
@@ -168,6 +155,23 @@ export function PanelParticipantes({
                   </span>
                 </div>
 
+                {/* Estado de pago + saldo: fila propia a ancho completo (oculto si
+                    la polla no tiene costo). Va aquí —y no junto al nombre— para que
+                    el monto, que no se puede partir, nunca compita por el espacio
+                    angosto del nombre y desborde la tarjeta en móvil. */}
+                {badge && (
+                  <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <Badge variant={badge.variant} className="shrink-0">
+                      {badge.label}
+                    </Badge>
+                    {total !== undefined && (
+                      <span className="t-caption tabular-nums text-fg-muted">
+                        {formatearMonto(total)} / {formatearMonto(valorApuesta)}
+                      </span>
+                    )}
+                  </span>
+                )}
+
                 {/* Fila de acciones del admin: envuelve en móvil, sin scroll horizontal. */}
                 {tieneAcciones && (
                   <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-2.5">
@@ -177,6 +181,9 @@ export function PanelParticipantes({
                         participanteId={part.id}
                         nombre={part.usuario.nombre_completo}
                         puntosIniciales={part.puntos_iniciales}
+                        exactosIniciales={part.exactos_iniciales}
+                        unicasIniciales={part.unicas_iniciales}
+                        aciertosIniciales={part.aciertos_iniciales}
                       />
                     )}
 

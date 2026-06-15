@@ -103,6 +103,12 @@ export type Participante = {
   puntos_totales: number;
   /** Puntaje de arranque al migrar la polla a mitad de torneo. */
   puntos_iniciales: number;
+  /** Arranque de desempate: marcadores exactos acertados antes de migrar. */
+  exactos_iniciales: number;
+  /** Arranque de desempate: predicciones únicas acertadas antes de migrar. */
+  unicas_iniciales: number;
+  /** Arranque de desempate: otros aciertos (ganador/goles) antes de migrar. */
+  aciertos_iniciales: number;
 };
 
 /** Un abono (pago parcial) de un participante hacia el valor de la apuesta. */

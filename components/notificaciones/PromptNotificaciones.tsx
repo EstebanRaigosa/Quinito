@@ -50,14 +50,15 @@ function marcarPospuesto(): void {
  * Solo aparece cuando la suscripción es realmente posible y aún no se hizo:
  * - El navegador soporta push.
  * - No está ya suscrito ni bloqueado (`denied`).
- * - En iPhone, la app debe estar instalada (standalone): si no, no molestamos
- *   —el botón de instalar del header y la nota del Perfil guían ese paso—.
+ * - La app corre instalada como PWA (standalone): en el navegador normal no
+ *   molestamos —el botón de instalar del header y la nota del Perfil guían ese
+ *   paso—. (En iPhone, además, standalone es requisito técnico de push.)
  * - El usuario no lo pospuso en los últimos 7 días.
  *
  * Se monta en el shell `(app)` (ver `app/(app)/layout.tsx`).
  */
 export function PromptNotificaciones() {
-  const { soporta, standalone, ios, suscrito, cargando, denegado, activar } =
+  const { soporta, standalone, suscrito, cargando, denegado, activar } =
     usePushNotificaciones();
   // El cierre se deriva del estado, no de un effect con setState (regla
   // react-hooks/set-state-in-effect): solo guardamos si el usuario lo cerró en
@@ -68,7 +69,7 @@ export function PromptNotificaciones() {
     suscrito === false && // determinado y aún no suscrito (null = sin determinar)
     soporta &&
     !denegado &&
-    !(ios && !standalone) && // en iPhone sin instalar no se puede suscribir
+    standalone && // solo dentro de la PWA instalada, nunca en el navegador
     !pospuestoReciente();
 
   const abierto = elegible && !cerradoEnSesion;

@@ -20,47 +20,101 @@ type Props = {
   participanteId: string;
   nombre: string;
   puntosIniciales: number;
+  exactosIniciales: number;
+  unicasIniciales: number;
+  aciertosIniciales: number;
 };
 
+/** Campos del formulario de arranque (clave → etiqueta + ayuda). */
+const CAMPOS = [
+  {
+    clave: "puntos",
+    label: "Puntos de arranque",
+    ayuda: "Puntaje acumulado que ya traía.",
+  },
+  {
+    clave: "exactos",
+    label: "Marcadores exactos acertados",
+    ayuda: "Para desempate.",
+  },
+  {
+    clave: "unicas",
+    label: "Marcadores únicos acertados",
+    ayuda: "Para desempate.",
+  },
+  {
+    clave: "aciertos",
+    label: "Otros aciertos",
+    ayuda: "Ganadores y goles acertados. Para desempate.",
+  },
+] as const;
+
+type Clave = (typeof CAMPOS)[number]["clave"];
+
 /**
- * Edita el "puntaje de arranque" de un participante: lo que ya traía cuando la
- * polla se llevaba por fuera (Excel u otra app) antes de migrar a la app a mitad
- * de torneo. Se suma a los puntos ganados aquí (ver `vwTablaPosiciones`). Solo lo
- * monta el admin; la validación dura (permiso, no negativos) vive en el RPC.
+ * Edita el "arranque" de un participante: lo que ya traía cuando la polla se
+ * llevaba por fuera (Excel u otra app) antes de migrar a la app a mitad de
+ * torneo. Además del puntaje acumulado, carga los contadores de desempate
+ * (marcadores exactos, únicas y otros aciertos) para que el orden a igualdad de
+ * puntos sea justo con quien trae historial. Todo se suma a lo jugado dentro de
+ * la app (ver `vwTablaPosiciones`). Solo lo monta el admin; la validación dura
+ * (permiso, no negativos) vive en el RPC.
  */
 export function GestionPuntajeInicial({
   grupoId,
   participanteId,
   nombre,
   puntosIniciales,
+  exactosIniciales,
+  unicasIniciales,
+  aciertosIniciales,
 }: Props) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
-  const [valor, setValor] = useState(String(puntosIniciales));
+  const [valores, setValores] = useState<Record<Clave, string>>({
+    puntos: String(puntosIniciales),
+    exactos: String(exactosIniciales),
+    unicas: String(unicasIniciales),
+    aciertos: String(aciertosIniciales),
+  });
   const [errorCampo, setErrorCampo] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
 
   function abrir() {
-    // Recarga el valor actual cada vez que se abre (por si cambió fuera).
-    setValor(String(puntosIniciales));
+    // Recarga los valores actuales cada vez que se abre (por si cambiaron fuera).
+    setValores({
+      puntos: String(puntosIniciales),
+      exactos: String(exactosIniciales),
+      unicas: String(unicasIniciales),
+      aciertos: String(aciertosIniciales),
+    });
     setErrorCampo(null);
     setAbierto(true);
   }
 
+  function setCampo(clave: Clave, valor: string) {
+    setValores((prev) => ({ ...prev, [clave]: valor }));
+  }
+
   function onGuardar() {
     setErrorCampo(null);
-    const puntos = Number(valor);
-    if (!Number.isInteger(puntos) || puntos < 0) {
-      setErrorCampo("Debe ser un número entero mayor o igual a 0.");
+    const nums = {
+      puntos: Number(valores.puntos),
+      exactos: Number(valores.exactos),
+      unicas: Number(valores.unicas),
+      aciertos: Number(valores.aciertos),
+    };
+    if (Object.values(nums).some((n) => !Number.isInteger(n) || n < 0)) {
+      setErrorCampo("Todos los valores deben ser enteros mayores o iguales a 0.");
       return;
     }
     startGuardar(async () => {
-      const res = await actualizarPuntajeInicial(grupoId, participanteId, puntos);
+      const res = await actualizarPuntajeInicial(grupoId, participanteId, nums);
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success("Puntaje de arranque guardado");
+      toast.success("Arranque guardado");
       setAbierto(false);
       router.refresh();
     });
@@ -80,33 +134,40 @@ export function GestionPuntajeInicial({
 
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Puntaje de arranque</DialogTitle>
+          <DialogTitle>Arranque de {nombre}</DialogTitle>
           <DialogDescription>
-            Puntos que {nombre} ya traía de antes (Excel u otra app). Se suman a
-            los puntos ganados dentro de la app.
+            Lo que {nombre} ya traía de antes (Excel u otra app). Se suma a lo
+            jugado dentro de la app, incluidos los contadores de desempate.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2">
-          <label
-            htmlFor="puntaje-inicial"
-            className="t-caption font-semibold text-fg-muted"
-          >
-            Puntos de arranque
-          </label>
-          <Input
-            id="puntaje-inicial"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            placeholder="0"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-          />
+        <div className="space-y-4">
+          {CAMPOS.map((campo) => (
+            <div key={campo.clave} className="space-y-1.5">
+              <label
+                htmlFor={`arranque-${campo.clave}`}
+                className="t-caption font-semibold text-fg-muted"
+              >
+                {campo.label}
+              </label>
+              <Input
+                id={`arranque-${campo.clave}`}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                placeholder="0"
+                value={valores[campo.clave]}
+                onChange={(e) => setCampo(campo.clave, e.target.value)}
+              />
+              <p className="t-caption text-fg-subtle">{campo.ayuda}</p>
+            </div>
+          ))}
+
           {errorCampo && (
             <p className="t-caption text-destructive">{errorCampo}</p>
           )}
+
           <Button
             type="button"
             className="w-full"

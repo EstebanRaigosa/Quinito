@@ -124,8 +124,12 @@ self.addEventListener("push", (event) => {
     body: payload.cuerpo,
     // Ícono "vs" con las banderas si el server lo mandó; si no, el de la app.
     // (iOS ignora `icon` y usa el ícono de la PWA; en Android sí se ve la bolita.)
-    icon: payload.icono ?? "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: payload.icono ?? "/icon-notif.png",
+    // Badge = ícono pequeño de la barra de estado (Android). Android descarta el
+    // color y usa SOLO el alfa, pintando la silueta de blanco: por eso debe ser
+    // un PNG monocromático sobre fondo transparente. Si se le pasa el ícono a
+    // color con fondo opaco, sale un cuadrado blanco sólido.
+    badge: "/badge-notif.png",
     tag: payload.tag,
     // Re-notificar aunque exista una con el mismo tag (recordatorio que apremia).
     // `renotify` es estándar de Web Push pero aún no está en los tipos DOM.

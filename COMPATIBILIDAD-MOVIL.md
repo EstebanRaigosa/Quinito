@@ -194,6 +194,17 @@ window.visualViewport?.addEventListener("resize", () => {
 - No fijes footers de submit al borde inferior con `position: fixed; bottom: 0` en
   pantallas con teclado: quedan tapados. Mejor dentro del flujo scrolleable.
 
+**Modales centrados (Dialog) y teclado — IMPLEMENTADO.** Un modal centrado con
+`top:50%` + `translateY(-50%)` se ancla al *layout viewport*, que el teclado no encoge
+(`100dvh` tampoco): el teclado le tapa la mitad inferior. El `DialogContent`
+(`components/ui/dialog.tsx`) usa el hook `useViewportModal` (`lib/hooks/useViewportModal.ts`),
+que escucha `visualViewport` (`resize`/`scroll`) y reposiciona el modal al **centro del área
+visible** (`top = offsetTop + height/2`) ajustando además su `max-height`, de modo que
+queda **siempre por encima del teclado** con su contenido scrolleable. Degrada limpio: sin
+teclado el cálculo coincide con el centrado original; sin `visualViewport`/SSR no aplica
+estilos. **No revertir** a centrado puro por CSS en modales con inputs (OnboardingNombre,
+EliminarGrupo).
+
 ---
 
 ## 5. Bloqueo de scroll del fondo (scroll lock)
@@ -567,6 +578,7 @@ navegador no muestra en `<img>` y muchos backends no procesan.
 - **Contenido scrolleable interno de Sheets**: `pb-[max(2rem,env(safe-area-inset-bottom))]` (no `pb-8` fijo) para respetar el home indicator.
 - **Sticky NUNCA dentro de un ancestro con `transform`** (incluye `animate-*` con `transform`): rompe el sticky en iOS. Patrón: animar un wrapper interno, no el ancestro del sticky.
 - **Tap targets ≥44px**: botones cerrar de Dialog/Sheet (`size-11`), toggles de contraseña, tabs (`h-11 sm:h-10` + trigger `h-full`), `ThemeToggle` (`min-h-11`), checkbox "seleccionar fase" (envuelto en `<label>` de 44px). `PageContainer` usa `pl/pr-[max(1rem,env(safe-area-inset-*))]` (landscape con notch).
+- **Modales centrados sobre el teclado**: `DialogContent` (`components/ui/dialog.tsx`) usa `useViewportModal` (`lib/hooks/useViewportModal.ts`) para reposicionarse al centro del `visualViewport` cuando sube el teclado (queda **encima**, no tapado). Ver §4.1. **No revertir** a centrado puro CSS en modales con inputs.
 
 ### Datos / runtime
 - **Cuenta regresiva = `components/shared/CuentaRegresiva.tsx`** (cliente): late cada segundo y **re-sincroniza en `pageshow`/`visibilitychange`** (iOS congela timers en background). Recibe `ahoraInicial` del server para no romper hidratación. **No volver a renderizar countdowns estáticos en el server.**

@@ -47,6 +47,9 @@ type RawDetalle = {
     rol: Participante["rol"];
     pago_realizado: boolean;
     puntos_iniciales: number;
+    exactos_iniciales: number;
+    unicas_iniciales: number;
+    aciertos_iniciales: number;
     usuario: {
       id: string;
       nombre_completo: string | null;
@@ -109,6 +112,9 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     rol: p.rol,
     pago_realizado: p.pago_realizado,
     puntos_iniciales: Number(p.puntos_iniciales ?? 0),
+    exactos_iniciales: Number(p.exactos_iniciales ?? 0),
+    unicas_iniciales: Number(p.unicas_iniciales ?? 0),
+    aciertos_iniciales: Number(p.aciertos_iniciales ?? 0),
     // Puntos por participante desde la tabla de posiciones.
     puntos_totales:
       d.tabla.find((f) => f.participante_id === p.id)?.puntos_totales ?? 0,

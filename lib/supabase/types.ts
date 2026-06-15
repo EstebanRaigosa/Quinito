@@ -387,32 +387,41 @@ export type Database = {
       }
       tblParticipantes: {
         Row: {
+          aciertos_iniciales: number
           eliminado_en: string | null
+          exactos_iniciales: number
           grupo_id: string
           id: string
           pago_realizado: boolean
           puntos_iniciales: number
           rol: Database["public"]["Enums"]["rol_participante"]
+          unicas_iniciales: number
           unido_en: string
           usuario_id: string
         }
         Insert: {
+          aciertos_iniciales?: number
           eliminado_en?: string | null
+          exactos_iniciales?: number
           grupo_id: string
           id?: string
           pago_realizado?: boolean
           puntos_iniciales?: number
           rol?: Database["public"]["Enums"]["rol_participante"]
+          unicas_iniciales?: number
           unido_en?: string
           usuario_id: string
         }
         Update: {
+          aciertos_iniciales?: number
           eliminado_en?: string | null
+          exactos_iniciales?: number
           grupo_id?: string
           id?: string
           pago_realizado?: boolean
           puntos_iniciales?: number
           rol?: Database["public"]["Enums"]["rol_participante"]
+          unicas_iniciales?: number
           unido_en?: string
           usuario_id?: string
         }
@@ -1140,7 +1149,13 @@ export type Database = {
     }
     Functions: {
       actualizar_puntos_iniciales: {
-        Args: { p_participante_id: string; p_puntos: number }
+        Args: {
+          p_aciertos?: number
+          p_exactos?: number
+          p_participante_id: string
+          p_puntos: number
+          p_unicas?: number
+        }
         Returns: undefined
       }
       buscar_grupo: {

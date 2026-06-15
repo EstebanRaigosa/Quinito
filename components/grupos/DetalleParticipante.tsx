@@ -155,7 +155,7 @@ function FilaPartido({
       <LadoCompacto equipo={partido.equipo_local} alineacion="izq" />
       <div className="flex items-stretch gap-1">
         <Marcador
-          label="Resul"
+          label="Real"
           valor={`${partido.goles_local}-${partido.goles_visitante}`}
           destacado
           exacto={exacto}
@@ -211,6 +211,11 @@ export function DetalleParticipante({
       .map((pp) => {
         const partido = partidoPorId.get(pp.partido_id);
         if (!partido || !partido.equipo_local || !partido.equipo_visitante) {
+          return null;
+        }
+        // Solo partidos finalizados: los "en juego" ya cerraron la apuesta pero
+        // aún no tienen marcador real, así que aparecerían con un "null-null".
+        if (partido.estado !== "finalizado") {
           return null;
         }
         const prediccion: Prediccion = {
