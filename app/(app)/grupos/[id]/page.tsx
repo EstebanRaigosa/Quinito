@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Trophy,
-  Shield,
   ChevronRight,
   CalendarDays,
   Settings,
@@ -13,25 +12,39 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
-import { puedePredecir } from "@/lib/utils/prediccion";
+import {
+  compararPartidos,
+  esSinCierre,
+  firmaPartido,
+  puedePredecir,
+} from "@/lib/utils/prediccion";
 import { formatearMonto } from "@/lib/utils/texto";
-import { claveDiaBogota, formatearFechaLarga } from "@/lib/utils/fechas";
+import {
+  agruparPorDia,
+  claveDiaBogota,
+  etiquetaDiaListado,
+} from "@/lib/utils/fechas";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsConRefresh } from "@/components/grupos/TabsConRefresh";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { TablaPosiciones } from "@/components/grupos/TablaPosiciones";
 import { RevelarJornadas } from "@/components/grupos/RevelarJornadas";
+import { AutoRefrescoCierre } from "@/components/shared/AutoRefrescoCierre";
+import { RealtimePartidos } from "@/components/shared/RealtimePartidos";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
+import { DestelloPartido } from "@/components/partidos/DestelloPartido";
 import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
+import { EliminarGrupo } from "@/components/grupos/EliminarGrupo";
+import { PanelParticipantes } from "@/components/grupos/PanelParticipantes";
+import { PanelBaneados } from "@/components/grupos/PanelBaneados";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 
 /**
@@ -137,18 +150,6 @@ function ResumenReglas({ reglas }: { reglas: ReglasGrupo }) {
   );
 }
 
-/** Agrupa los partidos por día (clave estable en zona Bogotá). */
-function agruparPorDia(partidos: Partido[]): [string, Partido[]][] {
-  const mapa = new Map<string, Partido[]>();
-  for (const p of partidos) {
-    const dia = claveDiaBogota(p.fecha_hora);
-    const lista = mapa.get(dia);
-    if (lista) lista.push(p);
-    else mapa.set(dia, [p]);
-  }
-  return [...mapa.entries()];
-}
-
 /**
  * Encabezado de una sección de fecha: chip flotante (calendario + fecha +
  * contador de partidos) sobre una línea que se desvanece. Marca con claridad
@@ -201,6 +202,7 @@ function DiaDePredicciones({
   prediccionPorPartido,
   ahora,
   esHoy,
+  totalParticipantes,
 }: {
   partidos: Partido[];
   grupoId: string;
@@ -209,12 +211,13 @@ function DiaDePredicciones({
   prediccionPorPartido: Map<string, Prediccion>;
   ahora: Date;
   esHoy: boolean;
+  totalParticipantes: number;
 }) {
   if (partidos.length === 0) return null;
   return (
     <section className="border-t border-strong pt-6 first:border-t-0 first:pt-0">
       <EncabezadoFecha
-        fecha={formatearFechaLarga(partidos[0]!.fecha_hora)}
+        fecha={etiquetaDiaListado(partidos[0]!.fecha_hora)}
         count={partidos.length}
         esHoy={esHoy}
       />
@@ -228,7 +231,89 @@ function DiaDePredicciones({
             reglas={reglas}
             miPrediccion={prediccionPorPartido.get(p.id)}
             ahora={ahora}
+            totalParticipantes={totalParticipantes}
           />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Sección destacada "Hoy" de la pestaña "Partidos". Ancla arriba los partidos
+ * del día actual (zona Bogotá) en un panel con acento de marca (esmeralda),
+ * punto "en vivo" y jerarquía propia, para que se distinga del listado
+ * cronológico del resto de jornadas sin saturar.
+ */
+function SeccionHoyPartidos({
+  partidos,
+  grupoId,
+  reglas,
+  prediccionPorPartido,
+  ahora,
+  totalParticipantes,
+}: {
+  partidos: Partido[];
+  grupoId: string;
+  reglas: ReglasGrupo;
+  prediccionPorPartido: Map<string, Prediccion>;
+  ahora: Date;
+  totalParticipantes: number;
+}) {
+  if (partidos.length === 0) return null;
+  const count = partidos.length;
+  // Fecha del día capitalizada (ej. "Miércoles 14 de junio de 2026").
+  const fecha = etiquetaDiaListado(partidos[0]!.fecha_hora);
+  const fechaTitulo = fecha.charAt(0).toUpperCase() + fecha.slice(1);
+  return (
+    <section className="relative animate-fade-up overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-b from-primary-soft/80 to-card p-4 pt-5 shadow-glow ring-1 ring-inset ring-primary/10 sm:p-5 sm:pt-6">
+      {/* Barra de acento superior: subraya que es la jornada protagonista. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-primary-hover to-primary/40"
+      />
+      {/* Glow decorativo (puramente estético, no interactivo). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-primary/15 blur-3xl"
+      />
+
+      {/* Encabezado: chip de calendario + "Hoy" + contador, con la fecha debajo. */}
+      <div className="relative mb-4 flex items-center gap-3">
+        <span
+          aria-hidden
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow"
+        >
+          <CalendarDays className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="t-h3 leading-none text-fg-strong">Hoy</h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2 py-0.5 text-2xs font-bold text-primary-foreground shadow-sm">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground/70" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-primary-foreground" />
+              </span>
+              {count} {count === 1 ? "partido" : "partidos"}
+            </span>
+          </div>
+          <p className="overline mt-1.5 truncate text-primary">{fechaTitulo}</p>
+        </div>
+      </div>
+
+      {/* Partidos del día (mismas tarjetas que el resto del listado). */}
+      <div className="relative grid gap-2.5 md:grid-cols-2">
+        {partidos.map((p) => (
+          <DestelloPartido key={p.id} firma={firmaPartido(p)}>
+            <TarjetaPartido
+              partido={p}
+              miPrediccion={prediccionPorPartido.get(p.id)}
+              reglas={reglas}
+              ahora={ahora}
+              grupoId={grupoId}
+              totalParticipantes={totalParticipantes}
+            />
+          </DestelloPartido>
         ))}
       </div>
     </section>
@@ -246,30 +331,34 @@ function DiaDePartidos({
   reglas,
   prediccionPorPartido,
   ahora,
+  totalParticipantes,
 }: {
   partidos: Partido[];
   grupoId: string;
   reglas: ReglasGrupo;
   prediccionPorPartido: Map<string, Prediccion>;
   ahora: Date;
+  totalParticipantes: number;
 }) {
   if (partidos.length === 0) return null;
   return (
     <section className="border-t border-strong pt-6 first:border-t-0 first:pt-0">
       <EncabezadoFecha
-        fecha={formatearFechaLarga(partidos[0]!.fecha_hora)}
+        fecha={etiquetaDiaListado(partidos[0]!.fecha_hora)}
         count={partidos.length}
       />
       <div className="grid gap-2.5 md:grid-cols-2">
         {partidos.map((p) => (
-          <TarjetaPartido
-            key={p.id}
-            partido={p}
-            miPrediccion={prediccionPorPartido.get(p.id)}
-            reglas={reglas}
-            ahora={ahora}
-            grupoId={grupoId}
-          />
+          <DestelloPartido key={p.id} firma={firmaPartido(p)}>
+            <TarjetaPartido
+              partido={p}
+              miPrediccion={prediccionPorPartido.get(p.id)}
+              reglas={reglas}
+              ahora={ahora}
+              grupoId={grupoId}
+              totalParticipantes={totalParticipantes}
+            />
+          </DestelloPartido>
         ))}
       </div>
     </section>
@@ -282,7 +371,18 @@ export default async function GrupoDetallePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detalle = await getGrupoDetalle(id);
+  const supabase = await createClient();
+  const [
+    {
+      data: { user },
+    },
+    { data: esSuperadmin },
+    detalle,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc("es_superadmin"),
+    getGrupoDetalle(id),
+  ]);
 
   if (!detalle) {
     return (
@@ -321,6 +421,10 @@ export default async function GrupoDetallePage({
   // Superadmin de plataforma viendo una polla de la que NO es miembro: puede
   // verlo y administrarlo todo, pero no participa (no tiene predicciones).
   const soloVistaAdmin = !miParticipanteId;
+  // Puede eliminar la polla el creador o el superadmin de plataforma (mismo
+  // criterio que valida el RPC `eliminar_grupo`).
+  const puedeEliminarGrupo =
+    (!!user && user.id === grupo.creador_id) || esSuperadmin === true;
 
   // ── Agrupación de "Jugar" ─────────────────────────────────────────────────
   const abiertos = partidos.filter((p) =>
@@ -328,18 +432,40 @@ export default async function GrupoDetallePage({
   );
   const totalJugables = abiertos.length;
 
-  const ordenados = [...abiertos].sort(
-    (a, b) => +new Date(a.fecha_hora) - +new Date(b.fecha_hora),
-  );
+  const ordenados = [...abiertos].sort(compararPartidos);
   const diasPrediccion = agruparPorDia(ordenados);
-  const diasPartidos = agruparPorDia(
-    [...partidos].sort(
-      (a, b) => +new Date(a.fecha_hora) - +new Date(b.fecha_hora),
-    ),
-  );
+  const diasPartidos = agruparPorDia([...partidos].sort(compararPartidos));
+  // Partidos de hoy: se anclan en su propia sección destacada al inicio de la
+  // pestaña "Partidos"; el resto de jornadas sigue en orden cronológico debajo.
+  const partidosHoy = diasPartidos.find(([dia]) => dia === claveHoy)?.[1] ?? [];
+  const diasPartidosResto = diasPartidos.filter(([dia]) => dia !== claveHoy);
+
+  // Próximo instante de cierre (epoch ms) entre los partidos aún programados:
+  // permite refrescar la página sola cuando una apuesta se cierre en vivo, sin
+  // que quien la mira tenga que recargar. Solo cuentan cierres futuros (los ya
+  // pasados se excluyen para que tras el refresco se reagende el siguiente).
+  const ahoraMs = ahora.getTime();
+  let proximoCierre: number | null = null;
+  for (const p of partidos) {
+    if (esSinCierre(p) || p.estado !== "programado") continue;
+    const cierre =
+      new Date(p.fecha_hora).getTime() -
+      reglas.minutos_cierre_prediccion * 60_000;
+    if (cierre > ahoraMs && (proximoCierre === null || cierre < proximoCierre)) {
+      proximoCierre = cierre;
+    }
+  }
+  // Torneos de los partidos del grupo (para el "en vivo" de marcador/estado).
+  const torneoIds = [...new Set(partidos.map((p) => p.torneo_id))];
 
   return (
     <PageContainer ancho="ancho">
+      {/* Refresca la página sola en el instante en que se cierre el próximo
+          partido (apuesta → "cerrada / En juego") sin recargar a mano. */}
+      <AutoRefrescoCierre proximoCierre={proximoCierre} />
+      {/* "En vivo": refresca cuando cambia marcador/estado de un partido. */}
+      <RealtimePartidos torneoIds={torneoIds} />
+
       {/* Cabecera del grupo (bento) */}
       <div className="mb-5 animate-fade-up">
         <Link
@@ -428,8 +554,11 @@ export default async function GrupoDetallePage({
                 <p className="text-2xs font-extrabold uppercase tracking-wider text-white/55 sm:text-xs">
                   Aciertos
                 </p>
+                {/* Total de predicciones acertadas = parciales + exactos (los
+                    exactos ya incluyen a los únicos). En la tabla de posiciones
+                    `aciertos` es solo parciales; aquí mostramos el total. */}
                 <p className="mt-1.5 text-2xl font-black tracking-tight text-white sm:mt-2 sm:text-3xl">
-                  {miFila.aciertos}
+                  {miFila.aciertos + miFila.marcadores_exactos}
                 </p>
               </div>
             </div>
@@ -508,6 +637,7 @@ export default async function GrupoDetallePage({
                   prediccionPorPartido={prediccionPorPartido}
                   ahora={ahora}
                   esHoy={dia === claveHoy}
+                  totalParticipantes={grupo.total_participantes}
                 />
               ))}
             </RevelarJornadas>
@@ -516,18 +646,32 @@ export default async function GrupoDetallePage({
 
         {/* PARTIDOS */}
         <TabsContent value="partidos" className="space-y-6">
-          <RevelarJornadas inicial={3}>
-            {diasPartidos.map(([dia, lista]) => (
-              <DiaDePartidos
-                key={dia}
-                partidos={lista}
-                grupoId={grupo.id}
-                reglas={reglas}
-                prediccionPorPartido={prediccionPorPartido}
-                ahora={ahora}
-              />
-            ))}
-          </RevelarJornadas>
+          {/* Sección destacada con los partidos de hoy (si los hay). */}
+          {partidosHoy.length > 0 && (
+            <SeccionHoyPartidos
+              partidos={partidosHoy}
+              grupoId={grupo.id}
+              reglas={reglas}
+              prediccionPorPartido={prediccionPorPartido}
+              ahora={ahora}
+              totalParticipantes={grupo.total_participantes}
+            />
+          )}
+          {diasPartidosResto.length > 0 && (
+            <RevelarJornadas inicial={3}>
+              {diasPartidosResto.map(([dia, lista]) => (
+                <DiaDePartidos
+                  key={dia}
+                  partidos={lista}
+                  grupoId={grupo.id}
+                  reglas={reglas}
+                  prediccionPorPartido={prediccionPorPartido}
+                  ahora={ahora}
+                  totalParticipantes={grupo.total_participantes}
+                />
+              ))}
+            </RevelarJornadas>
+          )}
         </TabsContent>
 
         {/* TABLA */}
@@ -535,6 +679,9 @@ export default async function GrupoDetallePage({
           <TablaPosiciones
             filas={tabla}
             criterios={reglas.criterios_desempate}
+            grupoId={grupo.id}
+            partidos={partidos}
+            reglas={reglas}
           />
         </TabsContent>
 
@@ -569,6 +716,13 @@ export default async function GrupoDetallePage({
                   </Button>
                 </CardContent>
               </Card>
+              {puedeEliminarGrupo && (
+                <EliminarGrupo
+                  grupoId={grupo.id}
+                  nombre={grupo.nombre}
+                  totalParticipantes={grupo.total_participantes}
+                />
+              )}
             </div>
           )}
         </TabsContent>
@@ -576,48 +730,19 @@ export default async function GrupoDetallePage({
         {/* PARTICIPANTES — solo visible para el administrador de la polla */}
         {esAdmin && (
         <TabsContent value="gente" className="space-y-4">
-          <SectionHeader
-            titulo="Participantes"
-            sub={`${participantes.length} en el grupo`}
-          />
-          <div className="grid gap-2 md:grid-cols-2">
-            {participantes.map((part, i) => (
-              <div
-                key={part.id}
-                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                className="surface-card hover-lift flex animate-fade-up items-center gap-3 rounded-xl p-3"
-              >
-                <AvatarNotion
-                  nombre={part.usuario.nombre_completo}
-                  size="sm"
-                  className="ring-2 ring-app"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="t-body-sm truncate font-bold text-fg-strong">
-                    {part.usuario.nombre_completo}
-                  </p>
-                  {/* El correo solo lo recibe el admin del grupo (o superadmin):
-                      el RPC lo envía como null al resto. */}
-                  {esAdmin && part.usuario.email && (
-                    <p className="t-caption truncate text-fg-muted">
-                      {part.usuario.email}
-                    </p>
-                  )}
-                  <p className="t-caption">
-                    {part.pago_realizado ? "Pago al día" : "Pago pendiente"}
-                  </p>
-                </div>
-                {part.rol === "admin" && (
-                  <Badge variant="accent">
-                    <Shield className="size-3" /> Admin
-                  </Badge>
-                )}
-                <span className="t-h4 tabular-nums text-fg-strong">
-                  {part.puntos_totales}
-                </span>
-              </div>
-            ))}
+          <div className="flex items-end justify-between gap-3">
+            <SectionHeader
+              titulo="Participantes"
+              sub={`${participantes.length} en el grupo`}
+            />
+            <PanelBaneados grupoId={grupo.id} />
           </div>
+          <PanelParticipantes
+            grupoId={grupo.id}
+            participantes={participantes}
+            valorApuesta={reglas.valor_apuesta}
+            esAdmin={esAdmin}
+          />
         </TabsContent>
         )}
       </TabsConRefresh>

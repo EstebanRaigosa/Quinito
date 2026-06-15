@@ -43,6 +43,13 @@ export default async function PerfilPage() {
     ? `#${mejorPosicionNum}`
     : "—";
 
+  // Grupos que el usuario puede compartir (código de invitación) desde "Invitar amigos".
+  const gruposInvitables = grupos.map((g) => ({
+    id: g.id,
+    nombre: g.nombre,
+    codigo: g.codigo_invitacion,
+  }));
+
   return (
     <PageContainer ancho="estrecho" className="space-y-6">
       {/* Cabecera: avatar centrado + nombre + email (estilo mockup móvil) */}
@@ -75,7 +82,7 @@ export default async function PerfilPage() {
 
       {/* Ajustes + cerrar sesión (interactivo) */}
       <div className="animate-fade-up [animation-delay:120ms]">
-        <AccionesPerfil nombre={nombre} />
+        <AccionesPerfil nombre={nombre} grupos={gruposInvitables} />
       </div>
     </PageContainer>
   );

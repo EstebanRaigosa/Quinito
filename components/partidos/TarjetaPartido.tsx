@@ -63,6 +63,7 @@ export function TarjetaPartido({
   reglas,
   ahora,
   grupoId,
+  totalParticipantes,
 }: {
   partido: Partido;
   miPrediccion?: Prediccion;
@@ -72,6 +73,12 @@ export function TarjetaPartido({
   ahora?: Date;
   /** Grupo al que pertenece la tarjeta: habilita el panel de estadísticas. */
   grupoId?: string;
+  /**
+   * Nº de integrantes del grupo (umbral de privacidad del agregado). Opcional:
+   * en el calendario global no hay grupo. Aquí el panel solo se ve tras el
+   * cierre, donde el umbral no aplica, así que el valor es informativo.
+   */
+  totalParticipantes?: number;
 }) {
   const finalizado = partido.estado === "finalizado";
   const cancelado = partido.estado === "cancelado";
@@ -220,6 +227,7 @@ export function TarjetaPartido({
                     partido={partido}
                     reglas={reglas!}
                     ahora={ahora!}
+                    totalParticipantes={totalParticipantes ?? 0}
                     miPrediccion={miPrediccion}
                   />
                 </TabsContent>

@@ -17,7 +17,13 @@ const RUTAS_PUBLICAS = [
  * código (COMPATIBILIDAD-MOVIL.md §14).
  */
 function esRutaPublica(pathname: string): boolean {
-  return RUTAS_PUBLICAS.includes(pathname) || pathname.startsWith("/unirse/");
+  return (
+    RUTAS_PUBLICAS.includes(pathname) ||
+    pathname.startsWith("/unirse/") ||
+    // Ícono "vs" de las notificaciones push: lo pide el navegador al pintar la
+    // notificación, sin sesión. Solo expone banderas (sin PII).
+    pathname.startsWith("/api/notif-vs")
+  );
 }
 
 /**

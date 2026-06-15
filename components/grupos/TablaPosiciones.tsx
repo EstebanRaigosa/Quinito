@@ -1,61 +1,24 @@
-import { BarChart3, Equal, Info } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { BarChart3, Info } from "lucide-react";
 import type {
   CriterioDesempate,
   FilaTablaPosiciones,
+  Partido,
+  ReglasGrupo,
 } from "@/lib/types/dominio";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { DetalleParticipante } from "@/components/grupos/DetalleParticipante";
 
-/** Métrica y etiqueta de cada criterio de desempate. */
-const METRICA_CRITERIO: Record<
-  CriterioDesempate,
-  (f: FilaTablaPosiciones) => number
-> = {
-  exactos: (f) => f.marcadores_exactos,
-  unicas: (f) => f.unicas_acertadas,
-  aciertos: (f) => f.aciertos,
-};
-const LABEL_CRITERIO: Record<CriterioDesempate, string> = {
-  exactos: "marcadores exactos",
-  unicas: "predicciones únicas",
-  aciertos: "aciertos",
-};
 /** Etiqueta corta para la leyenda del orden de desempate. */
 const LABEL_CORTO: Record<CriterioDesempate, string> = {
   exactos: "exactos",
   unicas: "únicas",
   aciertos: "aciertos",
 };
-
-/**
- * Si la fila empata en puntos con un vecino, devuelve la etiqueta del primer
- * criterio (en el orden configurado) que la diferencia — el que decide el
- * desempate. `null` si no hay empate de puntos o todo coincide (orden alfabético).
- */
-function motivoDesempate(
-  filas: FilaTablaPosiciones[],
-  i: number,
-  criterios: CriterioDesempate[],
-): { criterio: CriterioDesempate; valor: number } | null {
-  const f = filas[i]!;
-  const arriba =
-    i > 0 && filas[i - 1]!.puntos_totales === f.puntos_totales
-      ? filas[i - 1]!
-      : null;
-  const abajo =
-    i < filas.length - 1 && filas[i + 1]!.puntos_totales === f.puntos_totales
-      ? filas[i + 1]!
-      : null;
-  const vecino = arriba ?? abajo;
-  if (!vecino) return null;
-  for (const c of criterios) {
-    if (METRICA_CRITERIO[c](f) !== METRICA_CRITERIO[c](vecino)) {
-      return { criterio: c, valor: METRICA_CRITERIO[c](f) };
-    }
-  }
-  return null;
-}
 
 const MEDALLA: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
@@ -106,10 +69,12 @@ function Pedestal({
   fila,
   posicion,
   orden,
+  onSeleccionar,
 }: {
   fila: FilaTablaPosiciones | null;
   posicion: number;
   orden: number;
+  onSeleccionar: (fila: FilaTablaPosiciones) => void;
 }) {
   const esOro = posicion === 1;
   const tono = PODIO[posicion as 1 | 2 | 3] ?? PODIO[3];
@@ -142,10 +107,13 @@ function Pedestal({
   }
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onSeleccionar(fila)}
+      aria-label={`Ver detalle de ${fila.nombre_completo}`}
       style={{ animationDelay: `${orden * 90}ms` }}
       className={cn(
-        "relative flex animate-fade-up w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-t-xl px-1.5 pb-2.5 pt-3",
+        "relative flex animate-fade-up w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-t-xl px-1.5 pb-2.5 pt-3 transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         ALTURA[posicion],
         tono.card,
       )}
@@ -172,7 +140,7 @@ function Pedestal({
       </div>
       {/* Nombre dentro del escalón, en placa de alto contraste. */}
       <div className={PLACA}>{fila.nombre_completo}</div>
-    </div>
+    </button>
   );
 }
 
@@ -187,24 +155,26 @@ function FilaTabla({
   fila,
   max,
   indice,
-  motivo,
+  onSeleccionar,
 }: {
   fila: FilaTablaPosiciones;
   max: number;
   indice: number;
-  /** Criterio (y valor de esta fila) que desempata, si empata en puntos. */
-  motivo?: { criterio: CriterioDesempate; valor: number } | null;
+  onSeleccionar: (fila: FilaTablaPosiciones) => void;
 }) {
   return (
-    <li
-      style={{ animationDelay: `${indice * 35}ms` }}
-      className={cn(
-        GRID,
-        "animate-fade-up px-3 py-2.5 transition-colors",
-        fila.es_actual ? "bg-primary-soft" : "hover:bg-sunken",
-      )}
-    >
-      {/* # — top 3 con el color de su medalla; el resto en texto simple. */}
+    <li style={{ animationDelay: `${indice * 35}ms` }} className="animate-fade-up">
+      <button
+        type="button"
+        onClick={() => onSeleccionar(fila)}
+        aria-label={`Ver detalle de ${fila.nombre_completo}`}
+        className={cn(
+          GRID,
+          "min-h-11 w-full px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          fila.es_actual ? "bg-primary-soft" : "hover:bg-sunken",
+        )}
+      >
+        {/* # — top 3 con el color de su medalla; el resto en texto simple. */}
       {fila.posicion <= 3 ? (
         <span
           aria-label={`Puesto ${fila.posicion}`}
@@ -226,7 +196,7 @@ function FilaTabla({
         </span>
       )}
 
-      {/* Jugador (sin avatar: nombre + motivo de desempate si aplica) */}
+      {/* Jugador (sin avatar: solo nombre) */}
       <div className="flex min-w-0 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-sm font-bold text-fg-strong">
@@ -238,17 +208,6 @@ function FilaTabla({
             </Badge>
           )}
         </span>
-        {motivo && (
-          <span className="mt-0.5 flex items-center gap-1 text-2xs font-medium text-fg-subtle">
-            <Equal className="size-3 shrink-0" aria-hidden />
-            <span className="truncate">
-              Empate a {fila.puntos_totales} pts ·{" "}
-              <strong className="font-bold text-fg-muted">
-                {motivo.valor} {LABEL_CRITERIO[motivo.criterio]}
-              </strong>
-            </span>
-          </span>
-        )}
       </div>
 
       {/* Marcadores exactos */}
@@ -288,8 +247,9 @@ function FilaTabla({
             )}
             style={{ width: `${(fila.puntos_totales / max) * 100}%` }}
           />
+          </div>
         </div>
-      </div>
+      </button>
     </li>
   );
 }
@@ -297,11 +257,21 @@ function FilaTabla({
 export function TablaPosiciones({
   filas,
   criterios = ["exactos", "unicas", "aciertos"],
+  grupoId,
+  partidos,
+  reglas,
 }: {
   filas: FilaTablaPosiciones[];
   /** Orden de criterios de desempate del grupo (para explicar el motivo). */
   criterios?: CriterioDesempate[];
+  grupoId: string;
+  partidos: Partido[];
+  reglas: ReglasGrupo;
 }) {
+  const [seleccionada, setSeleccionada] = useState<FilaTablaPosiciones | null>(
+    null,
+  );
+
   if (filas.length === 0) {
     return (
       <EmptyState
@@ -347,7 +317,13 @@ export function TablaPosiciones({
       {/* Podio: siempre visible; los lugares sin jugador van vacíos. */}
       <div className="grid grid-cols-3 items-end gap-2.5 pt-2 sm:gap-3">
         {ordenPodio.map((s, i) => (
-          <Pedestal key={s.posicion} posicion={s.posicion} fila={s.fila} orden={i} />
+          <Pedestal
+            key={s.posicion}
+            posicion={s.posicion}
+            fila={s.fila}
+            orden={i}
+            onSeleccionar={setSeleccionada}
+          />
         ))}
       </div>
 
@@ -383,11 +359,21 @@ export function TablaPosiciones({
               fila={f}
               max={max}
               indice={i}
-              motivo={motivoDesempate(filas, i, criterios)}
+              onSeleccionar={setSeleccionada}
             />
           ))}
         </ul>
       </div>
+
+      {/* Detalle del participante seleccionado (bottom sheet). */}
+      <DetalleParticipante
+        abierto={!!seleccionada}
+        onOpenChange={(v) => !v && setSeleccionada(null)}
+        fila={seleccionada}
+        grupoId={grupoId}
+        partidos={partidos}
+        reglas={reglas}
+      />
     </div>
   );
 }

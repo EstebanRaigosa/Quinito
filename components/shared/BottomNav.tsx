@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   ListOrdered,
   Trophy,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCerrarSesion } from "@/lib/auth/use-cerrar-sesion";
@@ -230,6 +231,21 @@ export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
               >
                 <Trophy className="size-[18px] text-primary" />
                 Pollas
+              </Link>
+              <Link
+                href="/admin/conectados"
+                role="menuitem"
+                onClick={() => setAdminAbierto(false)}
+                aria-current={
+                  pathname === "/admin/conectados" ? "page" : undefined
+                }
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
+                  pathname === "/admin/conectados" ? "text-primary" : "text-fg",
+                )}
+              >
+                <Radio className="size-[18px] text-primary" />
+                Conectados
               </Link>
             </div>
           </>

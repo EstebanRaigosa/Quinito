@@ -4,8 +4,11 @@ import { ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
+import { LatidoPresencia } from "@/components/shared/LatidoPresencia";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { BotonInstalarPWA } from "@/components/shared/BotonInstalarPWA";
+import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
+import { PromptNotificaciones } from "@/components/notificaciones/PromptNotificaciones";
 import { OnboardingNombre } from "@/components/perfil/OnboardingNombre";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import type { Perfil } from "@/lib/types/dominio";
@@ -40,6 +43,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-dvh bg-app">
+      {/* Latido de presencia (cada usuario actualiza solo su propia fila). */}
+      <LatidoPresencia usuarioId={user.id} />
+
       <Sidebar usuario={usuario} grupos={grupos} esAdmin={superAdmin} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -52,6 +58,7 @@ export default async function AppLayout({
             <div className="flex items-center gap-1">
               {/* Instalar PWA: solo aparece si el navegador es elegible y no está instalada */}
               <BotonInstalarPWA variant="icon" />
+              <CampanaNotificaciones />
               {superAdmin && (
                 <Link
                   href="/admin"
@@ -85,8 +92,12 @@ export default async function AppLayout({
 
       {/* Onboarding: pide configurar el nombre visible en el primer ingreso
           (tras registrarse o entrar con Google) hasta que se confirme. */}
-      {!perfil?.nombre_confirmado && (
+      {!perfil?.nombre_confirmado ? (
         <OnboardingNombre nombreInicial={usuario.nombre_completo} />
+      ) : (
+        /* Una vez confirmado el nombre, invitamos a activar las notificaciones
+            push al abrir la PWA (no se apila con el onboarding de nombre). */
+        <PromptNotificaciones />
       )}
     </div>
   );

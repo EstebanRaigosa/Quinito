@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { FaseTorneo, Partido } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { usePartidosTorneo } from "@/lib/queries/partidos";
+import { compararPartidos } from "@/lib/utils/prediccion";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
 import { createClient } from "@/lib/supabase/client";
 import { formatearFechaCorta, formatearHoraBogota } from "@/lib/utils/fechas";
@@ -69,6 +70,7 @@ function LadoMatch({
 export function PasoPartidos() {
   const router = useRouter();
   const {
+    torneoId,
     datos,
     reglas,
     partidosSeleccionados,
@@ -82,7 +84,7 @@ export function PasoPartidos() {
     new Set(["fase_grupos", "dieciseisavos"]),
   );
 
-  const { data: partidos = [], isLoading, isError } = usePartidosTorneo();
+  const { data: partidos = [], isLoading, isError } = usePartidosTorneo(torneoId);
 
   useEffect(() => {
     if (partidos.length > 0) {
@@ -97,6 +99,9 @@ export function PasoPartidos() {
       lista.push(p);
       mapa.set(p.fase, lista);
     }
+    // Dentro de cada fase: por fecha y, ante igual fecha (partidos sin fecha
+    // centinela), por grupo (A, B, C, D…) y número.
+    for (const lista of mapa.values()) lista.sort(compararPartidos);
     return mapa;
   }, [partidos]);
 
@@ -110,6 +115,10 @@ export function PasoPartidos() {
   }
 
   async function crearGrupo() {
+    if (!torneoId) {
+      toast.error("Selecciona un torneo");
+      return;
+    }
     if (partidosSeleccionados.size === 0) {
       toast.error("Selecciona al menos un partido");
       return;
@@ -122,6 +131,7 @@ export function PasoPartidos() {
       p_descripcion: datos.descripcion ?? "",
       p_reglas: reglas,
       p_partido_ids: [...partidosSeleccionados],
+      p_torneo_id: torneoId,
     });
     if (error || !grupoId) {
       toast.error("No se pudo crear el grupo. Intenta de nuevo.");

@@ -4,33 +4,47 @@ import { Loader2, Lock, Users } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { useEstadisticasGrupoResumen } from "@/lib/queries/estadisticas";
 import { prediccionCerrada } from "@/lib/utils/prediccion";
-import { formatearHoraBogota } from "@/lib/utils/fechas";
+import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { Flag } from "@/components/shared/Flag";
 import { IconoEmpate } from "@/components/shared/IconoEmpate";
 import { StatBar, ScoreRow } from "@/components/partidos/StatBar";
 
-const UMBRAL_PRIVACIDAD = 5;
+/**
+ * Mínimo de INTEGRANTES del grupo para mostrar los agregados antes del cierre.
+ * En grupos de ≤3 personas, ver la tendencia (aunque solo 1 haya predicho)
+ * permitiría deducir fácilmente quién puso qué, rompiendo la privacidad
+ * pre-cierre (CLAUDE.md §3.4). Con ≥4 integrantes el agregado ya no delata a
+ * nadie, así que se muestra con las predicciones que haya (1, 2, …).
+ */
+const MIN_INTEGRANTES_AGREGADO = 4;
 
 /**
  * Panel "General": resumen agregado de la POLLA para el partido — distribución
  * de ganador y marcadores más comunes, SOLO del grupo (no de la plataforma).
  * Siempre anónimo: no revela qué usuario predijo qué.
  *
- * Antes del cierre exige ≥5 predicciones para no insinuar predicciones
- * individuales en grupos chicos (CLAUDE.md §3.4). Tras el cierre se muestra
- * siempre, porque las predicciones del grupo ya son visibles.
+ * Se muestra SIEMPRE, esté la apuesta cerrada o no, porque son agregados sin
+ * PII (no nombres). La única excepción es un grupo de ≤3 integrantes ANTES del
+ * cierre: ahí el agregado delataría la predicción individual en un grupo chico
+ * (ver `MIN_INTEGRANTES_AGREGADO`). El umbral mira el TAMAÑO del grupo, no
+ * cuántos predijeron: con >3 integrantes se muestra aunque solo 1 haya
+ * predicho. La protección de los datos NOMINALES la imponen las vistas/RLS,
+ * no este umbral de cliente.
  */
 export function EstadisticasGrupoResumen({
   grupoId,
   partido,
   reglas,
   ahora,
+  totalParticipantes,
   miPrediccion,
 }: {
   grupoId: string;
   partido: Partido;
   reglas: ReglasGrupo;
   ahora: Date;
+  /** Nº de integrantes del grupo: decide si se puede mostrar el agregado. */
+  totalParticipantes: number;
   miPrediccion?: Prediccion;
 }) {
   const cerrada = prediccionCerrada(
@@ -63,10 +77,10 @@ export function EstadisticasGrupoResumen({
     );
   }
 
-  // Antes del cierre y con pocas predicciones: ocultar para no insinuar quién
-  // puso qué dentro de un grupo pequeño.
-  if (!cerrada && total < UMBRAL_PRIVACIDAD) {
-    const cierreHora = formatearHoraBogota(
+  // Grupo pequeño (≤3) antes del cierre: ocultar para no insinuar quién puso
+  // qué. El criterio es el TAMAÑO del grupo, no cuántos predijeron.
+  if (!cerrada && totalParticipantes < MIN_INTEGRANTES_AGREGADO) {
+    const cierreFechaHora = formatearFechaHoraBogota(
       new Date(
         new Date(partido.fecha_hora).getTime() -
           reglas.minutos_cierre_prediccion * 60000,
@@ -82,9 +96,9 @@ export function EstadisticasGrupoResumen({
             Tendencia del grupo aún oculta.
           </p>
           <p className="mt-0.5 text-xs text-fg-muted">
-            Se mostrará con al menos {UMBRAL_PRIVACIDAD} predicciones del grupo. El
-            detalle por persona estará al cerrar la apuesta a las{" "}
-            <strong className="text-fg-strong">{cierreHora}</strong>.
+            En grupos de pocas personas se muestra al cerrar la apuesta, el{" "}
+            <strong className="text-fg-strong">{cierreFechaHora}</strong>, para
+            no revelar quién puso qué.
           </p>
         </div>
       </div>

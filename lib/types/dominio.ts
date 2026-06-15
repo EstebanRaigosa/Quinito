@@ -101,7 +101,22 @@ export type Participante = {
   rol: RolParticipante;
   pago_realizado: boolean;
   puntos_totales: number;
+  /** Puntaje de arranque al migrar la polla a mitad de torneo. */
+  puntos_iniciales: number;
 };
+
+/** Un abono (pago parcial) de un participante hacia el valor de la apuesta. */
+export type Abono = {
+  id: string;
+  monto: number;
+  nota: string | null;
+  creado_en: string;
+  /** Nombre de quien registró el abono (admin/superadmin), si se conserva. */
+  registrado_por_nombre: string | null;
+};
+
+/** Estado de pago de un participante frente al valor de la apuesta. */
+export type EstadoPago = "pagado" | "parcial" | "pendiente" | "sin_costo";
 
 /** Polla / quiniela creada por un usuario. */
 export type Grupo = {
@@ -133,6 +148,8 @@ export type FilaTablaPosiciones = {
   nombre_completo: string;
   avatar_url: string | null;
   puntos_totales: number;
+  /** Puntaje de arranque (incluido ya en puntos_totales); para mostrar desglose. */
+  puntos_iniciales: number;
   aciertos: number;
   marcadores_exactos: number;
   /** Predicciones únicas acertadas (para el desempate). */

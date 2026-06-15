@@ -2,23 +2,17 @@
 
 import { Lock, Loader2 } from "lucide-react";
 import type { Partido, ReglasGrupo } from "@/lib/types/dominio";
-import {
-  useEstadisticasGrupo,
-  usePrediccionesNominales,
-} from "@/lib/queries/estadisticas";
+import { usePrediccionesNominales } from "@/lib/queries/estadisticas";
 import { prediccionCerrada } from "@/lib/utils/prediccion";
-import { formatearHoraBogota } from "@/lib/utils/fechas";
+import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { Flag } from "@/components/shared/Flag";
-import { IconoEmpate } from "@/components/shared/IconoEmpate";
-import { StatBar } from "@/components/partidos/StatBar";
 import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
 import { cn } from "@/lib/utils";
 
-const UMBRAL_PRIVACIDAD = 5;
-
 /**
- * Panel "Predicciones de mi grupo". Antes del cierre: mensaje "secretas" +
- * agregados anónimos solo si ≥5 predijeron. Después del cierre: lista nominal.
+ * Panel "Por persona". Antes del cierre: solo el aviso de que las predicciones
+ * nominales son secretas (los agregados anónimos viven en la pestaña "General",
+ * que se muestra siempre). Después del cierre: lista nominal por marcador.
  * La privacidad la imponen las vistas (`vwPrediccionesGrupoPartido` solo devuelve
  * filas tras el cierre); aquí el cálculo de cierre es solo para la UI.
  */
@@ -38,68 +32,34 @@ export function EstadisticasGrupo({
     reglas.minutos_cierre_prediccion,
     ahora,
   );
-  const agregado = useEstadisticasGrupo(grupoId, partido.id);
   const nominales = usePrediccionesNominales(grupoId, partido.id, cerrada);
 
   if (!cerrada) {
-    const cierreHora = formatearHoraBogota(
+    const cierreFechaHora = formatearFechaHoraBogota(
       new Date(
         new Date(partido.fecha_hora).getTime() -
           reglas.minutos_cierre_prediccion * 60000,
       ),
     );
-    const total = agregado.data?.total ?? 0;
-    const muestraAgregado = total >= UMBRAL_PRIVACIDAD;
-    const dist = agregado.data?.distribucion;
 
     return (
-      <div className="space-y-5">
-        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary-soft/60 p-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-surface text-primary shadow-xs">
-            <Lock className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-fg-strong">
-              Las predicciones de tus amigos son secretas.
-            </p>
-            <p className="mt-0.5 text-xs text-fg-muted">
-              Estarán disponibles cuando se cierre la apuesta a las{" "}
-              <strong className="text-fg-strong">{cierreHora}</strong>.
-            </p>
-          </div>
+      <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary-soft/60 p-4">
+        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-surface text-primary shadow-xs">
+          <Lock className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-fg-strong">
+            Las predicciones de tus amigos son secretas.
+          </p>
+          <p className="mt-0.5 text-xs text-fg-muted">
+            Se revelan al cerrar la apuesta, el{" "}
+            <strong className="text-fg-strong">{cierreFechaHora}</strong>. Una vez
+            empiece el partido podrás verlas en la sección{" "}
+            <strong className="text-fg-strong">Partidos</strong>. Mientras tanto,
+            mira la tendencia del grupo en{" "}
+            <strong className="text-fg-strong">General</strong>.
+          </p>
         </div>
-
-        {muestraAgregado && dist && (
-          <div className="space-y-3">
-            <h3 className="flex items-center gap-2 text-base font-extrabold text-fg-strong">
-              <span className="h-4 w-1 rounded-full bg-primary" aria-hidden />
-              Tendencia anónima del grupo
-              <span className="text-xs font-medium text-fg-subtle">
-                · {total} predicciones
-              </span>
-            </h3>
-            <StatBar
-              label={partido.equipo_local?.nombre ?? "Local"}
-              pct={dist.local_pct}
-              color="var(--mustard-400)"
-              sublabel={<Flag code={partido.equipo_local?.codigo_iso} size={16} />}
-            />
-            <StatBar
-              label="Empate"
-              pct={dist.empate_pct}
-              color="var(--stone-400)"
-              sublabel={<IconoEmpate size={16} />}
-            />
-            <StatBar
-              label={partido.equipo_visitante?.nombre ?? "Visitante"}
-              pct={dist.visitante_pct}
-              color="var(--clay-500)"
-              sublabel={
-                <Flag code={partido.equipo_visitante?.codigo_iso} size={16} />
-              }
-            />
-          </div>
-        )}
       </div>
     );
   }
@@ -154,7 +114,7 @@ export function EstadisticasGrupo({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3.5">
       {grupos.map((g) => {
         const acerto = g.puntos != null && g.puntos > 0;
         const finalizado = partido.estado === "finalizado";
@@ -162,20 +122,27 @@ export function EstadisticasGrupo({
           <div
             key={g.clave}
             className={cn(
+              // Verde con la escala `mustard` (=emerald) en hex literal: a
+              // diferencia de `primary/success` (var hex), SÍ admite opacidad en
+              // Tailwind 3.4. Al ser un velo translúcido funciona sobre el Sheet
+              // claro y oscuro. Borde + sombra dan profundidad y separan cada
+              // tarjeta; la cabecera va más saturada que el cuerpo (no queda
+              // plano). La que PUNTUÓ sube todo: verde más denso + borde fuerte
+              // + anillo + más sombra, para resaltar sin perder el tono común.
               "overflow-hidden rounded-xl border shadow-md",
               acerto
-                ? "border-success/45 bg-success-soft/15"
-                : "border-border bg-surface",
+                ? "border-mustard-400/60 bg-mustard-400/[0.14] ring-1 ring-mustard-400/35"
+                : "border-mustard-400/30 bg-mustard-400/[0.06]",
             )}
           >
-            {/* Cabecera del resultado: barra tintada con borde inferior grueso,
-                claramente separada de la lista de usuarios de abajo. */}
+            {/* Cabecera del resultado: franja verde MÁS saturada que el cuerpo,
+                con borde inferior, para separarla con claridad de la lista. */}
             <div
               className={cn(
-                "flex items-center justify-between gap-2 border-b-2 px-3 py-2.5",
+                "flex items-center justify-between gap-2 border-b px-3 py-2.5",
                 acerto
-                  ? "border-success/30 bg-success-soft/60"
-                  : "border-clay-200/60 bg-clay-100/60",
+                  ? "border-mustard-400/40 bg-mustard-400/30"
+                  : "border-mustard-400/25 bg-mustard-400/15",
               )}
             >
               <div className="flex items-center gap-2.5">
@@ -217,19 +184,19 @@ export function EstadisticasGrupo({
             <ul
               className={cn(
                 "divide-y",
-                acerto ? "divide-success/20" : "divide-border",
+                acerto ? "divide-mustard-400/20" : "divide-mustard-400/10",
               )}
             >
               {g.personas.map((nombre, i) => (
                 <li
                   key={`${g.clave}-${i}`}
-                  className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-sunken/40"
+                  className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10"
                 >
                   <span
                     aria-hidden
                     className={cn(
                       "size-1.5 shrink-0 rounded-full",
-                      acerto ? "bg-success" : "bg-clay-400",
+                      acerto ? "bg-mustard-500" : "bg-mustard-400",
                     )}
                   />
                   <span className="truncate text-sm font-semibold text-fg-strong">

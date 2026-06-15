@@ -203,6 +203,14 @@ const config: Config = {
           "0%, 100%": { opacity: "1", transform: "scale3d(1, 1, 1)" },
           "50%": { opacity: "0.4", transform: "scale3d(0.85, 0.85, 1)" },
         },
+        // Destello al actualizarse una tarjeta en vivo (marcador/estado): anillo
+        // esmeralda que aparece y se desvanece una sola vez. Llama la atención
+        // sin desplazar layout (solo box-shadow).
+        destello: {
+          "0%": { boxShadow: "0 0 0 0 rgba(34, 197, 94, 0)" },
+          "12%": { boxShadow: "0 0 0 3px rgba(34, 197, 94, 0.55)" },
+          "100%": { boxShadow: "0 0 0 0 rgba(34, 197, 94, 0)" },
+        },
         // Flotación lenta para blobs decorativos.
         float: {
           "0%, 100%": { transform: "translate3d(0, 0, 0)" },
@@ -223,6 +231,7 @@ const config: Config = {
         "grow-x": "grow-x 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both",
         shine: "shine 3.2s ease-in-out infinite",
         "live-pulse": "live-pulse 1.5s ease-in-out infinite",
+        destello: "destello 1.6s ease-out 1",
         float: "float 7s ease-in-out infinite",
         shimmer: "shimmer 1.6s infinite",
       },

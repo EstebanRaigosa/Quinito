@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   // no abortar al detectar esa config de webpack. Vacío basta: en dev no usamos
   // webpack y el build de producción corre con `--webpack`.
   turbopack: {},
+  // Túnel ngrok para pruebas en dispositivos reales. Autoriza el host cross-origin
+  // contra el dev server. Quitar cuando se deje de usar ngrok.
+  allowedDevOrigins: ["kary-nonmountainous-absurdly.ngrok-free.dev"],
 };
 
 /**

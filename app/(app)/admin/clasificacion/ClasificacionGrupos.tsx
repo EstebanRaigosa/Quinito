@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Check, Loader2, Trophy } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Check, Loader2, Medal, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { guardarClasificacion, limpiarClasificacion } from "../actions";
+import {
+  guardarClasificacion,
+  guardarMejoresTerceros,
+  limpiarClasificacion,
+  limpiarMejoresTerceros,
+} from "../actions";
 
 export type EquipoFila = {
   equipoId: string;
@@ -30,10 +35,28 @@ export type GrupoClasificacion = {
   hayAmbiguo: boolean;
 };
 
+export type TerceroFila = {
+  grupo: string;
+  equipoId: string | null;
+  nombre: string | null;
+  codigoIso: string | null;
+  pts: number | null;
+  dif: number | null;
+  aFavor: number | null;
+  determinado: boolean;
+  posicionAuto: number | null;
+  clasificaAuto: boolean;
+  manualClasifica: boolean;
+};
+
 export type TorneoClasificacion = {
   id: string;
   nombre: string;
   grupos: GrupoClasificacion[];
+  terceros: TerceroFila[];
+  hayManualTerceros: boolean;
+  ambiguoTerceros: boolean;
+  tercerosCompletos: boolean;
 };
 
 export function ClasificacionGrupos({
@@ -94,6 +117,8 @@ export function ClasificacionGrupos({
           <TarjetaGrupo key={g.grupo} torneoId={torneoActivo.id} grupo={g} />
         ))}
       </div>
+
+      <MejoresTerceros torneo={torneoActivo} />
     </div>
   );
 }
@@ -106,22 +131,24 @@ function TarjetaGrupo({
   grupo: GrupoClasificacion;
 }) {
   // El orden de `equipos` ya viene por posición efectiva (manual o automática),
-  // así que los dos primeros son el 1° y 2° actuales.
+  // así que los tres primeros son el 1°, 2° y 3° actuales.
   const [primero, setPrimero] = useState(grupo.equipos[0]?.equipoId ?? "");
   const [segundo, setSegundo] = useState(grupo.equipos[1]?.equipoId ?? "");
+  const [tercero, setTercero] = useState(grupo.equipos[2]?.equipoId ?? "");
   const [guardando, setGuardando] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
 
-  const mismoEquipo = primero !== "" && primero === segundo;
+  const elegidos = [primero, segundo, tercero].filter(Boolean);
+  const hayRepetido = new Set(elegidos).size !== elegidos.length;
   const ocupado = guardando || limpiando;
 
   async function guardar() {
-    if (!primero || !segundo) {
-      toast.error("Selecciona el 1° y el 2°");
+    if (!primero || !segundo || !tercero) {
+      toast.error("Selecciona el 1°, 2° y 3°");
       return;
     }
-    if (mismoEquipo) {
-      toast.error("El 1° y el 2° deben ser distintos");
+    if (hayRepetido) {
+      toast.error("El 1°, 2° y 3° deben ser distintos");
       return;
     }
     setGuardando(true);
@@ -130,6 +157,7 @@ function TarjetaGrupo({
       grupo: grupo.grupo,
       primeroId: primero,
       segundoId: segundo,
+      terceroId: tercero,
     });
     setGuardando(false);
     if (!r.ok) {
@@ -182,13 +210,15 @@ function TarjetaGrupo({
           <tbody>
             {grupo.equipos.map((e, i) => {
               const efectiva = e.manualPosicion ?? e.posicion;
-              const clasifica = i < 2; // los dos primeros del orden efectivo
+              const clasifica = i < 2; // 1° y 2° pasan directo
+              const esTercero = i === 2; // candidato a mejor tercero
               return (
                 <tr
                   key={e.equipoId}
                   className={cn(
                     "border-t border-border",
                     clasifica && "bg-primary-soft/40",
+                    esTercero && "bg-warning/10",
                   )}
                 >
                   <td className="px-2 py-1.5 font-bold tabular-nums text-fg-muted">
@@ -219,8 +249,8 @@ function TarjetaGrupo({
         </table>
       </div>
 
-      {/* Selección manual de clasificados */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Selección manual de clasificados (1°, 2° y 3°) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SelectEquipo
           etiqueta="1° lugar"
           value={primero}
@@ -235,10 +265,17 @@ function TarjetaGrupo({
           equipos={grupo.equipos}
           disabled={ocupado}
         />
+        <SelectEquipo
+          etiqueta="3° lugar"
+          value={tercero}
+          onChange={setTercero}
+          equipos={grupo.equipos}
+          disabled={ocupado}
+        />
       </div>
-      {mismoEquipo && (
+      {hayRepetido && (
         <p className="t-caption text-destructive">
-          El 1° y el 2° no pueden ser el mismo equipo.
+          El 1°, 2° y 3° no pueden repetir equipo.
         </p>
       )}
 
@@ -246,7 +283,7 @@ function TarjetaGrupo({
         <Button
           size="sm"
           onClick={guardar}
-          disabled={ocupado || mismoEquipo}
+          disabled={ocupado || hayRepetido}
           className="flex-1"
         >
           {guardando ? (
@@ -305,5 +342,207 @@ function SelectEquipo({
         ))}
       </select>
     </label>
+  );
+}
+
+const TOTAL_TERCEROS = 8;
+
+function MejoresTerceros({ torneo }: { torneo: TorneoClasificacion }) {
+  const { terceros, hayManualTerceros, ambiguoTerceros, tercerosCompletos } =
+    torneo;
+
+  // Mapa grupo -> datos del tercero, para pintar bandera/stats junto al cupo.
+  const porGrupo = useMemo(() => {
+    const m = new Map<string, TerceroFila>();
+    for (const t of terceros) m.set(t.grupo, t);
+    return m;
+  }, [terceros]);
+
+  // Estado: 8 cupos. Cada cupo guarda la LETRA del grupo cuyo 3° clasifica, o
+  // "" = Ninguno. El bracket solo depende del CONJUNTO de grupos elegidos, no
+  // del orden de los cupos. Inicial: la selección manual si existe; si no, la
+  // que clasifica automático.
+  const inicial = useMemo(() => {
+    const base = hayManualTerceros
+      ? terceros.filter((t) => t.manualClasifica)
+      : terceros.filter((t) => t.clasificaAuto);
+    const arr = base.map((t) => t.grupo).slice(0, TOTAL_TERCEROS);
+    while (arr.length < TOTAL_TERCEROS) arr.push("");
+    return arr;
+  }, [terceros, hayManualTerceros]);
+
+  const [cupos, setCupos] = useState<string[]>(inicial);
+  const [guardando, setGuardando] = useState(false);
+  const [limpiando, setLimpiando] = useState(false);
+
+  const ocupado = guardando || limpiando;
+  const elegidos = cupos.filter(Boolean);
+  const cuenta = elegidos.length;
+  const completo = cuenta === TOTAL_TERCEROS;
+
+  function cambiarCupo(indice: number, grupo: string) {
+    if (ocupado) return;
+    setCupos((prev) => {
+      const next = [...prev];
+      next[indice] = grupo;
+      return next;
+    });
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    const r = await guardarMejoresTerceros({
+      torneoId: torneo.id,
+      grupos: elegidos,
+    });
+    setGuardando(false);
+    if (!r.ok) {
+      toast.error(r.error ?? "No se pudo guardar");
+      return;
+    }
+    toast.success(
+      completo
+        ? "Mejores terceros guardados"
+        : "Terceros guardados; faltan cupos, los cruces con 3° quedan por definir",
+    );
+  }
+
+  async function limpiar() {
+    setLimpiando(true);
+    const r = await limpiarMejoresTerceros({ torneoId: torneo.id });
+    setLimpiando(false);
+    if (!r.ok) {
+      toast.error(r.error ?? "No se pudo quitar");
+      return;
+    }
+    toast.success("Mejores terceros: vuelve al cálculo automático");
+  }
+
+  return (
+    <section className="surface-card space-y-4 rounded-2xl p-4">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="t-h3 flex items-center gap-2 text-fg-strong">
+          <Medal className="size-5 text-primary" /> Mejores terceros
+        </h2>
+        {hayManualTerceros ? (
+          <Badge variant="secondary">Selección manual</Badge>
+        ) : !tercerosCompletos ? (
+          <Badge variant="warning">
+            <AlertTriangle className="size-3" /> Faltan 3° por definir
+          </Badge>
+        ) : ambiguoTerceros ? (
+          <Badge variant="warning">
+            <AlertTriangle className="size-3" /> Empate en el corte
+          </Badge>
+        ) : (
+          <Badge variant="success">
+            <Check className="size-3" /> Automático
+          </Badge>
+        )}
+      </header>
+
+      <p className="t-body-sm text-fg-muted">
+        Solo <strong>8 de los 12</strong> terceros pasan al bracket; los otros 4
+        grupos quedan sin tercero clasificado. Asigna cada cupo a un grupo (o
+        déjalo en <em>Ninguno</em>). Un grupo no se puede repetir: para cambiar
+        uno, primero libera su cupo. El bracket recién asigna los terceros cuando
+        los <strong>8 cupos</strong> tienen grupo; si falta alguno, los cruces
+        con 3° quedan por definir. Normalmente se calcula solo; ajústalo a mano
+        si el corte entre el 8° y 9° queda empatado.
+      </p>
+
+      {!tercerosCompletos && (
+        <p className="t-caption rounded-lg bg-warning/10 px-3 py-2 text-warning-foreground">
+          Algunos grupos aún no tienen su 3° definido; solo puedes asignar a los
+          que ya están determinados.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {cupos.map((grupoSel, i) => {
+          const sel = grupoSel ? porGrupo.get(grupoSel) : undefined;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "flex min-h-12 items-center gap-2 rounded-xl border-2 px-3 py-2 transition-colors",
+                grupoSel ? "border-primary bg-primary-soft/50" : "border-border",
+              )}
+            >
+              <span className="t-caption w-12 shrink-0 font-bold text-fg-muted">
+                Cupo {i + 1}
+              </span>
+              {sel?.determinado && (
+                <Flag code={sel.codigoIso} size={18} round />
+              )}
+              <select
+                value={grupoSel}
+                onChange={(e) => cambiarCupo(i, e.target.value)}
+                disabled={ocupado}
+                aria-label={`Cupo ${i + 1} de mejores terceros`}
+                className="h-11 min-w-0 flex-1 rounded-lg border-2 border-border bg-surface px-2.5 text-base font-semibold text-fg-strong focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted"
+              >
+                <option value="">Ninguno</option>
+                {terceros.map((t) => {
+                  const usadoEnOtro = cupos.some(
+                    (g, j) => j !== i && g === t.grupo,
+                  );
+                  return (
+                    <option
+                      key={t.grupo}
+                      value={t.grupo}
+                      disabled={!t.determinado || usadoEnOtro}
+                    >
+                      {t.grupo} ·{" "}
+                      {t.determinado ? t.nombre : "3° sin definir"}
+                      {t.posicionAuto ? ` (${t.posicionAuto}°)` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              {sel?.determinado && (
+                <span className="t-caption shrink-0 tabular-nums text-fg-muted">
+                  {sel.pts} pts
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "t-caption font-semibold tabular-nums",
+            completo ? "text-primary" : "text-fg-muted",
+          )}
+        >
+          {cuenta}/{TOTAL_TERCEROS} cupos
+        </span>
+        <div className="flex items-center gap-2">
+          {hayManualTerceros && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={limpiar}
+              disabled={ocupado}
+            >
+              {limpiando ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Usar automático"
+              )}
+            </Button>
+          )}
+          <Button size="sm" onClick={guardar} disabled={ocupado}>
+            {guardando ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              "Guardar terceros"
+            )}
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }

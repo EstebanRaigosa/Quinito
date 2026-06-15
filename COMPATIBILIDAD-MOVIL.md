@@ -583,7 +583,7 @@ navegador no muestra en `<img>` y muchos backends no procesan.
 - **Tailwind 3.4 (NO v4)** — v4 rompe iOS 15 (ver COMPATIBILIDAD-STACK §3).
 - **`<select>` nativo en admin** (sin `appearance:none`) — conserva el picker de iOS.
 - **`button` size `sm` = 40px** — compromiso aceptado para acciones secundarias; las primarias usan `default` (44px).
-- **Privacidad**: agregados anónimos pre-cierre (umbral ≥5), nominales solo post-cierre, garantizada por RLS/vistas (no por filtro de cliente). Sin Realtime sobre `tblPredicciones` cruda.
+- **Privacidad**: la pestaña **"General"** (agregados anónimos sin PII: % ganador + marcadores comunes) se muestra **siempre**, salvo cuando el grupo tiene **≤3 integrantes** y la apuesta no ha cerrado (`MIN_INTEGRANTES_AGREGADO = 4` en `EstadisticasGrupoResumen.tsx`). El umbral mira el **tamaño del grupo** (`total_participantes`, propagado por props desde `grupos/[id]/page.tsx` → `TarjetaPrediccion`/`TarjetaPartido`), **no** cuántos predijeron: con >3 integrantes se muestra aunque solo 1 haya predicho. La pestaña **"Por persona"** (nominales) **solo post-cierre** — pre-cierre muestra únicamente el aviso "secretas" (con fecha+hora del cierre y remisión a la sección **Partidos**, sin agregados duplicados). Lo NOMINAL lo garantiza RLS/vistas (`vwPrediccionesGrupoPartido` + `partido_cerrado()`), no el filtro de cliente. Sin Realtime sobre `tblPredicciones` cruda.
 
 ### Pendiente real
 - Autofill de Safari en login/registro (forms controlados de RHF) podría no disparar `onChange` — bajo riesgo en Safari moderno; si aparece, migrar email/password a `register` o detectar `:-webkit-autofill` por `onAnimationStart`.

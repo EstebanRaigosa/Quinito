@@ -96,8 +96,10 @@ export function TarjetaGrupo({
         </div>
         <div className="px-2 text-center">
           <p className="text-sm font-bold text-fg-default">Aciertos</p>
+          {/* Total de predicciones acertadas = parciales + exactos (los exactos
+              ya incluyen a los únicos). `mis_aciertos` es solo parciales. */}
           <p className="mt-1.5 text-2xl font-black tracking-tight text-fg-strong">
-            {grupo.mis_aciertos}
+            {grupo.mis_aciertos + grupo.mis_exactos}
           </p>
         </div>
       </div>

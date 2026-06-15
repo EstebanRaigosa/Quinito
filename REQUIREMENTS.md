@@ -1416,9 +1416,9 @@ pollas/
 - [ ] Marcado de predicción única.
 
 ### Fase 6.5 — Resolución de cruces eliminatorios (1 sprint)
-- [ ] Tabla `tblTercerLugarAsignacion` con las 495 combinaciones FIFA pre-cargadas.
-- [ ] Edge Function `cerrar_fase_grupos(torneo_id)` que calcula posiciones, identifica los 8 mejores terceros y resuelve slots.
-- [ ] Función / trigger que avanza ganadores y perdedores en la llave (Octavos → Cuartos → Semis → Final + Tercer Lugar).
+- [x] Tabla `tblTercerLugarAsignacion` con las 495 combinaciones FIFA pre-cargadas (migración `0027` schema + `0028` seed).
+- [x] Cálculo de posiciones e identificación de los 8 mejores terceros + resolución de slots. Implementado en SQL (`clasificacion_terceros`, `equipo_tercero_slot`, `resolver_cruces`) e integrado en `finalizar_partido`/`revertir_partido` (0013), en lugar de una Edge Function `cerrar_fase_grupos` aparte.
+- [x] Función que avanza ganadores y perdedores en la llave (Octavos → Cuartos → Semis → Final + Tercer Lugar): `resolver_cruces` resuelve `G<n>`/`P<n>` (0012).
 - [ ] Habilitar/deshabilitar formulario de predicción según si los equipos están definidos.
 
 ### Fase 7 — PWA + Polish (1 sprint)

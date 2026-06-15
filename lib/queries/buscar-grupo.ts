@@ -27,7 +27,12 @@ export async function buscarGrupo(codigo: string): Promise<GrupoPreview | null> 
   };
 }
 
-/** Inscribe al usuario actual en el grupo como jugador. */
+/**
+ * Inscribe al usuario actual en el grupo como jugador. Vía RPC `unirse_grupo`
+ * (security definer), que ADEMÁS reactiva al usuario si había sido eliminado
+ * con borrado suave: recupera su historial (predicciones y puntos) en vez de
+ * crear una fila nueva. Un usuario baneado es rechazado por el RPC.
+ */
 export async function unirseAGrupo(
   grupoId: string,
 ): Promise<{ ok: boolean; yaEra?: boolean }> {
@@ -37,15 +42,7 @@ export async function unirseAGrupo(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false };
 
-  const { error } = await supabase.from("tblParticipantes").insert({
-    grupo_id: grupoId,
-    usuario_id: user.id,
-    rol: "jugador",
-  });
-  if (error) {
-    // 23505 = unique_violation → ya era miembro, lo tratamos como éxito.
-    if (error.code === "23505") return { ok: true, yaEra: true };
-    return { ok: false };
-  }
+  const { error } = await supabase.rpc("unirse_grupo", { p_grupo_id: grupoId });
+  if (error) return { ok: false };
   return { ok: true };
 }

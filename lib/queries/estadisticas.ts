@@ -59,37 +59,6 @@ export function useEstadisticasGrupoResumen(grupoId: string, partidoId: string) 
   });
 }
 
-/** Distribución de ganador anónima del GRUPO (+ total que predijo). */
-export function useEstadisticasGrupo(grupoId: string, partidoId: string) {
-  return useQuery({
-    queryKey: ["estadisticas-grupo", grupoId, partidoId],
-    queryFn: async (): Promise<{
-      distribucion: DistribucionGanador;
-      total: number;
-    }> => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("vwEstadisticasPartidoGanadorGrupo")
-        .select("pct_local, pct_empate, pct_visitante, total_predicciones")
-        .eq("grupo_id", grupoId)
-        .eq("partido_id", partidoId)
-        .maybeSingle();
-
-      return {
-        distribucion: data
-          ? {
-              local_pct: Math.round(data.pct_local ?? 0),
-              empate_pct: Math.round(data.pct_empate ?? 0),
-              visitante_pct: Math.round(data.pct_visitante ?? 0),
-            }
-          : DIST_VACIA,
-        total: Number(data?.total_predicciones ?? 0),
-      };
-    },
-    staleTime: 60_000,
-  });
-}
-
 export type PrediccionNominal = {
   participante: string;
   goles_local: number;

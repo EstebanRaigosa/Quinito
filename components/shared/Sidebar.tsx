@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, LogOut, Loader2 } from "lucide-react";
+import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, Radio, LogOut, Loader2 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
+import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
 import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,10 +33,11 @@ export function Sidebar({
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface p-4 md:flex">
-      <div className="px-2 pb-4">
+      <div className="flex items-center justify-between px-2 pb-4">
         <Link href="/dashboard" aria-label="Inicio">
           <Logo size={20} />
         </Link>
+        <CampanaNotificaciones />
       </div>
 
       <Button asChild className="mb-4 w-full">
@@ -124,6 +126,25 @@ export function Sidebar({
               strokeWidth={pathname === "/admin/pollas" ? 2.5 : 2}
             />
             Pollas
+          </Link>
+        )}
+
+        {esAdmin && (
+          <Link
+            href="/admin/conectados"
+            aria-current={pathname === "/admin/conectados" ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+              pathname === "/admin/conectados"
+                ? "bg-primary-soft text-primary"
+                : "text-fg-muted hover:bg-sunken",
+            )}
+          >
+            <Radio
+              className={cn("size-[18px]", pathname === "/admin/conectados" && "text-primary")}
+              strokeWidth={pathname === "/admin/conectados" ? 2.5 : 2}
+            />
+            Conectados
           </Link>
         )}
       </nav>

@@ -2,8 +2,38 @@ import type { FaseTorneo, Partido, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 
 /**
+ * Fecha centinela "sin cierre": un partido con `fecha_hora` anterior a 1901
+ * (en la práctica `1900-01-01 00:00`) NUNCA se cierra para predicciones. Sirve
+ * para dejar partidos de prueba abiertos de forma indefinida. La misma regla
+ * vive en SQL (`partido_cerrado`, migración 0038) para que el RLS la respete.
+ */
+const SIN_CIERRE_LIMITE = Date.UTC(1901, 0, 1);
+
+/** ¿El partido está marcado como "sin cierre" (fecha centinela de 1900)? */
+export function esSinCierre(partido: Partido): boolean {
+  return new Date(partido.fecha_hora).getTime() < SIN_CIERRE_LIMITE;
+}
+
+/**
+ * Orden de listado: por fecha ascendente y, ante igual fecha (p. ej. los
+ * partidos "sin fecha" centinela que comparten 1900), por grupo (A, B, C, D…)
+ * y luego por número de partido. Así los partidos sin fecha quedan ordenados
+ * por grupo en vez de en orden arbitrario.
+ */
+export function compararPartidos(a: Partido, b: Partido): number {
+  const fa = new Date(a.fecha_hora).getTime();
+  const fb = new Date(b.fecha_hora).getTime();
+  if (fa !== fb) return fa - fb;
+  const ga = a.grupo ?? "";
+  const gb = b.grupo ?? "";
+  if (ga !== gb) return ga.localeCompare(gb, "es");
+  return a.numero_partido - b.numero_partido;
+}
+
+/**
  * ¿La apuesta del partido está cerrada? Se cierra `minutosCierre` antes del
- * kickoff (o si el partido ya está en vivo/finalizado/cancelado).
+ * kickoff (o si el partido ya está en vivo/finalizado/cancelado). Excepción:
+ * los partidos con fecha centinela de 1900 nunca se cierran (ver `esSinCierre`).
  *
  * Esto es solo UX: la verdad la impone el RLS/`partido_cerrado` en la BD
  * (CLAUDE.md §3.4). `ahora` se pasa explícito para poder calcularlo en servidor.
@@ -13,9 +43,19 @@ export function prediccionCerrada(
   minutosCierre: number,
   ahora: Date,
 ): boolean {
+  if (esSinCierre(partido)) return false;
   if (partido.estado !== "programado") return true;
   const cierre = new Date(partido.fecha_hora).getTime() - minutosCierre * 60_000;
   return ahora.getTime() >= cierre;
+}
+
+/**
+ * Firma de los datos "en vivo" de un partido (estado + marcador). Solo cambia
+ * cuando cambia algo visible que justifica un destello de actualización en la
+ * tarjeta. La consume `DestelloPartido`.
+ */
+export function firmaPartido(partido: Partido): string {
+  return `${partido.estado}:${partido.goles_local ?? ""}:${partido.goles_visitante ?? ""}`;
 }
 
 /** ¿Se puede predecir? Requiere equipos definidos y apuesta abierta. */

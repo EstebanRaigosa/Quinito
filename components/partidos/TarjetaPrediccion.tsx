@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BarChart3, Clock, Check } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
-import { prediccionCerrada, puedePredecir } from "@/lib/utils/prediccion";
+import { esSinCierre, prediccionCerrada, puedePredecir } from "@/lib/utils/prediccion";
 import { claveDiaBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
@@ -30,6 +30,7 @@ export function TarjetaPrediccion({
   reglas,
   miPrediccion,
   ahora,
+  totalParticipantes,
 }: {
   grupoId: string;
   participanteId: string;
@@ -37,9 +38,13 @@ export function TarjetaPrediccion({
   reglas: ReglasGrupo;
   miPrediccion?: Prediccion;
   ahora: Date;
+  /** Nº de integrantes del grupo (para el umbral de privacidad del agregado). */
+  totalParticipantes: number;
 }) {
   const equiposDefinidos = !!partido.equipo_local && !!partido.equipo_visitante;
   const cerrada = prediccionCerrada(partido, reglas.minutos_cierre_prediccion, ahora);
+  // Partido con fecha centinela (1900): nunca cierra, sin cuenta regresiva.
+  const sinCierre = esSinCierre(partido);
   // El partido se juega hoy (zona Bogotá): se resalta con el badge "¡Es hoy!".
   const esHoy = claveDiaBogota(partido.fecha_hora) === claveDiaBogota(ahora);
   const sePuede = puedePredecir(partido, reglas.minutos_cierre_prediccion, ahora);
@@ -103,21 +108,13 @@ export function TarjetaPrediccion({
             En vivo
           </Badge>
         ) : estado === "pendiente" ? (
-          <span className="t-caption inline-flex items-center gap-1 font-bold text-warning">
-            <Clock className="size-3.5" />
-            <CuentaRegresiva
-              iso={partido.fecha_hora}
-              ahoraInicial={ahora}
-              prefijo="Cierra en "
-              etiquetaCerrada="cerrada"
-            />
-          </span>
-        ) : estado === "guardada" ? (
-          <span className="flex items-center gap-2">
-            <Badge variant="success">
-              <Check className="size-3" /> Guardada
-            </Badge>
-            <span className="t-caption inline-flex items-center gap-1 font-bold text-success">
+          sinCierre ? (
+            <span className="t-caption inline-flex items-center gap-1 font-bold text-warning">
+              <Clock className="size-3.5" />
+              Sin cierre
+            </span>
+          ) : (
+            <span className="t-caption inline-flex items-center gap-1 font-bold text-warning">
               <Clock className="size-3.5" />
               <CuentaRegresiva
                 iso={partido.fecha_hora}
@@ -125,6 +122,25 @@ export function TarjetaPrediccion({
                 prefijo="Cierra en "
                 etiquetaCerrada="cerrada"
               />
+            </span>
+          )
+        ) : estado === "guardada" ? (
+          <span className="flex items-center gap-2">
+            <Badge variant="success">
+              <Check className="size-3" /> Guardada
+            </Badge>
+            <span className="t-caption inline-flex items-center gap-1 font-bold text-success">
+              <Clock className="size-3.5" />
+              {sinCierre ? (
+                "Sin cierre"
+              ) : (
+                <CuentaRegresiva
+                  iso={partido.fecha_hora}
+                  ahoraInicial={ahora}
+                  prefijo="Cierra en "
+                  etiquetaCerrada="cerrada"
+                />
+              )}
             </span>
           </span>
         ) : (
@@ -197,6 +213,7 @@ export function TarjetaPrediccion({
                     partido={partido}
                     reglas={reglas}
                     ahora={ahora}
+                    totalParticipantes={totalParticipantes}
                     miPrediccion={miPrediccion}
                   />
                 </TabsContent>

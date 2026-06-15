@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Trophy } from "lucide-react";
+import { ArrowRight, Check, Loader2, Trophy } from "lucide-react";
 import { datosGrupoSchema, type DatosGrupoInput } from "@/lib/schemas/grupo";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
+import { useTorneosActivos } from "@/lib/queries/torneos";
+import { formatearFechaCorta } from "@/lib/utils/fechas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
@@ -21,8 +24,24 @@ import {
 const MAX_NOMBRE = 50;
 const MAX_DESC = 280;
 
+/** "11 jun – 19 jul". Ancla a mediodía para que la conversión a Bogotá de una
+ *  fecha sin hora (date) no se corra un día. */
+function rangoFechas(inicio: string, fin: string): string {
+  return `${formatearFechaCorta(`${inicio}T12:00:00`)} – ${formatearFechaCorta(
+    `${fin}T12:00:00`,
+  )}`;
+}
+
 export function PasoDatos() {
-  const { datos, setDatos, siguiente } = useWizardGrupo();
+  const { datos, torneoId, setTorneo, setDatos, siguiente } = useWizardGrupo();
+  const { data: torneos = [], isLoading, isError } = useTorneosActivos();
+
+  // Preselecciona el primer torneo activo si aún no hay uno elegido.
+  useEffect(() => {
+    if (!torneoId && torneos.length > 0) {
+      setTorneo(torneos[0]!.id);
+    }
+  }, [torneoId, torneos, setTorneo]);
 
   const form = useForm<DatosGrupoInput>({
     resolver: zodResolver(datosGrupoSchema),
@@ -36,6 +55,7 @@ export function PasoDatos() {
     useWatch({ control: form.control, name: "descripcion" }) ?? "";
 
   function onSubmit(values: DatosGrupoInput) {
+    if (!torneoId) return; // El botón está deshabilitado sin torneo.
     setDatos(values);
     siguiente();
   }
@@ -108,23 +128,86 @@ export function PasoDatos() {
           />
         </div>
 
-        {/* Torneo activo */}
-        <div className="surface-card flex items-center gap-3.5 rounded-2xl p-4 sm:p-5">
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-glow">
-            <Trophy className="size-6" strokeWidth={2.2} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="t-body font-extrabold text-fg-strong">
-              Mundial 2026
+        {/* Selector de torneo */}
+        <fieldset className="space-y-2.5">
+          <legend className="t-body font-extrabold text-fg-strong">
+            Torneo
+            <span className="text-primary" aria-hidden>
+              {" "}
+              *
+            </span>
+          </legend>
+
+          {isLoading ? (
+            <div className="surface-card flex items-center justify-center gap-2.5 rounded-2xl py-8 text-fg-muted">
+              <Loader2 className="size-5 animate-spin text-primary" />
+              <span className="t-body-sm">Cargando torneos…</span>
             </div>
-            <div className="t-caption mt-0.5">
-              11 jun – 19 jul · 48 selecciones · 104 partidos
+          ) : isError ? (
+            <div className="surface-card rounded-2xl p-4 text-center text-sm text-fg-muted">
+              No se pudieron cargar los torneos. Recarga la página e intenta de
+              nuevo.
             </div>
-          </div>
-          <Badge variant="outline" className="shrink-0">
-            Único torneo activo
-          </Badge>
-        </div>
+          ) : torneos.length === 0 ? (
+            <div className="surface-card rounded-2xl p-4 text-center text-sm text-fg-muted">
+              No hay torneos disponibles por ahora.
+            </div>
+          ) : (
+            <div role="radiogroup" aria-label="Torneo" className="space-y-2.5">
+              {torneos.map((t) => {
+                const seleccionado = torneoId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={seleccionado}
+                    onClick={() => setTorneo(t.id)}
+                    className={cn(
+                      "surface-card flex w-full items-center gap-3.5 rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5",
+                      seleccionado
+                        ? "ring-2 ring-primary"
+                        : "hover:bg-muted/40",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-12 shrink-0 place-items-center rounded-xl",
+                        seleccionado
+                          ? "bg-primary text-primary-foreground shadow-glow"
+                          : "bg-muted text-fg-muted",
+                      )}
+                    >
+                      <Trophy className="size-6" strokeWidth={2.2} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="t-body font-extrabold text-fg-strong">
+                        {t.nombre}
+                      </div>
+                      <div className="t-caption mt-0.5">
+                        {rangoFechas(t.fecha_inicio, t.fecha_fin)}
+                        {t.pais_sede ? ` · ${t.pais_sede}` : ""}
+                      </div>
+                    </div>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                        seleccionado
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border",
+                      )}
+                    >
+                      {seleccionado && (
+                        <Check className="size-3.5" strokeWidth={3} />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </fieldset>
 
         {/* Footer de navegación */}
         <div className="flex items-center justify-between gap-4 border-t border-border pt-5">
@@ -134,6 +217,7 @@ export function PasoDatos() {
           <Button
             type="submit"
             size="lg"
+            disabled={!torneoId}
             className="w-full sm:ml-auto sm:w-auto"
           >
             Siguiente <ArrowRight className="size-4" />

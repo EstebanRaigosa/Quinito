@@ -9,6 +9,7 @@ import {
   ClasificacionGrupos,
   type TorneoClasificacion,
   type EquipoFila,
+  type TerceroFila,
 } from "./ClasificacionGrupos";
 
 export const metadata: Metadata = {
@@ -63,7 +64,42 @@ export default async function AdminClasificacionPage() {
       hayAmbiguo: equipos.some((e) => e.ambiguo),
     }));
 
-    if (grupos.length > 0) datos.push({ id: t.id, nombre: t.nombre, grupos });
+    // Mejores terceros: una fila por grupo con el 3° y su clasificación.
+    const { data: filasTerceros } = await supabase.rpc("terceros_admin", {
+      p_torneo_id: t.id,
+    });
+    const terceros: TerceroFila[] = (filasTerceros ?? []).map((f) => ({
+      grupo: f.grupo,
+      equipoId: f.equipo_id,
+      nombre: f.nombre,
+      codigoIso: f.codigo_iso,
+      pts: f.pts,
+      dif: f.dif,
+      aFavor: f.a_favor,
+      determinado: f.determinado,
+      posicionAuto: f.posicion_auto,
+      clasificaAuto: f.clasifica_auto,
+      manualClasifica: f.manual_clasifica,
+    }));
+    const hayManualTerceros = (filasTerceros ?? []).some(
+      (f) => f.hay_manual,
+    );
+    const ambiguoTerceros = (filasTerceros ?? []).some(
+      (f) => f.ambiguo_corte,
+    );
+    const tercerosCompletos =
+      terceros.length > 0 && terceros.every((f) => f.determinado);
+
+    if (grupos.length > 0)
+      datos.push({
+        id: t.id,
+        nombre: t.nombre,
+        grupos,
+        terceros,
+        hayManualTerceros,
+        ambiguoTerceros,
+        tercerosCompletos,
+      });
   }
 
   return (
@@ -74,9 +110,9 @@ export default async function AdminClasificacionPage() {
         </p>
         <h1 className="t-display mt-1.5">Clasificación de grupos</h1>
         <p className="t-body-sm mt-1.5 text-fg-muted">
-          Define el 1° y 2° de cada grupo para armar los cruces. Normalmente se
-          calcula solo; cuando hay un empate que no se resuelve por reglas,
-          selecciónalos a mano.
+          Define el 1°, 2° y 3° de cada grupo y los 8 mejores terceros que pasan
+          al bracket. Normalmente se calcula solo; cuando hay un empate que no se
+          resuelve por reglas, selecciónalos a mano.
         </p>
         <Link
           href="/admin"

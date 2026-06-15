@@ -14,6 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      tblAbonos: {
+        Row: {
+          creado_en: string
+          grupo_id: string
+          id: string
+          monto: number
+          nota: string | null
+          participante_id: string
+          registrado_por: string | null
+        }
+        Insert: {
+          creado_en?: string
+          grupo_id: string
+          id?: string
+          monto: number
+          nota?: string | null
+          participante_id: string
+          registrado_por?: string | null
+        }
+        Update: {
+          creado_en?: string
+          grupo_id?: string
+          id?: string
+          monto?: number
+          nota?: string | null
+          participante_id?: string
+          registrado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblAbonos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "tblGrupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblAbonos_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "tblParticipantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblAbonos_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["participante_id"]
+          },
+          {
+            foreignKeyName: "tblAbonos_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwTablaPosiciones"
+            referencedColumns: ["participante_id"]
+          },
+          {
+            foreignKeyName: "tblAbonos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblAbonos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
       tblClasificacionGrupo: {
         Row: {
           asignado_por: string | null
@@ -179,27 +252,166 @@ export type Database = {
           },
         ]
       }
+      tblNotificaciones: {
+        Row: {
+          accion_label: string | null
+          audiencia_grupo_id: string | null
+          audiencia_tipo: string
+          audiencia_usuario_id: string | null
+          creada_en: string
+          creada_por: string | null
+          cuerpo: string
+          enviada_en: string | null
+          id: string
+          imagen_url: string | null
+          titulo: string
+          total_destinatarios: number
+          total_push_enviados: number
+          url: string | null
+        }
+        Insert: {
+          accion_label?: string | null
+          audiencia_grupo_id?: string | null
+          audiencia_tipo: string
+          audiencia_usuario_id?: string | null
+          creada_en?: string
+          creada_por?: string | null
+          cuerpo: string
+          enviada_en?: string | null
+          id?: string
+          imagen_url?: string | null
+          titulo: string
+          total_destinatarios?: number
+          total_push_enviados?: number
+          url?: string | null
+        }
+        Update: {
+          accion_label?: string | null
+          audiencia_grupo_id?: string | null
+          audiencia_tipo?: string
+          audiencia_usuario_id?: string | null
+          creada_en?: string
+          creada_por?: string | null
+          cuerpo?: string
+          enviada_en?: string | null
+          id?: string
+          imagen_url?: string | null
+          titulo?: string
+          total_destinatarios?: number
+          total_push_enviados?: number
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblNotificaciones_audiencia_grupo_id_fkey"
+            columns: ["audiencia_grupo_id"]
+            isOneToOne: false
+            referencedRelation: "tblGrupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblNotificaciones_audiencia_usuario_id_fkey"
+            columns: ["audiencia_usuario_id"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblNotificaciones_audiencia_usuario_id_fkey"
+            columns: ["audiencia_usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "tblNotificaciones_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblNotificaciones_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
+      tblNotificacionesDestinatarios: {
+        Row: {
+          creada_en: string
+          id: string
+          leida_en: string | null
+          notificacion_id: string
+          usuario_id: string
+        }
+        Insert: {
+          creada_en?: string
+          id?: string
+          leida_en?: string | null
+          notificacion_id: string
+          usuario_id: string
+        }
+        Update: {
+          creada_en?: string
+          id?: string
+          leida_en?: string | null
+          notificacion_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblNotificacionesDestinatarios_notificacion_id_fkey"
+            columns: ["notificacion_id"]
+            isOneToOne: false
+            referencedRelation: "tblNotificaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblNotificacionesDestinatarios_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblNotificacionesDestinatarios_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
       tblParticipantes: {
         Row: {
+          eliminado_en: string | null
           grupo_id: string
           id: string
           pago_realizado: boolean
+          puntos_iniciales: number
           rol: Database["public"]["Enums"]["rol_participante"]
           unido_en: string
           usuario_id: string
         }
         Insert: {
+          eliminado_en?: string | null
           grupo_id: string
           id?: string
           pago_realizado?: boolean
+          puntos_iniciales?: number
           rol?: Database["public"]["Enums"]["rol_participante"]
           unido_en?: string
           usuario_id: string
         }
         Update: {
+          eliminado_en?: string | null
           grupo_id?: string
           id?: string
           pago_realizado?: boolean
+          puntos_iniciales?: number
           rol?: Database["public"]["Enums"]["rol_participante"]
           unido_en?: string
           usuario_id?: string
@@ -221,6 +433,63 @@ export type Database = {
           },
           {
             foreignKeyName: "tblParticipantes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
+      tblParticipantesBaneados: {
+        Row: {
+          baneado_en: string
+          baneado_por: string | null
+          grupo_id: string
+          usuario_id: string
+        }
+        Insert: {
+          baneado_en?: string
+          baneado_por?: string | null
+          grupo_id: string
+          usuario_id: string
+        }
+        Update: {
+          baneado_en?: string
+          baneado_por?: string | null
+          grupo_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblParticipantesBaneados_baneado_por_fkey"
+            columns: ["baneado_por"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblParticipantesBaneados_baneado_por_fkey"
+            columns: ["baneado_por"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "tblParticipantesBaneados_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "tblGrupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblParticipantesBaneados_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblParticipantesBaneados_usuario_id_fkey"
             columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "vwPrediccionesGrupoPartido"
@@ -402,6 +671,136 @@ export type Database = {
         }
         Relationships: []
       }
+      tblSesionesActivas: {
+        Row: {
+          conectado_en: string
+          dispositivo: string
+          seccion: string
+          ultima_actividad: string
+          usuario_id: string
+          visible: boolean
+        }
+        Insert: {
+          conectado_en?: string
+          dispositivo?: string
+          seccion?: string
+          ultima_actividad?: string
+          usuario_id: string
+          visible?: boolean
+        }
+        Update: {
+          conectado_en?: string
+          dispositivo?: string
+          seccion?: string
+          ultima_actividad?: string
+          usuario_id?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
+      tblPushRecordatorios: {
+        Row: {
+          enviado_en: string
+          partido_id: string
+          usuario_id: string
+        }
+        Insert: {
+          enviado_en?: string
+          partido_id: string
+          usuario_id: string
+        }
+        Update: {
+          enviado_en?: string
+          partido_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblPushRecordatorios_partido_id_fkey"
+            columns: ["partido_id"]
+            isOneToOne: false
+            referencedRelation: "tblPartidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblPushRecordatorios_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblPushRecordatorios_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
+      tblPushSuscripciones: {
+        Row: {
+          auth: string
+          creado_en: string
+          endpoint: string
+          id: string
+          p256dh: string
+          usado_en: string | null
+          user_agent: string | null
+          usuario_id: string
+        }
+        Insert: {
+          auth: string
+          creado_en?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          usado_en?: string | null
+          user_agent?: string | null
+          usuario_id: string
+        }
+        Update: {
+          auth?: string
+          creado_en?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          usado_en?: string | null
+          user_agent?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblPushSuscripciones_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblPushSuscripciones_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
+          },
+        ]
+      }
       tblReglasGrupo: {
         Row: {
           actualizado_en: string
@@ -487,6 +886,71 @@ export type Database = {
           email?: string
         }
         Relationships: []
+      }
+      tblTercerLugarAsignacion: {
+        Row: {
+          combinacion_grupos: string
+          slot_74: string
+          slot_77: string
+          slot_79: string
+          slot_80: string
+          slot_81: string
+          slot_82: string
+          slot_85: string
+          slot_87: string
+        }
+        Insert: {
+          combinacion_grupos: string
+          slot_74: string
+          slot_77: string
+          slot_79: string
+          slot_80: string
+          slot_81: string
+          slot_82: string
+          slot_85: string
+          slot_87: string
+        }
+        Update: {
+          combinacion_grupos?: string
+          slot_74?: string
+          slot_77?: string
+          slot_79?: string
+          slot_80?: string
+          slot_81?: string
+          slot_82?: string
+          slot_85?: string
+          slot_87?: string
+        }
+        Relationships: []
+      }
+      tblTercerosClasificados: {
+        Row: {
+          asignado_por: string | null
+          creado_en: string
+          grupo: string
+          torneo_id: string
+        }
+        Insert: {
+          asignado_por?: string | null
+          creado_en?: string
+          grupo: string
+          torneo_id: string
+        }
+        Update: {
+          asignado_por?: string | null
+          creado_en?: string
+          grupo?: string
+          torneo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblTercerosClasificados_torneo_id_fkey"
+            columns: ["torneo_id"]
+            isOneToOne: false
+            referencedRelation: "tblTorneos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tblTorneos: {
         Row: {
@@ -659,6 +1123,7 @@ export type Database = {
           nombre_completo: string | null
           participante_id: string | null
           posicion: number | null
+          puntos_iniciales: number | null
           puntos_totales: number | null
           unicas_acertadas: number | null
         }
@@ -674,6 +1139,10 @@ export type Database = {
       }
     }
     Functions: {
+      actualizar_puntos_iniciales: {
+        Args: { p_participante_id: string; p_puntos: number }
+        Returns: undefined
+      }
       buscar_grupo: {
         Args: { p_codigo: string }
         Returns: {
@@ -685,17 +1154,53 @@ export type Database = {
           ya_es_miembro: boolean
         }[]
       }
+      clasificacion_terceros: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          a_favor: number
+          ambiguo_corte: boolean
+          dif: number
+          equipo_id: string
+          grupo: string
+          posicion: number
+          pts: number
+        }[]
+      }
       crear_grupo: {
         Args: {
           p_descripcion: string
           p_nombre: string
           p_partido_ids: string[]
           p_reglas: Json
+          p_torneo_id: string
         }
         Returns: string
       }
+      crear_notificacion: {
+        Args: {
+          p_accion_label: string
+          p_audiencia_tipo: string
+          p_cuerpo: string
+          p_grupo_id: string
+          p_imagen_url: string
+          p_titulo: string
+          p_url: string
+          p_usuario_id: string
+        }
+        Returns: string
+      }
+      desbanear_participante: {
+        Args: { p_grupo_id: string; p_usuario_id: string }
+        Returns: undefined
+      }
+      eliminar_abono: { Args: { p_abono_id: string }; Returns: undefined }
+      eliminar_grupo: { Args: { p_grupo_id: string }; Returns: undefined }
       equipo_clasificado: {
         Args: { p_grupo: string; p_pos: number; p_torneo_id: string }
+        Returns: string
+      }
+      equipo_tercero_slot: {
+        Args: { p_numero: number; p_torneo_id: string }
         Returns: string
       }
       es_admin_grupo: { Args: { p_grupo_id: string }; Returns: boolean }
@@ -714,8 +1219,43 @@ export type Database = {
         Returns: string
       }
       generar_codigo_invitacion: { Args: never; Returns: string }
+      gestionar_participante: {
+        Args: { p_banear: boolean; p_participante_id: string }
+        Returns: undefined
+      }
       grupo_detalle: { Args: { p_grupo_id: string }; Returns: Json }
+      unirse_grupo: { Args: { p_grupo_id: string }; Returns: undefined }
       inicio_extras: { Args: { p_desde: string }; Returns: Json }
+      listar_abonos: {
+        Args: { p_participante_id: string }
+        Returns: {
+          creado_en: string
+          id: string
+          monto: number
+          nota: string
+          registrado_por_nombre: string
+        }[]
+      }
+      listar_baneados: {
+        Args: { p_grupo_id: string }
+        Returns: {
+          avatar_url: string
+          baneado_en: string
+          email: string
+          nombre_completo: string
+          usuario_id: string
+        }[]
+      }
+      marcar_notificaciones_leidas: {
+        Args: { p_ids?: string[] }
+        Returns: undefined
+      }
+      mejores_terceros: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          grupo: string
+        }[]
+      }
       mis_grupos: {
         Args: never
         Returns: {
@@ -738,6 +1278,14 @@ export type Database = {
           torneo_pais_sede: string
           total_participantes: number
           valor_apuesta: number
+        }[]
+      }
+      mis_notificaciones: { Args: { p_limite?: number }; Returns: Json }
+      pagos_grupo: {
+        Args: { p_grupo_id: string }
+        Returns: {
+          participante_id: string
+          total_abonado: number
         }[]
       }
       partido_cerrado: {
@@ -780,13 +1328,53 @@ export type Database = {
           pts: number
         }[]
       }
+      recordatorios_pendientes: {
+        Args: never
+        Returns: {
+          cierre: string
+          equipo_local: string
+          equipo_visitante: string
+          partido_id: string
+          usuario_id: string
+        }[]
+      }
+      registrar_abono: {
+        Args: { p_monto: number; p_nota: string; p_participante_id: string }
+        Returns: string
+      }
       resolver_cruces: { Args: { p_torneo_id: string }; Returns: undefined }
       resolver_placeholder: {
         Args: { p_ph: string; p_torneo_id: string }
         Returns: string
       }
       revertir_partido: { Args: { p_partido_id: string }; Returns: undefined }
+      superadmin_buscar_usuarios: {
+        Args: { p_q: string }
+        Returns: {
+          email: string
+          id: string
+          nombre: string
+        }[]
+      }
       superadmin_listar_pollas: { Args: never; Returns: Json }
+      terceros_admin: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          a_favor: number
+          ambiguo_corte: boolean
+          clasifica_auto: boolean
+          codigo_iso: string
+          determinado: boolean
+          dif: number
+          equipo_id: string
+          grupo: string
+          hay_manual: boolean
+          manual_clasifica: boolean
+          nombre: string
+          posicion_auto: number
+          pts: number
+        }[]
+      }
     }
     Enums: {
       fase_torneo:

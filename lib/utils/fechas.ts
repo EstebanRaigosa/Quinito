@@ -34,6 +34,37 @@ export function claveDiaBogota(iso: string | Date): string {
   return formatInTimeZone(iso, ZONA_BOGOTA, "yyyy-MM-dd");
 }
 
+/** Límite de la fecha centinela "sin fecha" (partidos con fecha anterior a 1901). */
+const SIN_FECHA_LIMITE = Date.UTC(1901, 0, 1);
+
+/**
+ * Encabezado de día para listados de partidos. Igual que `formatearFechaLarga`,
+ * salvo que los partidos con fecha centinela (1900) se rotulan como
+ * "Sin fecha" en vez de mostrar un "1 de enero de 1900" confuso.
+ */
+export function etiquetaDiaListado(iso: string | Date): string {
+  if (new Date(iso).getTime() < SIN_FECHA_LIMITE) return "Sin fecha";
+  return formatearFechaLarga(iso);
+}
+
+/**
+ * Agrupa una lista (partidos, predicciones con fecha) por día calendario en zona
+ * Bogotá, conservando el orden de entrada. Devuelve pares [claveDía, items].
+ * Genérico para no acoplar este módulo a tipos del dominio.
+ */
+export function agruparPorDia<T extends { fecha_hora: string }>(
+  items: T[],
+): [string, T[]][] {
+  const mapa = new Map<string, T[]>();
+  for (const it of items) {
+    const dia = claveDiaBogota(it.fecha_hora);
+    const lista = mapa.get(dia);
+    if (lista) lista.push(it);
+    else mapa.set(dia, [it]);
+  }
+  return [...mapa.entries()];
+}
+
 /**
  * Tiempo restante humano hasta una fecha. Ej. "en 2h 14m", "en 3 d", "ya empezó".
  * `ahora` es inyectable para mantener el mock determinista.

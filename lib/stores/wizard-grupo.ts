@@ -15,6 +15,8 @@ import { reglasDefault, type ReglasInput } from "@/lib/schemas/reglas";
  */
 type WizardState = {
   paso: 1 | 2 | 3;
+  /** Torneo elegido para la polla (id de tblTorneos). */
+  torneoId: string | null;
   datos: DatosGrupoInput;
   reglas: ReglasInput;
   /** Ids de partidos seleccionados (por defecto todos). */
@@ -22,6 +24,7 @@ type WizardState = {
   setPaso: (paso: 1 | 2 | 3) => void;
   siguiente: () => void;
   anterior: () => void;
+  setTorneo: (torneoId: string) => void;
   setDatos: (datos: DatosGrupoInput) => void;
   setReglas: (reglas: ReglasInput) => void;
   inicializarPartidos: (ids: string[]) => void;
@@ -32,6 +35,7 @@ type WizardState = {
 
 const estadoInicial = {
   paso: 1 as const,
+  torneoId: null,
   datos: { nombre: "", descripcion: "" },
   reglas: reglasDefault,
   partidosSeleccionados: new Set<string>(),
@@ -46,6 +50,13 @@ export const useWizardGrupo = create<WizardState>()(
         set((s) => ({ paso: Math.min(3, s.paso + 1) as 1 | 2 | 3 })),
       anterior: () =>
         set((s) => ({ paso: Math.max(1, s.paso - 1) as 1 | 2 | 3 })),
+      // Cambiar de torneo invalida la selección de partidos del torneo previo.
+      setTorneo: (torneoId) =>
+        set((s) =>
+          s.torneoId === torneoId
+            ? s
+            : { torneoId, partidosSeleccionados: new Set<string>() },
+        ),
       setDatos: (datos) => set({ datos }),
       setReglas: (reglas) => set({ reglas }),
       inicializarPartidos: (ids) =>
@@ -76,11 +87,14 @@ export const useWizardGrupo = create<WizardState>()(
     }),
     {
       name: "polla-wizard-grupo",
-      version: 1,
+      // v2: se agregó `torneoId`. Subir la versión descarta borradores viejos
+      // cuya selección de partidos venía del catálogo sin filtrar por torneo.
+      version: 2,
       skipHydration: true,
       // Solo el borrador (las funciones no se serializan).
       partialize: (s) => ({
         paso: s.paso,
+        torneoId: s.torneoId,
         datos: s.datos,
         reglas: s.reglas,
         partidosSeleccionados: s.partidosSeleccionados,
