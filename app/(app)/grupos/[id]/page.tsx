@@ -591,7 +591,7 @@ export default async function GrupoDetallePage({
       </div>
 
       {/* Tabs principales */}
-      <TabsConRefresh defaultValue="jugar">
+      <TabsConRefresh defaultValue="jugar" grupoNombre={grupo.nombre}>
         <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 mb-5 bg-app/95 px-4 py-2 backdrop-blur md:static md:top-0 md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
           <TabsList
             className={cn(

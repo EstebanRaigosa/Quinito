@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { nombreSeccion } from "@/lib/utils/seccion-actual";
+import { usePresencia } from "@/lib/stores/presencia";
 import type { Database } from "@/lib/supabase/types";
 
 type Latido = Database["public"]["Tables"]["tblSesionesActivas"]["Insert"];
@@ -16,6 +17,16 @@ function detectarDispositivo(): "movil" | "escritorio" {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
     ? "movil"
     : "escritorio";
+}
+
+/** ¿La ruta es el detalle de UNA polla (donde hay sub-pestañas de cliente)? */
+function enDetalleDePolla(pathname: string): boolean {
+  return (
+    pathname.startsWith("/grupos/") &&
+    pathname !== "/grupos/buscar" &&
+    pathname !== "/grupos/crear" &&
+    !pathname.endsWith("/configurar")
+  );
 }
 
 /**
@@ -36,7 +47,9 @@ function detectarDispositivo(): "movil" | "escritorio" {
  */
 export function LatidoPresencia({ usuarioId }: { usuarioId: string }) {
   const pathname = usePathname();
+  const detalle = usePresencia((s) => s.detalle);
   const seccionRef = useRef(pathname);
+  const detalleRef = useRef(detalle);
   const latirRef = useRef<(visible: boolean) => void>(() => {});
 
   useEffect(() => {
@@ -44,12 +57,20 @@ export function LatidoPresencia({ usuarioId }: { usuarioId: string }) {
     const dispositivo = detectarDispositivo();
     let inicioEnviado = false;
 
+    // Dentro de una polla usamos el detalle de la pestaña ("{polla} · {sección}")
+    // que publica `TabsConRefresh`; fuera, la sección derivada de la ruta.
+    const seccionActual = () => {
+      const ruta = seccionRef.current;
+      if (enDetalleDePolla(ruta) && detalleRef.current) return detalleRef.current;
+      return nombreSeccion(ruta);
+    };
+
     const latir = (visible: boolean) => {
       const ahora = new Date().toISOString();
       const fila: Latido = {
         usuario_id: usuarioId,
         ultima_actividad: ahora,
-        seccion: nombreSeccion(seccionRef.current),
+        seccion: seccionActual(),
         dispositivo,
         visible,
       };
@@ -104,6 +125,22 @@ export function LatidoPresencia({ usuarioId }: { usuarioId: string }) {
         : document.visibilityState === "visible",
     );
   }, [pathname]);
+
+  // Latido al cambiar de pestaña dentro de una polla (el detalle del store cambia
+  // sin que cambie la ruta). Salta el primer render.
+  const primerDetalle = useRef(true);
+  useEffect(() => {
+    detalleRef.current = detalle;
+    if (primerDetalle.current) {
+      primerDetalle.current = false;
+      return;
+    }
+    latirRef.current(
+      typeof document === "undefined"
+        ? true
+        : document.visibilityState === "visible",
+    );
+  }, [detalle]);
 
   return null;
 }

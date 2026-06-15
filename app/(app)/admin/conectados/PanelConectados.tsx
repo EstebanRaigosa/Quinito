@@ -13,8 +13,14 @@ type Estado = "activo" | "inactivo" | "ausente";
 
 function clasificar(
   c: Conectado,
-  ahora: number,
-): { segundos: number; estado: Estado } {
+  ahora: number | null,
+): { segundos: number | null; estado: Estado } {
+  // Antes de montar (`ahora` null) usamos un estado estable derivado solo de
+  // `visible` para que SSR y cliente coincidan (evita mismatch de hidratación);
+  // el tiempo relativo aparece tras el primer tick del reloj local.
+  if (ahora === null) {
+    return { segundos: null, estado: c.visible ? "activo" : "inactivo" };
+  }
   const segundos = Math.max(
     0,
     Math.floor((ahora - new Date(c.ultimaActividad).getTime()) / 1000),
@@ -26,7 +32,8 @@ function clasificar(
   return { segundos, estado };
 }
 
-function hace(segundos: number): string {
+function hace(segundos: number | null): string {
+  if (segundos === null) return "";
   if (segundos < 60) return `hace ${segundos}s`;
   const m = Math.floor(segundos / 60);
   if (m < 60) return `hace ${m} min`;
@@ -47,7 +54,9 @@ const ESTADO_UI: Record<Estado, { etiqueta: string; punto: string; texto: string
  */
 export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
   const [lista, setLista] = useState<Conectado[]>(inicial);
-  const [ahora, setAhora] = useState(() => Date.now());
+  // `null` hasta montar: el primer render (SSR + hidratación) NO depende de la
+  // hora del cliente, así no hay mismatch. El reloj local lo llena enseguida.
+  const [ahora, setAhora] = useState<number | null>(null);
 
   // Sondeo al servidor (solo mientras la pestaña está visible).
   useEffect(() => {
@@ -71,8 +80,9 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
     };
   }, []);
 
-  // Reloj local: recalcula "hace cuánto" / estado cada segundo.
+  // Reloj local: arranca tras montar y recalcula "hace cuánto" / estado cada seg.
   useEffect(() => {
+    setAhora(Date.now());
     const timer = setInterval(() => setAhora(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, []);

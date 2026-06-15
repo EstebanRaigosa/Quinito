@@ -9,6 +9,7 @@ export function nombreSeccion(pathname: string): string {
   if (pathname.startsWith("/partidos")) return "Partidos";
   if (pathname === "/grupos/buscar") return "Buscar polla";
   if (pathname === "/grupos/crear") return "Creando una polla";
+  if (pathname.endsWith("/configurar")) return "Configurando una polla";
   if (pathname.startsWith("/grupos/")) return "En una polla";
   if (pathname.startsWith("/perfil")) return "Perfil";
   if (pathname.startsWith("/notificaciones")) return "Notificaciones";
