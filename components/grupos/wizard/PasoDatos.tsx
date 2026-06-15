@@ -24,6 +24,12 @@ import {
 const MAX_NOMBRE = 50;
 const MAX_DESC = 280;
 
+/**
+ * Torneos ocultos del selector del wizard (por `codigo`). Siguen activos en la
+ * BD (calendario de Partidos, etc.); solo no se ofrecen al crear una polla.
+ */
+const TORNEOS_OCULTOS_WIZARD = new Set(["mundial-2"]);
+
 /** "11 jun – 19 jul". Ancla a mediodía para que la conversión a Bogotá de una
  *  fecha sin hora (date) no se corra un día. */
 function rangoFechas(inicio: string, fin: string): string {
@@ -34,11 +40,20 @@ function rangoFechas(inicio: string, fin: string): string {
 
 export function PasoDatos() {
   const { datos, torneoId, setTorneo, setDatos, siguiente } = useWizardGrupo();
-  const { data: torneos = [], isLoading, isError } = useTorneosActivos();
+  const { data: torneosActivos = [], isLoading, isError } = useTorneosActivos();
 
-  // Preselecciona el primer torneo activo si aún no hay uno elegido.
+  // Oculta del wizard los torneos vetados (ej. "Mundial 2"), sin desactivarlos
+  // en la BD para no afectar el resto de la app.
+  const torneos = torneosActivos.filter(
+    (t) => !TORNEOS_OCULTOS_WIZARD.has(t.codigo),
+  );
+
+  // Preselecciona el primer torneo disponible si no hay uno elegido —o si el
+  // elegido quedó oculto (ej. estaba persistido "Mundial 2" en el store).
   useEffect(() => {
-    if (!torneoId && torneos.length > 0) {
+    if (torneos.length === 0) return;
+    const elegidoVisible = torneos.some((t) => t.id === torneoId);
+    if (!elegidoVisible) {
       setTorneo(torneos[0]!.id);
     }
   }, [torneoId, torneos, setTorneo]);
