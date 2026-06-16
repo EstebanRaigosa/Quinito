@@ -12,7 +12,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import {
   compararPartidos,
@@ -29,6 +28,7 @@ import {
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsConRefresh } from "@/components/grupos/TabsConRefresh";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
@@ -41,8 +41,8 @@ import { RealtimePartidos } from "@/components/shared/RealtimePartidos";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
 import { DestelloPartido } from "@/components/partidos/DestelloPartido";
 import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
+import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
-import { EliminarGrupo } from "@/components/grupos/EliminarGrupo";
 import { PanelParticipantes } from "@/components/grupos/PanelParticipantes";
 import { PanelBaneados } from "@/components/grupos/PanelBaneados";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
@@ -102,22 +102,95 @@ function FilaRegla({
   );
 }
 
+/**
+ * Una entrada del glosario de puntuación: badge esmeralda con el valor y el
+ * ICONO del tipo de acierto (mismo icono que en los partidos), título y un
+ * ejemplo concreto. El icono es a la vez leyenda: diana = exacto, corona =
+ * único, check = acierto parcial.
+ */
+function ItemGlosario({
+  nivel,
+  puntos,
+  titulo,
+  ejemplo,
+}: {
+  nivel: "unico" | "exacto" | "parcial";
+  puntos: number;
+  titulo: string;
+  ejemplo: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+      <Badge variant="gold" className="mt-0.5 shrink-0 tabular-nums">
+        <IconoAcierto nivel={nivel} />+{puntos}
+      </Badge>
+      <div className="min-w-0">
+        <p className="t-body-sm font-bold text-fg-strong">
+          {titulo}
+          {nivel === "parcial" && (
+            <span className="font-medium text-fg-muted">
+              {" "}
+              (Se cuenta como acierto)
+            </span>
+          )}
+        </p>
+        <p className="t-caption text-fg-muted">{ejemplo}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Glosario "Cómo se puntúa": explica cada concepto con un ejemplo y muestra los
+ * puntos reales del grupo. Reemplaza a la antigua lista de valores sueltos y
+ * sirve de leyenda para los colores de los badges de puntaje.
+ */
+function GlosarioPuntaje({ reglas }: { reglas: ReglasGrupo }) {
+  return (
+    <div>
+      <p className="overline mb-2">Cómo se puntúa</p>
+      <Card>
+        <CardContent className="divide-y divide-border p-4">
+          <ItemGlosario
+            nivel="exacto"
+            puntos={reglas.pts_marcador_exacto}
+            titulo="Marcador exacto"
+            ejemplo="Clavas el resultado completo. Ej: el partido termina 2-1 y tú predijiste 2-1."
+          />
+          <ItemGlosario
+            nivel="parcial"
+            puntos={reglas.pts_ganador}
+            titulo="Ganador acertado"
+            ejemplo="Aciertas quién gana (o el empate) pero no el marcador. Ej: predijiste 3-0 y quedó 2-1."
+          />
+          <ItemGlosario
+            nivel="parcial"
+            puntos={reglas.pts_gol_acertado}
+            titulo="Gol acertado"
+            ejemplo="Aciertas los goles de un equipo. Ej: predijiste 2-3 y quedó 2-1 → acertaste los 2 del local. Cuenta por cada equipo acertado."
+          />
+          <ItemGlosario
+            nivel="unico"
+            puntos={reglas.pts_prediccion_unica}
+            titulo="Predicción única (bono)"
+            ejemplo="Puntos extra si eres el único del grupo que clava el marcador exacto de ese partido."
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function ResumenReglas({ reglas }: { reglas: ReglasGrupo }) {
   return (
     <div className="space-y-5">
-      <div>
-        <p className="overline mb-2">Puntuación</p>
-        <Card>
-          <CardContent className="divide-y divide-border p-4 pt-2">
-            <FilaRegla etiqueta="Marcador exacto" valor={`${reglas.pts_marcador_exacto} pts`} />
-            <FilaRegla etiqueta="Ganador acertado" valor={`${reglas.pts_ganador} pts`} />
-            <FilaRegla etiqueta="Gol acertado" valor={`${reglas.pts_gol_acertado} pts`} />
-            <FilaRegla etiqueta="Predicción única" valor={`+${reglas.pts_prediccion_unica} pts`} />
-          </CardContent>
-        </Card>
-      </div>
+      <GlosarioPuntaje reglas={reglas} />
       <div>
         <p className="overline mb-2">Bonos por fase</p>
+        <p className="t-caption mb-2 px-1 text-fg-muted">
+          Puntos extra que se suman al clavar el <b className="font-bold text-fg-strong">marcador
+          exacto</b> en partidos de eliminación directa (a más avanzada la fase, mayor el bono).
+        </p>
         <Card>
           <CardContent className="divide-y divide-border p-4 pt-2">
             <FilaRegla etiqueta="Dieciseisavos" valor={`+${reglas.bono_dieciseisavos}`} />
@@ -371,18 +444,7 @@ export default async function GrupoDetallePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const [
-    {
-      data: { user },
-    },
-    { data: esSuperadmin },
-    detalle,
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc("es_superadmin"),
-    getGrupoDetalle(id),
-  ]);
+  const detalle = await getGrupoDetalle(id);
 
   if (!detalle) {
     return (
@@ -421,10 +483,6 @@ export default async function GrupoDetallePage({
   // Superadmin de plataforma viendo una polla de la que NO es miembro: puede
   // verlo y administrarlo todo, pero no participa (no tiene predicciones).
   const soloVistaAdmin = !miParticipanteId;
-  // Puede eliminar la polla el creador o el superadmin de plataforma (mismo
-  // criterio que valida el RPC `eliminar_grupo`).
-  const puedeEliminarGrupo =
-    (!!user && user.id === grupo.creador_id) || esSuperadmin === true;
 
   // ── Agrupación de "Jugar" ─────────────────────────────────────────────────
   const abiertos = partidos.filter((p) =>
@@ -685,46 +743,9 @@ export default async function GrupoDetallePage({
           />
         </TabsContent>
 
-        {/* REGLAS (+ config de admin) */}
+        {/* REGLAS */}
         <TabsContent value="reglas" className="space-y-6 md:max-w-xl">
           <ResumenReglas reglas={reglas} />
-
-          {esAdmin && (
-            <div className="space-y-3 border-t border-border pt-6">
-              <p className="overline">Administración</p>
-              <Card>
-                <CardContent className="space-y-3 p-4">
-                  <p className="t-h4">Invitar gente</p>
-                  <p className="t-body-sm text-fg-muted">
-                    Comparte este código para que se unan al grupo:
-                  </p>
-                  <BotonCompartirCodigo
-                    codigo={grupo.codigo_invitacion}
-                    nombreGrupo={grupo.nombre}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="space-y-2 p-4">
-                  <p className="t-h4">Editar grupo</p>
-                  <p className="t-body-sm text-fg-muted">
-                    Pronto podrás cambiar el nombre, la descripción y las reglas
-                    mientras no haya empezado el torneo.
-                  </p>
-                  <Button variant="outline" size="sm" disabled>
-                    Editar metadata
-                  </Button>
-                </CardContent>
-              </Card>
-              {puedeEliminarGrupo && (
-                <EliminarGrupo
-                  grupoId={grupo.id}
-                  nombre={grupo.nombre}
-                  totalParticipantes={grupo.total_participantes}
-                />
-              )}
-            </div>
-          )}
         </TabsContent>
 
         {/* PARTICIPANTES — solo visible para el administrador de la polla */}

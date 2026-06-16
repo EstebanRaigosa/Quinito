@@ -650,6 +650,60 @@ export type Database = {
           },
         ]
       }
+      tblPrediccionesHistorial: {
+        Row: {
+          accion: string
+          actor_es_admin: boolean
+          actor_id: string | null
+          actor_nombre: string | null
+          creado_en: string
+          goles_local_anterior: number | null
+          goles_local_nuevo: number | null
+          goles_visitante_anterior: number | null
+          goles_visitante_nuevo: number | null
+          grupo_id: string | null
+          id: string
+          participante_id: string
+          partido_id: string
+          prediccion_id: string
+          usuario_id: string | null
+        }
+        Insert: {
+          accion: string
+          actor_es_admin?: boolean
+          actor_id?: string | null
+          actor_nombre?: string | null
+          creado_en?: string
+          goles_local_anterior?: number | null
+          goles_local_nuevo?: number | null
+          goles_visitante_anterior?: number | null
+          goles_visitante_nuevo?: number | null
+          grupo_id?: string | null
+          id?: string
+          participante_id: string
+          partido_id: string
+          prediccion_id: string
+          usuario_id?: string | null
+        }
+        Update: {
+          accion?: string
+          actor_es_admin?: boolean
+          actor_id?: string | null
+          actor_nombre?: string | null
+          creado_en?: string
+          goles_local_anterior?: number | null
+          goles_local_nuevo?: number | null
+          goles_visitante_anterior?: number | null
+          goles_visitante_nuevo?: number | null
+          grupo_id?: string | null
+          id?: string
+          participante_id?: string
+          partido_id?: string
+          prediccion_id?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       tblProfiles: {
         Row: {
           actualizado_en: string
@@ -679,48 +733,6 @@ export type Database = {
           nombre_confirmado?: boolean
         }
         Relationships: []
-      }
-      tblSesionesActivas: {
-        Row: {
-          conectado_en: string
-          dispositivo: string
-          seccion: string
-          ultima_actividad: string
-          usuario_id: string
-          visible: boolean
-        }
-        Insert: {
-          conectado_en?: string
-          dispositivo?: string
-          seccion?: string
-          ultima_actividad?: string
-          usuario_id: string
-          visible?: boolean
-        }
-        Update: {
-          conectado_en?: string
-          dispositivo?: string
-          seccion?: string
-          ultima_actividad?: string
-          usuario_id?: string
-          visible?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
-            columns: ["usuario_id"]
-            isOneToOne: true
-            referencedRelation: "tblProfiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
-            columns: ["usuario_id"]
-            isOneToOne: true
-            referencedRelation: "vwPrediccionesGrupoPartido"
-            referencedColumns: ["usuario_id"]
-          },
-        ]
       }
       tblPushRecordatorios: {
         Row: {
@@ -878,6 +890,48 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "tblGrupos"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      tblSesionesActivas: {
+        Row: {
+          conectado_en: string
+          dispositivo: string
+          seccion: string
+          ultima_actividad: string
+          usuario_id: string
+          visible: boolean
+        }
+        Insert: {
+          conectado_en?: string
+          dispositivo?: string
+          seccion?: string
+          ultima_actividad?: string
+          usuario_id: string
+          visible?: boolean
+        }
+        Update: {
+          conectado_en?: string
+          dispositivo?: string
+          seccion?: string
+          ultima_actividad?: string
+          usuario_id?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "tblProfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblSesionesActivas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["usuario_id"]
           },
         ]
       }
@@ -1239,7 +1293,6 @@ export type Database = {
         Returns: undefined
       }
       grupo_detalle: { Args: { p_grupo_id: string }; Returns: Json }
-      unirse_grupo: { Args: { p_grupo_id: string }; Returns: undefined }
       inicio_extras: { Args: { p_desde: string }; Returns: Json }
       listar_abonos: {
         Args: { p_participante_id: string }
@@ -1296,6 +1349,12 @@ export type Database = {
         }[]
       }
       mis_notificaciones: { Args: { p_limite?: number }; Returns: Json }
+      notificaciones_grupo: {
+        Args: { p_grupo_id: string }
+        Returns: {
+          usuario_id: string
+        }[]
+      }
       pagos_grupo: {
         Args: { p_grupo_id: string }
         Returns: {
@@ -1349,8 +1408,10 @@ export type Database = {
           cierre: string
           equipo_local: string
           equipo_visitante: string
+          local_iso: string
           partido_id: string
           usuario_id: string
+          visitante_iso: string
         }[]
       }
       registrar_abono: {
@@ -1363,6 +1424,10 @@ export type Database = {
         Returns: string
       }
       revertir_partido: { Args: { p_partido_id: string }; Returns: undefined }
+      superadmin_auditoria_grupo: {
+        Args: { p_grupo_id: string }
+        Returns: Json
+      }
       superadmin_buscar_usuarios: {
         Args: { p_q: string }
         Returns: {
@@ -1372,6 +1437,7 @@ export type Database = {
         }[]
       }
       superadmin_listar_pollas: { Args: never; Returns: Json }
+      superadmin_listar_suscritos: { Args: never; Returns: Json }
       terceros_admin: {
         Args: { p_torneo_id: string }
         Returns: {
@@ -1390,6 +1456,7 @@ export type Database = {
           pts: number
         }[]
       }
+      unirse_grupo: { Args: { p_grupo_id: string }; Returns: undefined }
     }
     Enums: {
       fase_torneo:

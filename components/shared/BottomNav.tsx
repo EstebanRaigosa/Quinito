@@ -15,6 +15,7 @@ import {
   ListOrdered,
   Trophy,
   Radio,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCerrarSesion } from "@/lib/auth/use-cerrar-sesion";
@@ -246,6 +247,21 @@ export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
               >
                 <Radio className="size-[18px] text-primary" />
                 Conectados
+              </Link>
+              <Link
+                href="/admin/auditoria"
+                role="menuitem"
+                onClick={() => setAdminAbierto(false)}
+                aria-current={
+                  esActivo("/admin/auditoria") ? "page" : undefined
+                }
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
+                  esActivo("/admin/auditoria") ? "text-primary" : "text-fg",
+                )}
+              >
+                <ScrollText className="size-[18px] text-primary" />
+                Auditoría
               </Link>
             </div>
           </>

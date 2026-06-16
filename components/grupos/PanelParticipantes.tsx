@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Shield, Users } from "lucide-react";
+import { BellRing, Search, Shield, Users } from "lucide-react";
 import type { EstadoPago, Participante } from "@/lib/types/dominio";
 import { usePagosGrupo } from "@/lib/queries/pagos";
+import { useNotificacionesGrupo } from "@/lib/queries/notificaciones-grupo";
 import { formatearMonto } from "@/lib/utils/texto";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,9 @@ export function PanelParticipantes({
 
   // Totales abonados por participante (solo admin; el RPC ya lo restringe).
   const { data: totales } = usePagosGrupo(grupoId, esAdmin && !sinCosto);
+
+  // usuario_id con notificaciones push activas (solo admin; el RPC lo restringe).
+  const { data: conNotificaciones } = useNotificacionesGrupo(grupoId, esAdmin);
 
   // Orden alfabético estable por nombre (es-CO), insensible a acentos/caja.
   const ordenados = useMemo(
@@ -143,6 +147,18 @@ export function PanelParticipantes({
                       </p>
                     )}
                   </div>
+
+                  {/* Notis push activas (solo lo ve el admin). Ícono-chip con
+                      aria-label; no añade texto para no recargar la fila. */}
+                  {esAdmin && conNotificaciones?.has(part.usuario.id) && (
+                    <span
+                      className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
+                      title="Notificaciones activas"
+                      aria-label="Notificaciones activas"
+                    >
+                      <BellRing className="size-3.5" aria-hidden />
+                    </span>
+                  )}
 
                   {part.rol === "admin" && (
                     <Badge variant="accent" className="shrink-0">

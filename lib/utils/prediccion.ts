@@ -130,6 +130,34 @@ export function bonoDeFase(reglas: ReglasGrupo, fase: FaseTorneo): number {
   }
 }
 
+/**
+ * Tipo de acierto de una predicción finalizada, para distinguirla con un ICONO
+ * en el badge de puntaje (el color del badge es siempre esmeralda):
+ * - `unico`: marcador exacto + bono de predicción única.
+ * - `exacto`: clavó el marcador completo (sin bono único).
+ * - `parcial`: acierto parcial (ganador y/o goles, sin marcador exacto).
+ * - `ninguno`: no sumó puntos.
+ */
+export type NivelAcierto = "unico" | "exacto" | "parcial" | "ninguno";
+
+export function nivelAcierto(
+  prediccion: {
+    goles_local: number;
+    goles_visitante: number;
+    puntos_obtenidos: number;
+    prediccion_unica: boolean;
+  },
+  partido: Partido,
+): NivelAcierto {
+  if (prediccion.puntos_obtenidos <= 0) return "ninguno";
+  const exacto =
+    partido.estado === "finalizado" &&
+    prediccion.goles_local === partido.goles_local &&
+    prediccion.goles_visitante === partido.goles_visitante;
+  if (!exacto) return "parcial";
+  return prediccion.prediccion_unica ? "unico" : "exacto";
+}
+
 /** Una línea del desglose de puntos de una predicción. */
 export type LineaPuntaje = { label: string; motivo: string; puntos: number };
 

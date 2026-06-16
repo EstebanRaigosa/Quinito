@@ -124,9 +124,16 @@ export function TarjetaPartido({
         ) : cancelado ? (
           <Badge variant="neutral">Cancelado</Badge>
         ) : enJuego ? (
-          <Badge variant="playing">
-            <span className="size-1.5 animate-live-pulse rounded-full bg-current" />
-            En juego
+          <Badge variant="enjuego" className="relative overflow-hidden">
+            {/* Brillo diagonal que recorre el badge: refuerza el "en vivo". */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent animate-shine"
+            />
+            <span className="relative z-10 flex items-center gap-1.5">
+              <span className="size-1.5 animate-live-pulse rounded-full bg-current" />
+              En juego
+            </span>
           </Badge>
         ) : (
           <span className="inline-flex items-center gap-1 text-2xs font-medium text-fg-muted">

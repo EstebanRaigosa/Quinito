@@ -2,7 +2,8 @@
 
 import { ChevronDown } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
-import { desglosePuntaje } from "@/lib/utils/prediccion";
+import { desglosePuntaje, nivelAcierto } from "@/lib/utils/prediccion";
+import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -24,12 +25,15 @@ export function PuntajeDesglose({
   partido: Partido;
   reglas?: ReglasGrupo;
 }) {
-  const positivo = prediccion.puntos_obtenidos > 0;
+  // Badge siempre esmeralda cuando suma puntos; el TIPO de acierto se distingue
+  // con un icono (diana = exacto, corona = único, check = parcial).
+  const nivel = nivelAcierto(prediccion, partido);
+  const variante = nivel === "ninguno" ? "neutral" : "gold";
 
   if (!reglas) {
     return (
-      <Badge variant={positivo ? "gold" : "neutral"}>
-        +{prediccion.puntos_obtenidos} pts
+      <Badge variant={variante}>
+        <IconoAcierto nivel={nivel} />+{prediccion.puntos_obtenidos} pts
       </Badge>
     );
   }
@@ -45,10 +49,10 @@ export function PuntajeDesglose({
           className="rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Badge
-            variant={positivo ? "gold" : "neutral"}
+            variant={variante}
             className="cursor-pointer transition-transform active:scale-95"
           >
-            +{prediccion.puntos_obtenidos} pts
+            <IconoAcierto nivel={nivel} />+{prediccion.puntos_obtenidos} pts
             <ChevronDown className="size-3 opacity-80" />
           </Badge>
         </button>

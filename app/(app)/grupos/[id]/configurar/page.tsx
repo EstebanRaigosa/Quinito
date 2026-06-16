@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight, ShieldAlert } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { FormularioReglas } from "@/components/grupos/FormularioReglas";
+import { FormularioEditarGrupo } from "@/components/grupos/FormularioEditarGrupo";
+import { EliminarGrupo } from "@/components/grupos/EliminarGrupo";
 
 export default async function ConfigurarGrupoPage({
   params,
@@ -13,7 +16,18 @@ export default async function ConfigurarGrupoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detalle = await getGrupoDetalle(id);
+  const supabase = await createClient();
+  const [
+    {
+      data: { user },
+    },
+    { data: esSuperadmin },
+    detalle,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc("es_superadmin"),
+    getGrupoDetalle(id),
+  ]);
 
   // Si no existe o no es miembro, mandamos al inicio.
   if (!detalle) redirect("/dashboard");
@@ -36,9 +50,13 @@ export default async function ConfigurarGrupoPage({
   }
 
   const { grupo, reglas } = detalle;
+  // Eliminar la polla es exclusivo del creador o del superadmin de plataforma
+  // (mismo criterio que valida el RPC `eliminar_grupo`).
+  const puedeEliminarGrupo =
+    (!!user && user.id === grupo.creador_id) || esSuperadmin === true;
 
   return (
-    <PageContainer ancho="ancho" className="space-y-5">
+    <PageContainer ancho="ancho" className="space-y-8">
       <div className="animate-fade-up">
         <Link
           href={`/grupos/${id}`}
@@ -49,14 +67,43 @@ export default async function ConfigurarGrupoPage({
         </Link>
         <h1 className="t-h1">Configurar polla</h1>
         <p className="t-body-sm mt-1 text-fg-muted">
-          Ajusta los puntajes, bonos, el pozo y los premios. Los cambios aplican
-          a todos los participantes.
+          Edita los datos de la polla, ajusta puntajes, bonos, pozo y premios.
+          Los cambios aplican a todos los participantes.
         </p>
       </div>
 
-      <div className="md:max-w-xl">
+      {/* Datos de la polla: nombre y descripción */}
+      <section className="space-y-3 md:max-w-xl">
+        <div>
+          <p className="overline">Datos de la polla</p>
+          <p className="t-body-sm mt-1 text-fg-muted">
+            El nombre y la descripción que ven todos los participantes.
+          </p>
+        </div>
+        <FormularioEditarGrupo
+          grupoId={id}
+          nombre={grupo.nombre}
+          descripcion={grupo.descripcion}
+        />
+      </section>
+
+      {/* Reglas: puntajes, bonos, pozo y premios */}
+      <section className="space-y-3 md:max-w-xl">
+        <p className="overline">Reglas y puntuación</p>
         <FormularioReglas grupoId={id} reglas={reglas} />
-      </div>
+      </section>
+
+      {/* Zona de peligro: eliminar la polla (solo creador / superadmin) */}
+      {puedeEliminarGrupo && (
+        <section className="space-y-3 md:max-w-xl">
+          <p className="overline text-destructive">Zona de peligro</p>
+          <EliminarGrupo
+            grupoId={id}
+            nombre={grupo.nombre}
+            totalParticipantes={grupo.total_participantes}
+          />
+        </section>
+      )}
     </PageContainer>
   );
 }

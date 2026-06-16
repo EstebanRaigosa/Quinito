@@ -4,7 +4,13 @@ import { useState } from "react";
 import { BarChart3, Clock, Check } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
-import { esSinCierre, prediccionCerrada, puedePredecir } from "@/lib/utils/prediccion";
+import {
+  esSinCierre,
+  prediccionCerrada,
+  puedePredecir,
+  nivelAcierto,
+} from "@/lib/utils/prediccion";
+import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { claveDiaBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
@@ -161,8 +167,11 @@ export function TarjetaPrediccion({
               <Flag code={partido.equipo_visitante?.codigo_iso} size={14} />
             </span>
             {finalizado && miPrediccion && (
-              <Badge variant={miPrediccion.puntos_obtenidos > 0 ? "gold" : "neutral"}>
-                +{miPrediccion.puntos_obtenidos} pts
+              <Badge
+                variant={miPrediccion.puntos_obtenidos > 0 ? "gold" : "neutral"}
+              >
+                <IconoAcierto nivel={nivelAcierto(miPrediccion, partido)} />+
+                {miPrediccion.puntos_obtenidos} pts
               </Badge>
             )}
           </div>

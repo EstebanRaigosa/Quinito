@@ -15,8 +15,8 @@ import { usePushNotificaciones } from "@/lib/hooks/usePushNotificaciones";
 
 /** Clave en localStorage para recordar que el usuario pospuso el prompt. */
 const CLAVE_POSPUESTO = "polla:notif-prompt-pospuesto";
-/** No volver a preguntar hasta pasados 7 días tras un "Ahora no". */
-const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+/** No volver a preguntar hasta pasadas 12 horas tras un "Ahora no". */
+const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
 /** ¿El usuario pospuso el prompt hace menos del cooldown? */
 function pospuestoReciente(): boolean {

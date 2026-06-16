@@ -20,6 +20,13 @@ const badgeVariants = cva(
         // Sólidas para momentos deportivos (en vivo, líder).
         live: "bg-destructive text-destructive-foreground shadow-xs",
         playing: "bg-info text-info-foreground shadow-xs",
+        // "En juego": ámbar sólido con relieve (gradiente + sombra). Texto blanco
+        // con sombra para legibilidad sobre el ámbar. El brillo que lo recorre se
+        // arma en el sitio de uso (span con `animate-shine`).
+        enjuego:
+          "bg-gradient-to-b from-[#F59E0B] to-[#B45309] text-white shadow-sm [text-shadow:0_1px_1.5px_rgb(0_0_0_/_35%)]",
+        // Puntaje de predicciones (esmeralda) y estado de pago "Parcial". El TIPO
+        // de acierto se distingue con un icono dentro del badge, no con el color.
         gold: "bg-gradient-to-b from-mustard-300 to-primary text-primary-foreground shadow-xs",
       },
     },

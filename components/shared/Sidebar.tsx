@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, Radio, LogOut, Loader2 } from "lucide-react";
+import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, Radio, ScrollText, LogOut, Loader2 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
@@ -145,6 +145,28 @@ export function Sidebar({
               strokeWidth={pathname === "/admin/conectados" ? 2.5 : 2}
             />
             Conectados
+          </Link>
+        )}
+
+        {esAdmin && (
+          <Link
+            href="/admin/auditoria"
+            aria-current={pathname.startsWith("/admin/auditoria") ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+              pathname.startsWith("/admin/auditoria")
+                ? "bg-primary-soft text-primary"
+                : "text-fg-muted hover:bg-sunken",
+            )}
+          >
+            <ScrollText
+              className={cn(
+                "size-[18px]",
+                pathname.startsWith("/admin/auditoria") && "text-primary",
+              )}
+              strokeWidth={pathname.startsWith("/admin/auditoria") ? 2.5 : 2}
+            />
+            Auditoría
           </Link>
         )}
       </nav>
