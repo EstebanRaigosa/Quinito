@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Evita el bug recurrente de "Module not found" en Netlify: pushear con archivos
+# de código NUEVOS que olvidaste agregar a git (git add). El build local pasa
+# porque están en tu disco, pero el repo que clona Netlify no los tiene.
+#
+# Bloquea el push si hay archivos .ts/.tsx/.js/.jsx sin trackear en app/,
+# components/ o lib/. Para saltarlo a propósito: git push --no-verify
+#
+# Se activa con:  git config core.hooksPath .githooks   (ver scripts/setup-hooks)
+
+untracked=$(git ls-files --others --exclude-standard \
+  | grep -E '^(app|components|lib)/.*\.(ts|tsx|js|jsx)$')
+
+if [ -n "$untracked" ]; then
+  echo ""
+  echo "✋  push abortado — hay archivos de código SIN agregar a git:"
+  echo ""
+  echo "$untracked" | sed 's/^/      /'
+  echo ""
+  echo "   Si el código los importa, el build de Netlify fallará (module not found)."
+  echo "   Arréglalo:   git add -A   (revisa que quede todo) y vuelve a commitear."
+  echo "   Forzar push: git push --no-verify   (solo si sabes lo que haces)"
+  echo ""
+  exit 1
+fi
+
+exit 0
