@@ -49,6 +49,25 @@ export function prediccionCerrada(
 }
 
 /**
+ * ¿El partido ya estaba cerrado en el instante `creadoEn` (creación de la
+ * polla)? Es decir: nadie pudo predecirlo porque su cierre ocurrió antes de que
+ * la polla existiera. A diferencia de `prediccionCerrada`, NO mira el `estado`
+ * actual del partido (en vivo/finalizado de HOY no dice nada sobre si estaba
+ * cerrado AL CREAR): la pregunta es histórica, así que solo compara el instante
+ * de cierre programado contra la creación. Los partidos "sin cierre" (centinela
+ * 1900) nunca cuentan. Sirve para avisar al admin que cargue el "arranque".
+ */
+export function cerradoAlCrear(
+  partido: Partido,
+  minutosCierre: number,
+  creadoEn: Date,
+): boolean {
+  if (esSinCierre(partido)) return false;
+  const cierre = new Date(partido.fecha_hora).getTime() - minutosCierre * 60_000;
+  return creadoEn.getTime() >= cierre;
+}
+
+/**
  * Firma de los datos "en vivo" de un partido (estado + marcador). Solo cambia
  * cuando cambia algo visible que justifica un destello de actualización en la
  * tarjeta. La consume `DestelloPartido`.

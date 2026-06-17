@@ -11,12 +11,12 @@ const schema = z
     partidoId: z.string().uuid(),
     golesLocal: z.coerce.number().int().min(0).max(99),
     golesVisitante: z.coerce.number().int().min(0).max(99),
-    // Tanda de penales: solo se envía en cruces eliminatorios empatados.
+    // Desempate de un cruce empatado a los 90' (no cambia la puntuación). Se
+    // envía la tanda de penales O el marcador del tiempo extra, según el caso.
     penalesLocal: z.coerce.number().int().min(0).max(99).optional(),
     penalesVisitante: z.coerce.number().int().min(0).max(99).optional(),
-    // Marcador NO empatado de un cruce que se definió en la prórroga (tiempo
-    // extra). Solo informativo: no cambia la puntuación.
-    prorroga: z.boolean().optional(),
+    prorrogaLocal: z.coerce.number().int().min(0).max(99).optional(),
+    prorrogaVisitante: z.coerce.number().int().min(0).max(99).optional(),
   })
   .refine(
     (d) =>
@@ -60,7 +60,8 @@ export async function registrarResultado(
     p_goles_visitante: parsed.data.golesVisitante,
     p_penales_local: parsed.data.penalesLocal ?? undefined,
     p_penales_visitante: parsed.data.penalesVisitante ?? undefined,
-    p_prorroga: parsed.data.prorroga ?? undefined,
+    p_prorroga_local: parsed.data.prorrogaLocal ?? undefined,
+    p_prorroga_visitante: parsed.data.prorrogaVisitante ?? undefined,
   });
   if (error) return { ok: false, error: error.message };
 

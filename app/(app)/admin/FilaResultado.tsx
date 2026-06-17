@@ -30,11 +30,14 @@ export type PartidoAdmin = {
   estado: string;
   golesLocal: number | null;
   golesVisitante: number | null;
-  /** True si es cruce eliminatorio: un empate exige definir penales. */
+  /** True si es cruce eliminatorio: un empate a los 90' exige definir el avance. */
   esEliminatoria: boolean;
   penalesLocal: number | null;
   penalesVisitante: number | null;
-  /** Cómo se definió (para reflejar el estado del checkbox de prórroga). */
+  /** Marcador del tiempo extra (cuando el cruce se resolvió en la prórroga). */
+  prorrogaLocal: number | null;
+  prorrogaVisitante: number | null;
+  /** Cómo se definió (regular / prórroga / penales). */
   tipoDefinicion: TipoDefinicion;
 };
 
@@ -58,26 +61,25 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
   const [gv, setGv] = useState(partido.golesVisitante?.toString() ?? "");
   const [pl, setPl] = useState(partido.penalesLocal?.toString() ?? "");
   const [pv, setPv] = useState(partido.penalesVisitante?.toString() ?? "");
-  // Cómo se definió el cruce (90' / prórroga / penales). El admin lo elige.
-  const [modo, setModo] = useState<TipoDefinicion>(partido.tipoDefinicion);
+  // Marcador del tiempo extra (cuando el cruce se resolvió en la prórroga).
+  const [prl, setPrl] = useState(partido.prorrogaLocal?.toString() ?? "");
+  const [prv, setPrv] = useState(partido.prorrogaVisitante?.toString() ?? "");
+  // Definición del cruce cuando el marcador de los 90' quedó empatado: en tiempo
+  // extra (prorroga) o por penales. Solo aplica a ese caso.
+  const [definicion, setDefinicion] = useState<"prorroga" | "penales">(
+    partido.tipoDefinicion === "prorroga" ? "prorroga" : "penales",
+  );
   const [guardando, setGuardando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [finalizado, setFinalizado] = useState(partido.estado === "finalizado");
 
-  // En un cruce eliminatorio, un empate en goles obliga a definir penales.
+  // El tiempo extra solo existe si el cruce quedó EMPATADO a los 90'.
   const ambosGoles = gl !== "" && gv !== "";
   const empate = ambosGoles && gl === gv;
-  const requierePenales = partido.esEliminatoria && empate;
-  // El selector "¿cómo se definió?" aparece en eliminatoria al cargar los goles.
-  const mostrarSelector = partido.esEliminatoria && ambosGoles;
-  // Modo efectivo según el marcador: un empate SIEMPRE es penales; con ganador,
-  // penales no aplica (queda 90' o prórroga, lo que haya elegido el admin).
-  const modoEfectivo: TipoDefinicion = empate
-    ? "penales"
-    : modo === "prorroga"
-      ? "prorroga"
-      : "regular";
+  const requiereDefinicion = partido.esEliminatoria && empate;
+  const penalesIguales = pl !== "" && pv !== "" && pl === pv;
+  const prorrogaIguales = prl !== "" && prv !== "" && prl === prv;
 
   function limpiar(v: string) {
     return v.replace(/\D/g, "").slice(0, 2);
@@ -88,22 +90,46 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
       toast.error("Ingresa ambos marcadores");
       return;
     }
-    if (requierePenales && (pl === "" || pv === "")) {
-      toast.error("Empate en eliminación: define los penales");
-      return;
-    }
-    if (requierePenales && pl === pv) {
-      toast.error("Los penales no pueden quedar empatados");
-      return;
+    // Desempate cuando hubo empate a los 90' (tiempo extra o penales). El equipo
+    // que avanza lo deriva la BD del marcador correspondiente.
+    let penalesLocal: number | undefined;
+    let penalesVisitante: number | undefined;
+    let prorrogaLocal: number | undefined;
+    let prorrogaVisitante: number | undefined;
+    if (requiereDefinicion) {
+      if (definicion === "penales") {
+        if (pl === "" || pv === "") {
+          toast.error("Empate a los 90': ingresa la tanda de penales");
+          return;
+        }
+        if (pl === pv) {
+          toast.error("Los penales no pueden quedar empatados");
+          return;
+        }
+        penalesLocal = Number(pl);
+        penalesVisitante = Number(pv);
+      } else {
+        if (prl === "" || prv === "") {
+          toast.error("Tiempo extra: ingresa el marcador");
+          return;
+        }
+        if (prl === prv) {
+          toast.error("El marcador del tiempo extra no puede quedar empatado");
+          return;
+        }
+        prorrogaLocal = Number(prl);
+        prorrogaVisitante = Number(prv);
+      }
     }
     setGuardando(true);
     const r = await registrarResultado({
       partidoId: partido.id,
       golesLocal: Number(gl),
       golesVisitante: Number(gv),
-      penalesLocal: requierePenales ? Number(pl) : undefined,
-      penalesVisitante: requierePenales ? Number(pv) : undefined,
-      prorroga: modoEfectivo === "prorroga",
+      penalesLocal,
+      penalesVisitante,
+      prorrogaLocal,
+      prorrogaVisitante,
     });
     setGuardando(false);
     if (!r.ok) {
@@ -127,6 +153,8 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
     setGv("");
     setPl("");
     setPv("");
+    setPrl("");
+    setPrv("");
     setDialogAbierto(false);
     toast.success("Resultado eliminado · puntos revertidos");
   }
@@ -247,72 +275,105 @@ export function FilaResultado({ partido }: { partido: PartidoAdmin }) {
         )}
       </div>
 
-      {mostrarSelector && (
-        <div className="flex w-full flex-col gap-1.5 sm:basis-full">
-          <span className="t-caption font-semibold text-fg-muted">
-            ¿Cómo se definió?
-          </span>
-          <div className="grid grid-cols-3 gap-1.5">
-            {(
-              [
-                { valor: "regular", etiqueta: "90 minutos", habilitado: !empate },
-                { valor: "prorroga", etiqueta: "Tiempo extra", habilitado: !empate },
-                { valor: "penales", etiqueta: "Penales", habilitado: empate },
-              ] as const
-            ).map((op) => {
-              const activo = modoEfectivo === op.valor;
-              return (
-                <button
-                  key={op.valor}
-                  type="button"
-                  disabled={!op.habilitado}
-                  aria-pressed={activo}
-                  onClick={() => setModo(op.valor)}
-                  className={cn(
-                    "min-h-[44px] rounded-lg border-2 px-2 py-2 text-sm font-bold transition-colors",
-                    activo
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-strong bg-surface text-fg-strong",
-                    op.habilitado && !activo && "hover:border-primary/50",
-                    !op.habilitado && "cursor-not-allowed opacity-45",
-                  )}
-                >
-                  {op.etiqueta}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {requierePenales && (
-        <div className="flex w-full items-center gap-2 rounded-lg bg-amber-500/10 p-2.5 sm:basis-full">
-          <span className="t-caption font-semibold text-amber-700 dark:text-amber-400">
-            Empate · ¿quién pasa? Penales:
-          </span>
-          <input
-            inputMode="numeric"
-            pattern="[0-9]*"
-            aria-label={`Penales ${partido.localNombre}`}
-            value={pl}
-            onChange={(e) => setPl(limpiar(e.target.value))}
-            onFocus={centrarEnFoco}
-            className={cn(inputCls, "h-9 w-10 text-base")}
-          />
-          <span className="font-extrabold text-fg-subtle">-</span>
-          <input
-            inputMode="numeric"
-            pattern="[0-9]*"
-            aria-label={`Penales ${partido.visitanteNombre}`}
-            value={pv}
-            onChange={(e) => setPv(limpiar(e.target.value))}
-            onFocus={centrarEnFoco}
-            className={cn(inputCls, "h-9 w-10 text-base")}
-          />
-          {pl !== "" && pv !== "" && pl !== pv && (
-            <span className="t-caption truncate font-bold text-fg-strong">
-              Pasa {Number(pl) > Number(pv) ? partido.localNombre : partido.visitanteNombre}
+      {requiereDefinicion && (
+        <div className="flex w-full flex-col gap-2.5 rounded-lg bg-amber-500/10 p-2.5 sm:basis-full">
+          {/* Empate a los 90': ¿cómo se resolvió el cruce? */}
+          <div className="flex flex-col gap-1.5">
+            <span className="t-caption font-semibold text-amber-700 dark:text-amber-400">
+              Empate a los 90’ · ¿cómo se resolvió?
             </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(
+                [
+                  { valor: "prorroga", etiqueta: "Tiempo extra" },
+                  { valor: "penales", etiqueta: "Penales" },
+                ] as const
+              ).map((op) => {
+                const activo = definicion === op.valor;
+                return (
+                  <button
+                    key={op.valor}
+                    type="button"
+                    aria-pressed={activo}
+                    onClick={() => setDefinicion(op.valor)}
+                    className={cn(
+                      "min-h-[44px] rounded-lg border-2 px-2 py-2 text-sm font-bold transition-colors",
+                      activo
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-strong bg-surface text-fg-strong hover:border-primary/50",
+                    )}
+                  >
+                    {op.etiqueta}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {definicion === "penales" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="t-caption font-semibold text-fg-muted">Penales:</span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={`Penales ${partido.localNombre}`}
+                value={pl}
+                onChange={(e) => setPl(limpiar(e.target.value))}
+                onFocus={centrarEnFoco}
+                className={cn(inputCls, "h-9 w-10 text-base")}
+              />
+              <span className="font-extrabold text-fg-subtle">-</span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={`Penales ${partido.visitanteNombre}`}
+                value={pv}
+                onChange={(e) => setPv(limpiar(e.target.value))}
+                onFocus={centrarEnFoco}
+                className={cn(inputCls, "h-9 w-10 text-base")}
+              />
+              {pl !== "" && pv !== "" && !penalesIguales && (
+                <span className="t-caption truncate font-bold text-fg-strong">
+                  Pasa{" "}
+                  {Number(pl) > Number(pv)
+                    ? partido.localNombre
+                    : partido.visitanteNombre}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="t-caption font-semibold text-fg-muted">
+                Marcador en tiempo extra:
+              </span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={`Tiempo extra ${partido.localNombre}`}
+                value={prl}
+                onChange={(e) => setPrl(limpiar(e.target.value))}
+                onFocus={centrarEnFoco}
+                className={cn(inputCls, "h-9 w-10 text-base")}
+              />
+              <span className="font-extrabold text-fg-subtle">-</span>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={`Tiempo extra ${partido.visitanteNombre}`}
+                value={prv}
+                onChange={(e) => setPrv(limpiar(e.target.value))}
+                onFocus={centrarEnFoco}
+                className={cn(inputCls, "h-9 w-10 text-base")}
+              />
+              {prl !== "" && prv !== "" && !prorrogaIguales && (
+                <span className="t-caption truncate font-bold text-fg-strong">
+                  Pasa{" "}
+                  {Number(prl) > Number(prv)
+                    ? partido.localNombre
+                    : partido.visitanteNombre}
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}

@@ -211,6 +211,13 @@ const config: Config = {
           "12%": { boxShadow: "0 0 0 3px rgba(34, 197, 94, 0.55)" },
           "100%": { boxShadow: "0 0 0 0 rgba(34, 197, 94, 0)" },
         },
+        // Latido de atención (recorrido guiado): anillo ámbar que late de forma
+        // continua para señalar el botón "Arranque". Solo box-shadow → no
+        // desplaza layout y es compositor-friendly en iOS (§10).
+        "latido-atencion": {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(245, 158, 11, 0)" },
+          "50%": { boxShadow: "0 0 0 6px rgba(245, 158, 11, 0.35)" },
+        },
         // Flotación lenta para blobs decorativos.
         float: {
           "0%, 100%": { transform: "translate3d(0, 0, 0)" },
@@ -232,6 +239,7 @@ const config: Config = {
         shine: "shine 3.2s ease-in-out infinite",
         "live-pulse": "live-pulse 1.5s ease-in-out infinite",
         destello: "destello 1.6s ease-out 1",
+        "latido-atencion": "latido-atencion 1.4s ease-in-out infinite",
         float: "float 7s ease-in-out infinite",
         shimmer: "shimmer 1.6s infinite",
       },

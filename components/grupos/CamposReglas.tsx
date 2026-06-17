@@ -147,11 +147,11 @@ const ACIERTOS: { name: CampoKey; etiqueta: string; ayuda: string }[] = [
 ];
 
 const BONOS: { name: CampoKey; etiqueta: string; ayuda: string }[] = [
-  { name: "bono_dieciseisavos", etiqueta: "Dieciseisavos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de 1/16." },
-  { name: "bono_octavos", etiqueta: "Octavos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de octavos." },
-  { name: "bono_cuartos", etiqueta: "Cuartos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de cuartos." },
-  { name: "bono_semifinales", etiqueta: "Semifinales", ayuda: "Bono si aciertas los 2 finalistas (avanzan de semis)." },
-  { name: "bono_final", etiqueta: "Final", ayuda: "Bono si aciertas el campeón (gana la final)." },
+  { name: "bono_dieciseisavos", etiqueta: "Dieciseisavos", ayuda: "Todo o nada: aciertas todos los equipos que avanzan de dieciseisavos." },
+  { name: "bono_octavos", etiqueta: "Octavos", ayuda: "Todo o nada: aciertas todos los equipos que avanzan de octavos." },
+  { name: "bono_cuartos", etiqueta: "Cuartos", ayuda: "Todo o nada: aciertas todos los equipos que avanzan de cuartos." },
+  { name: "bono_semifinales", etiqueta: "Semifinales", ayuda: "Todo o nada: aciertas los 2 finalistas (avanzan de semifinales)." },
+  { name: "bono_final", etiqueta: "Final", ayuda: "Todo o nada: aciertas al campeón (gana la final)." },
 ];
 
 const PREMIOS: { name: CampoKey; lugar: string; medalla: string }[] = [
@@ -375,8 +375,8 @@ export function CamposReglas({ control }: { control: Control<ReglasInput> }) {
       {/* Bonos */}
       <section className="surface-card rounded-2xl p-5 sm:p-6">
         <SeccionHeader
-          titulo="Bonos por fase de eliminación"
-          sub="Puntos extra si aciertas TODOS los equipos que avanzan de la fase (todo o nada)."
+          titulo="Bono por ronda perfecta"
+          sub="Se obtiene cuando aciertas todos los equipos que avanzan en una ronda (16avos, octavos, cuartos, semifinales, etc.). Si fallas al menos un equipo, no se otorga el bono de esa ronda."
         />
         <div className="flex flex-col divide-y divide-border">
           {BONOS.map((c) => (

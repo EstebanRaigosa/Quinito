@@ -9,11 +9,13 @@ import {
   Scroll,
   Users,
   Eye,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import {
+  cerradoAlCrear,
   compararPartidos,
   esSinCierre,
   firmaPartido,
@@ -45,6 +47,8 @@ import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
 import { PanelParticipantes } from "@/components/grupos/PanelParticipantes";
 import { PanelBaneados } from "@/components/grupos/PanelBaneados";
+import { PildoraInfo } from "@/components/grupos/PildoraInfo";
+import { AvisoPartidosCerrados } from "@/components/grupos/AvisoPartidosCerrados";
 import type { BonoFase, Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 
 /**
@@ -87,19 +91,29 @@ function PestanaTab({
   );
 }
 
+/** Texto de la pill ⓘ en cada fila de bono por ronda. */
+const PISTA_BONO =
+  "Para obtener este bono debes acertar todos los equipos que ganan esta ronda.";
+
 function FilaRegla({
   etiqueta,
   valor,
   ganado = false,
+  pista,
 }: {
   etiqueta: string;
   valor: string | number;
   /** Resalta la fila como un bono ya ganado por el usuario. */
   ganado?: boolean;
+  /** Si está, muestra una pill ⓘ con este texto al hacer hover/foco. */
+  pista?: string;
 }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="t-body-sm text-fg-muted">{etiqueta}</span>
+      <span className="flex items-center gap-1.5 t-body-sm text-fg-muted">
+        {etiqueta}
+        {pista && <PildoraInfo texto={pista} etiqueta={`Bono ${etiqueta}`} />}
+      </span>
       <span className="flex items-center gap-1.5">
         {ganado && (
           <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
@@ -203,23 +217,38 @@ function ResumenReglas({
     <div className="space-y-5">
       <GlosarioPuntaje reglas={reglas} />
       <div>
-        <p className="overline mb-2">Bonos por fase</p>
+        <p className="overline mb-2">Bono por ronda perfecta</p>
         <p className="t-caption mb-2 px-1 text-fg-muted">
-          Bono <b className="font-bold text-fg-strong">todo o nada</b>: lo ganas solo si aciertas{" "}
-          <b className="font-bold text-fg-strong">quién avanza en todos los partidos</b> de esa ronda
-          (los que apuesta tu grupo). Si fallas aunque sea un cruce, no hay bono. Mientras más
-          avanzada la fase, mayor el premio.
+          Este bono se obtiene cuando aciertas{" "}
+          <b className="font-bold text-fg-strong">todos los equipos que avanzan</b> en una ronda
+          específica, ya sea en 16avos, octavos, cuartos, semifinales, etc. Es decir, debes acertar
+          todos los clasificados de esa fase para sumar el bono correspondiente. Si fallas al menos
+          un equipo, no se otorga el bono de esa ronda.
         </p>
         <Card>
           <CardContent className="divide-y divide-border p-4 pt-2">
-            <FilaRegla etiqueta="Dieciseisavos" valor={`+${reglas.bono_dieciseisavos}`} ganado={ganadas.has("dieciseisavos")} />
-            <FilaRegla etiqueta="Octavos" valor={`+${reglas.bono_octavos}`} ganado={ganadas.has("octavos")} />
-            <FilaRegla etiqueta="Cuartos" valor={`+${reglas.bono_cuartos}`} ganado={ganadas.has("cuartos")} />
-            <FilaRegla etiqueta="Semifinales" valor={`+${reglas.bono_semifinales}`} ganado={ganadas.has("semifinales")} />
-            <FilaRegla etiqueta="Final" valor={`+${reglas.bono_final}`} ganado={ganadas.has("final")} />
+            <FilaRegla etiqueta="Dieciseisavos" valor={`+${reglas.bono_dieciseisavos}`} ganado={ganadas.has("dieciseisavos")} pista={PISTA_BONO} />
+            <FilaRegla etiqueta="Octavos" valor={`+${reglas.bono_octavos}`} ganado={ganadas.has("octavos")} pista={PISTA_BONO} />
+            <FilaRegla etiqueta="Cuartos" valor={`+${reglas.bono_cuartos}`} ganado={ganadas.has("cuartos")} pista={PISTA_BONO} />
+            <FilaRegla etiqueta="Semifinales" valor={`+${reglas.bono_semifinales}`} ganado={ganadas.has("semifinales")} pista={PISTA_BONO} />
+            <FilaRegla etiqueta="Final" valor={`+${reglas.bono_final}`} ganado={ganadas.has("final")} pista={PISTA_BONO} />
           </CardContent>
         </Card>
       </div>
+
+      {/* Nota: el puntaje se calcula con el marcador de los 90'. */}
+      <div className="flex items-start gap-2.5 rounded-xl border border-info/30 bg-info-soft px-3.5 py-3">
+        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-info/15 text-info">
+          <Clock className="size-4" aria-hidden />
+        </span>
+        <p className="t-caption leading-snug text-fg-muted">
+          <b className="font-bold text-fg-strong">Solo cuentan los 90 minutos.</b> Tus
+          predicciones se puntúan con el marcador del tiempo reglamentario; el tiempo extra y
+          los penales <b className="font-bold text-fg-strong">no cambian tus puntos</b> (solo
+          definen quién avanza para el bono por ronda).
+        </p>
+      </div>
+
       <div>
         <p className="overline mb-2">Pozo y premios</p>
         <Card>
@@ -536,6 +565,27 @@ export default async function GrupoDetallePage({
   // Torneos de los partidos del grupo (para el "en vivo" de marcador/estado).
   const torneoIds = [...new Set(partidos.map((p) => p.torneo_id))];
 
+  // Partidos que YA estaban cerrados al crear la polla: nadie pudo predecirlos,
+  // así que el admin debe cargar el "arranque" de cada participante. Solo se
+  // calcula para el admin (es quien ve la sección Participantes y el aviso).
+  const creadoEnPolla = new Date(grupo.creado_en);
+  const partidosCerradosAlCrear = esAdmin
+    ? partidos
+        .filter((p) =>
+          cerradoAlCrear(p, reglas.minutos_cierre_prediccion, creadoEnPolla),
+        )
+        .sort(compararPartidos)
+        .map((p) => ({
+          id: p.id,
+          local: p.equipo_local?.nombre ?? p.placeholder_local ?? "Local",
+          localIso: p.equipo_local?.codigo_iso ?? null,
+          visitante:
+            p.equipo_visitante?.nombre ?? p.placeholder_visitante ?? "Visitante",
+          visitanteIso: p.equipo_visitante?.codigo_iso ?? null,
+          fecha_hora: p.fecha_hora,
+        }))
+    : [];
+
   return (
     <PageContainer ancho="ancho">
       {/* Refresca la página sola en el instante en que se cierre el próximo
@@ -670,6 +720,15 @@ export default async function GrupoDetallePage({
 
       {/* Tabs principales */}
       <TabsConRefresh defaultValue="jugar" grupoNombre={grupo.nombre}>
+        {/* Aviso (solo admin): la polla se creó con partidos ya cerrados → hay
+            que cargar el "arranque" de cada participante. Va dentro de los Tabs
+            para poder abrir "Participantes" y resaltar el botón de arranque. */}
+        {partidosCerradosAlCrear.length > 0 && (
+          <AvisoPartidosCerrados
+            grupoId={grupo.id}
+            partidos={partidosCerradosAlCrear}
+          />
+        )}
         <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 mb-5 bg-app/95 px-4 py-2 backdrop-blur md:static md:top-0 md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
           <TabsList
             className={cn(

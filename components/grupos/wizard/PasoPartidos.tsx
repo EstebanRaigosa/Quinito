@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import type { FaseTorneo, Partido } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { usePartidosTorneo } from "@/lib/queries/partidos";
-import { compararPartidos } from "@/lib/utils/prediccion";
+import { cerradoAlCrear, compararPartidos } from "@/lib/utils/prediccion";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
 import { createClient } from "@/lib/supabase/client";
 import { formatearFechaCorta, formatearHoraBogota } from "@/lib/utils/fechas";
@@ -139,6 +139,25 @@ export function PasoPartidos() {
       return;
     }
     toast.success(`Grupo "${datos.nombre}" creado`);
+
+    // Aviso inmediato si la polla quedó con partidos ya cerrados (nadie pudo
+    // predecirlos): el admin debe cargar el "arranque" de cada jugador. El
+    // detalle del grupo muestra además un banner con la lista y un atajo.
+    const ahora = new Date();
+    const cerrados = partidos.filter(
+      (p) =>
+        partidosSeleccionados.has(p.id) &&
+        cerradoAlCrear(p, reglas.minutos_cierre_prediccion, ahora),
+    ).length;
+    if (cerrados > 0) {
+      toast.warning(
+        cerrados === 1
+          ? "Incluiste 1 partido ya cerrado. Carga el arranque de cada jugador en Participantes."
+          : `Incluiste ${cerrados} partidos ya cerrados. Carga el arranque de cada jugador en Participantes.`,
+        { duration: 8000 },
+      );
+    }
+
     router.push("/dashboard");
     router.refresh();
   }

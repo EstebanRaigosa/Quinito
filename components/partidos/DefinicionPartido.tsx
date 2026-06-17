@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
 
 /**
- * Cómo se definió un cruce eliminatorio, cuando NO fue en los 90':
+ * Cómo se resolvió un cruce eliminatorio que quedó EMPATADO a los 90':
  * - `penales`: bloque dorado con el marcador de la tanda y quién avanza.
- * - `prorroga`: bloque azul (tiempo extra) indicando que el ganador se definió
- *   en la prórroga (el ganador sale del marcador, que ya incluye esos goles).
- * Devuelve `null` para partidos regulares o no finalizados (ver migración 0062).
+ * - `prorroga`: bloque azul (tiempo extra) indicando quién avanzó.
+ * El equipo que avanza sale de `equipo_avanza_id` (no del marcador, que está
+ * empatado). Devuelve `null` para partidos regulares o no finalizados (0064).
  */
 export function DefinicionPartido({
   partido,
@@ -18,6 +18,16 @@ export function DefinicionPartido({
   className?: string;
 }) {
   if (partido.estado !== "finalizado") return null;
+  if (partido.tipo_definicion === "regular") return null;
+
+  // El equipo que avanza es el guardado en equipo_avanza_id (el marcador de los
+  // 90' quedó empatado, así que no se puede derivar del marcador).
+  const ganador =
+    partido.equipo_avanza_id === partido.equipo_local?.id
+      ? partido.equipo_local
+      : partido.equipo_avanza_id === partido.equipo_visitante?.id
+        ? partido.equipo_visitante
+        : null;
 
   // ── Penales: marcador de la tanda + ganador (dorado) ──────────────────────
   if (
@@ -25,8 +35,7 @@ export function DefinicionPartido({
     partido.penales_local != null &&
     partido.penales_visitante != null
   ) {
-    const ganaLocal = partido.penales_local > partido.penales_visitante;
-    const ganador = ganaLocal ? partido.equipo_local : partido.equipo_visitante;
+    const ganaLocal = partido.equipo_avanza_id === partido.equipo_local?.id;
     return (
       <div
         className={cn(
@@ -59,29 +68,42 @@ export function DefinicionPartido({
     );
   }
 
-  // ── Prórroga: ganador definido en tiempo extra (azul) ─────────────────────
+  // ── Prórroga: marcador del tiempo extra + ganador (azul) ──────────────────
   if (
     partido.tipo_definicion === "prorroga" &&
-    partido.goles_local != null &&
-    partido.goles_visitante != null
+    partido.prorroga_local != null &&
+    partido.prorroga_visitante != null
   ) {
-    const ganaLocal = partido.goles_local > partido.goles_visitante;
-    const ganador = ganaLocal ? partido.equipo_local : partido.equipo_visitante;
+    const ganaLocal = partido.equipo_avanza_id === partido.equipo_local?.id;
     return (
       <div
         className={cn(
-          "flex flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5 rounded-lg bg-info-soft px-3 py-1.5 text-2xs font-extrabold text-info ring-1 ring-info/30",
+          "overflow-hidden rounded-lg ring-1 ring-info/30",
           className,
         )}
       >
-        <span className="inline-flex items-center gap-1 uppercase tracking-wide">
-          <Clock className="size-3.5 shrink-0" aria-hidden />
-          Tiempo extra
-        </span>
-        <span className="inline-flex min-w-0 items-center gap-1.5">
+        <div className="flex items-center justify-center gap-2 bg-info-soft px-3 py-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-widest text-info">
+            <Clock className="size-3 shrink-0" aria-hidden />
+            Tiempo extra
+          </span>
+          <span className="flex items-center gap-1.5 text-sm font-black tabular-nums">
+            <Flag code={partido.equipo_local?.codigo_iso} size={16} />
+            <span className={cn(ganaLocal ? "text-fg-strong" : "text-fg-subtle")}>
+              {partido.prorroga_local}
+            </span>
+            <span className="text-fg-subtle">-</span>
+            <span className={cn(!ganaLocal ? "text-fg-strong" : "text-fg-subtle")}>
+              {partido.prorroga_visitante}
+            </span>
+            <Flag code={partido.equipo_visitante?.codigo_iso} size={16} />
+          </span>
+        </div>
+        <div className="flex items-center justify-center gap-1.5 bg-info-soft/70 px-3 py-1 text-2xs font-extrabold text-info">
+          <Trophy className="size-3.5 shrink-0" aria-hidden />
           <Flag code={ganador?.codigo_iso} size={14} />
           <span className="truncate">{ganador?.nombre} ganó en la prórroga</span>
-        </span>
+        </div>
       </div>
     );
   }

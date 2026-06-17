@@ -74,8 +74,16 @@ export type Partido = {
   /** Tanda de penales (solo cruces eliminatorios empatados); no puntúa. */
   penales_local: number | null;
   penales_visitante: number | null;
+  /** Marcador final del tiempo extra (solo cruces resueltos en la prórroga); no puntúa. */
+  prorroga_local: number | null;
+  prorroga_visitante: number | null;
   /** Cómo se definió: 90' (regular), tiempo extra (prorroga) o penales. */
   tipo_definicion: TipoDefinicion;
+  /**
+   * Equipo que avanza cuando el marcador de los 90' quedó empatado (definido en
+   * tiempo extra o penales). `null` si hubo ganador en los 90'. Ver migración 0064.
+   */
+  equipo_avanza_id: string | null;
   estado: EstadoPartido;
 };
 

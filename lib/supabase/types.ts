@@ -582,6 +582,7 @@ export type Database = {
         Row: {
           ciudad: string | null
           creado_en: string
+          equipo_avanza_id: string | null
           equipo_local_id: string | null
           equipo_visitante_id: string | null
           estadio: string | null
@@ -597,12 +598,15 @@ export type Database = {
           penales_visitante: number | null
           placeholder_local: string | null
           placeholder_visitante: string | null
+          prorroga_local: number | null
+          prorroga_visitante: number | null
           tipo_definicion: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id: string
         }
         Insert: {
           ciudad?: string | null
           creado_en?: string
+          equipo_avanza_id?: string | null
           equipo_local_id?: string | null
           equipo_visitante_id?: string | null
           estadio?: string | null
@@ -618,12 +622,15 @@ export type Database = {
           penales_visitante?: number | null
           placeholder_local?: string | null
           placeholder_visitante?: string | null
+          prorroga_local?: number | null
+          prorroga_visitante?: number | null
           tipo_definicion?: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id: string
         }
         Update: {
           ciudad?: string | null
           creado_en?: string
+          equipo_avanza_id?: string | null
           equipo_local_id?: string | null
           equipo_visitante_id?: string | null
           estadio?: string | null
@@ -639,10 +646,19 @@ export type Database = {
           penales_visitante?: number | null
           placeholder_local?: string | null
           placeholder_visitante?: string | null
+          prorroga_local?: number | null
+          prorroga_visitante?: number | null
           tipo_definicion?: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tblPartidos_equipo_avanza_id_fkey"
+            columns: ["equipo_avanza_id"]
+            isOneToOne: false
+            referencedRelation: "tblEquipos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tblPartidos_equipo_local_id_fkey"
             columns: ["equipo_local_id"]
@@ -1380,7 +1396,8 @@ export type Database = {
           p_partido_id: string
           p_penales_local?: number
           p_penales_visitante?: number
-          p_prorroga?: boolean
+          p_prorroga_local?: number
+          p_prorroga_visitante?: number
         }
         Returns: undefined
       }

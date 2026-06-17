@@ -4,6 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Tabs } from "@/components/ui/tabs";
 import { usePresencia } from "@/lib/stores/presencia";
+import { GrupoTabsContext } from "@/components/grupos/grupo-tabs-context";
+import { RecorridoArranque } from "@/components/grupos/RecorridoArranque";
 
 /** Pestañas cuyos datos cambian con la actividad de la polla. */
 const PESTANAS_CON_DATOS_VIVOS = new Set(["jugar", "partidos", "tabla"]);
@@ -57,6 +59,9 @@ export function TabsConRefresh({
   const [, startTransition] = React.useTransition();
   // Arranca en `defaultValue` para que SSR e hidratación coincidan (sin desfase).
   const [activa, setActiva] = React.useState(defaultValue);
+  // Recorrido guiado que señala el botón "Arranque" (lo dispara el aviso de
+  // partidos cerrados al crear, para guiar al admin hasta la acción).
+  const [tourArranque, setTourArranque] = React.useState(false);
   const setDetalle = usePresencia((s) => s.setDetalle);
   // Raíz de los Tabs: la usamos como ancla para subir el scroll al cambiar de
   // pestaña, de modo que el contenido nuevo siempre arranque desde arriba.
@@ -90,6 +95,15 @@ export function TabsConRefresh({
     if (tab && PESTANAS_VALIDAS.has(tab)) setActiva(tab);
   }, []);
 
+  // Abre "Participantes" e inicia el recorrido guiado hacia "Arranque".
+  const irAParticipantes = React.useCallback(() => {
+    setActiva("gente");
+    desplazarAlTope();
+    setTourArranque(true);
+  }, [desplazarAlTope]);
+
+  const finalizarTour = React.useCallback(() => setTourArranque(false), []);
+
   // Publica "{polla} · {pestaña}" mientras esté montado; limpia al salir.
   React.useEffect(() => {
     if (!grupoNombre) return;
@@ -99,19 +113,26 @@ export function TabsConRefresh({
   }, [grupoNombre, activa, setDetalle]);
 
   return (
-    <Tabs
-      ref={raizRef}
-      value={activa}
-      className={className}
-      onValueChange={(valor) => {
-        setActiva(valor);
-        desplazarAlTope();
-        if (PESTANAS_CON_DATOS_VIVOS.has(valor)) {
-          startTransition(() => router.refresh());
-        }
-      }}
+    <GrupoTabsContext.Provider
+      value={{ irAParticipantes, tourArranque, finalizarTour }}
     >
-      {children}
-    </Tabs>
+      <Tabs
+        ref={raizRef}
+        value={activa}
+        className={className}
+        onValueChange={(valor) => {
+          setActiva(valor);
+          desplazarAlTope();
+          // Cambiar de pestaña a mano cancela el recorrido guiado en curso.
+          if (tourArranque) setTourArranque(false);
+          if (PESTANAS_CON_DATOS_VIVOS.has(valor)) {
+            startTransition(() => router.refresh());
+          }
+        }}
+      >
+        {children}
+      </Tabs>
+      <RecorridoArranque />
+    </GrupoTabsContext.Provider>
   );
 }

@@ -21,6 +21,8 @@ export type GrupoDetalle = {
     descripcion: string | null;
     codigo_invitacion: string;
     creador_id: string;
+    /** Instante de creación de la polla (UTC, ISO). */
+    creado_en: string;
     total_participantes: number;
   };
   reglas: ReglasGrupo;
@@ -44,6 +46,7 @@ type RawDetalle = {
     descripcion: string | null;
     codigo_invitacion: string;
     creador_id: string;
+    creado_en: string;
   };
   reglas: Record<string, number | string | string[] | null>;
   participantes: {
@@ -195,6 +198,7 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
       descripcion: d.grupo.descripcion,
       codigo_invitacion: d.grupo.codigo_invitacion,
       creador_id: d.grupo.creador_id,
+      creado_en: d.grupo.creado_en,
       total_participantes: participantes.length,
     },
     reglas,

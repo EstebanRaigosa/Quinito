@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Flag, Loader2 } from "lucide-react";
 import { actualizarPuntajeInicial } from "@/app/(app)/grupos/[id]/actions";
+import { cn } from "@/lib/utils";
+import { useGrupoTabs } from "@/components/grupos/grupo-tabs-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,6 +72,9 @@ export function GestionPuntajeInicial({
   aciertosIniciales,
 }: Props) {
   const router = useRouter();
+  // El recorrido guiado (aviso de partidos cerrados al crear) señala este botón:
+  // late mientras el tour está activo y, al abrir el modal, lo damos por cumplido.
+  const { tourArranque, finalizarTour } = useGrupoTabs();
   const [abierto, setAbierto] = useState(false);
   const [valores, setValores] = useState<Record<Clave, string>>({
     puntos: String(puntosIniciales),
@@ -90,6 +95,8 @@ export function GestionPuntajeInicial({
     });
     setErrorCampo(null);
     setAbierto(true);
+    // Si venías del recorrido guiado, cumplió su objetivo: ciérralo.
+    finalizarTour();
   }
 
   function setCampo(clave: Clave, valor: string) {
@@ -125,7 +132,14 @@ export function GestionPuntajeInicial({
       <Button
         variant="outline"
         size="sm"
-        className="shrink-0"
+        className={cn(
+          "shrink-0",
+          // Durante el recorrido guiado el botón late en ámbar para llamar la
+          // atención (además del spotlight). Solo box-shadow → no mueve layout.
+          tourArranque &&
+            "animate-latido-atencion border-warning text-warning",
+        )}
+        data-tour="arranque"
         onClick={abrir}
       >
         <Flag className="size-4" />
