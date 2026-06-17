@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { AppleSplashLinks } from "@/components/shared/AppleSplashLinks";
+import { ThemeKeeper } from "@/components/shared/ThemeKeeper";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { SITE_URL } from "@/lib/constants";
 
@@ -85,6 +86,9 @@ export default function RootLayout({
         <AppleSplashLinks />
       </head>
       <body>
+        {/* Mantiene `data-theme` en <html> aunque un refresh del servidor
+            reconcilie el elemento y lo borre (evita el salto a tema claro). */}
+        <ThemeKeeper />
         <Providers>{children}</Providers>
         <Toaster />
       </body>

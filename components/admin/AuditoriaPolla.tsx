@@ -13,6 +13,7 @@ import type { MovimientoAuditoria } from "@/lib/queries/auditoria";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
+import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -39,6 +40,8 @@ type Expediente = {
   partido_id: string;
   partido_numero: number | null;
   partido_label: string;
+  local_iso: string | null;
+  visitante_iso: string | null;
   /** Del más reciente al más antiguo. */
   movimientos: MovimientoAuditoria[];
   /** Marcador vigente; null si la predicción fue eliminada. */
@@ -47,9 +50,14 @@ type Expediente = {
   ultimaFecha: string;
 };
 
-function fmt(local: number | null, visitante: number | null): string {
-  if (local == null || visitante == null) return "—";
-  return `${local}-${visitante}`;
+/** Etiqueta breve del partido (solo el número); los equipos se ven en el
+ * marcador. */
+function EtiquetaPartido({ e }: { e: Expediente }) {
+  return (
+    <p className="t-caption truncate text-fg-muted">
+      {e.partido_numero != null ? `Partido #${e.partido_numero}` : "Partido"}
+    </p>
+  );
 }
 
 /**
@@ -87,6 +95,8 @@ function agruparEnExpedientes(movs: MovimientoAuditoria[]): Expediente[] {
       partido_id: reciente.partido_id,
       partido_numero: reciente.partido_numero,
       partido_label: reciente.partido_label,
+      local_iso: reciente.equipo_local_iso,
+      visitante_iso: reciente.equipo_visitante_iso,
       movimientos: lista,
       actual,
       numModificaciones: lista.filter((m) => m.accion === "update").length,
@@ -139,12 +149,9 @@ export function AuditoriaPolla({ movimientos }: Props) {
     );
     return agruparEnExpedientes(filtrados)
       .filter((e) => !soloModificadas || e.numModificaciones > 0)
-      .sort((a, b) => {
-        if ((b.numModificaciones > 0 ? 1 : 0) !== (a.numModificaciones > 0 ? 1 : 0)) {
-          return (b.numModificaciones > 0 ? 1 : 0) - (a.numModificaciones > 0 ? 1 : 0);
-        }
-        return b.ultimaFecha.localeCompare(a.ultimaFecha);
-      });
+      // Orden puro por fecha del último movimiento: lo más reciente arriba. Una
+      // predicción recién modificada sube sola (su último movimiento es reciente).
+      .sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha));
   }, [movimientos, usuarioId, partidoId, soloModificadas]);
 
   const totalModificadas = useMemo(
@@ -273,7 +280,9 @@ export function AuditoriaPolla({ movimientos }: Props) {
   );
 }
 
-/** Marcador actual destacado (o "Eliminada" si la predicción ya no existe). */
+/** Marcador actual destacado: una fila por equipo (bandera · nombre · goles),
+ * o "Eliminada" si la predicción ya no existe. Los nombres salen de
+ * `partido_label` ("Local vs Visitante"). */
 function MarcadorActual({
   e,
   size = "md",
@@ -282,18 +291,46 @@ function MarcadorActual({
   size?: "md" | "lg";
 }) {
   const eliminada = e.actual === null;
-  const valor = eliminada
-    ? fmt(
-        e.movimientos[0].goles_local_anterior,
-        e.movimientos[0].goles_visitante_anterior,
-      )
-    : fmt(e.actual!.local, e.actual!.visitante);
+  const local = eliminada
+    ? e.movimientos[0].goles_local_anterior
+    : e.actual!.local;
+  const visitante = eliminada
+    ? e.movimientos[0].goles_visitante_anterior
+    : e.actual!.visitante;
+  const partes = e.partido_label.split(" vs ");
+  const nombreLocal = partes[0] ?? "";
+  const nombreVisitante = partes[1] ?? "";
+  const flagSize = size === "lg" ? 18 : 15;
+
+  const fila = (nombre: string, iso: string | null, goles: number | null) => (
+    <div className="flex items-center gap-2">
+      <Flag code={iso} size={flagSize} className="shrink-0" />
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate font-semibold",
+          size === "lg" ? "text-sm" : "text-xs",
+          eliminada ? "text-destructive" : "text-fg-strong",
+        )}
+      >
+        {nombre}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 font-mono font-extrabold tabular-nums",
+          size === "lg" ? "text-2xl" : "text-lg",
+          eliminada ? "text-destructive line-through" : "text-primary",
+        )}
+      >
+        {goles ?? "—"}
+      </span>
+    </div>
+  );
 
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col items-center justify-center rounded-xl px-3 py-1.5 text-center",
-        size === "lg" ? "min-w-24" : "min-w-16",
+        "flex shrink-0 flex-col gap-1 rounded-xl px-3 py-2",
+        size === "lg" ? "w-56" : "w-36",
         eliminada ? "bg-destructive-soft" : "bg-primary-soft",
       )}
     >
@@ -305,15 +342,8 @@ function MarcadorActual({
       >
         {eliminada ? "Eliminada" : "Actual"}
       </span>
-      <span
-        className={cn(
-          "font-mono font-extrabold tabular-nums",
-          size === "lg" ? "text-4xl" : "text-2xl",
-          eliminada ? "text-destructive line-through" : "text-primary",
-        )}
-      >
-        {valor}
-      </span>
+      {fila(nombreLocal, e.local_iso, local)}
+      {fila(nombreVisitante, e.visitante_iso, visitante)}
     </div>
   );
 }
@@ -331,19 +361,23 @@ function ExpedienteCard({ e }: { e: Expediente }) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="surface-card hover-lift flex w-full items-center gap-3 rounded-2xl p-3.5 text-left"
+        className="surface-card hover-lift flex w-full items-start gap-3 rounded-2xl p-3.5 text-left sm:items-center"
       >
         <AvatarNotion nombre={e.usuario_nombre} size="md" />
 
         <div className="min-w-0 flex-1">
+          {/* Encabezado: usuario + partido */}
           <p className="t-body truncate font-semibold text-fg-strong">
             {e.usuario_nombre}
           </p>
-          <p className="t-caption truncate text-fg-muted">
-            {e.partido_numero != null ? `#${e.partido_numero} · ` : ""}
-            {e.partido_label}
-          </p>
-          <div className="mt-1">
+          <EtiquetaPartido e={e} />
+
+          {/* Marcador (solo móvil, debajo) + estado. En desktop el marcador se
+              muestra a la derecha de la tarjeta para aprovechar el ancho. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="sm:hidden">
+              <MarcadorActual e={e} />
+            </div>
             {modificada ? (
               <Badge variant="secondary" className="whitespace-nowrap">
                 <Pencil className="size-3" aria-hidden />
@@ -354,10 +388,23 @@ function ExpedienteCard({ e }: { e: Expediente }) {
               <span className="t-caption text-fg-subtle">Sin modificaciones</span>
             )}
           </div>
+
+          {/* Fecha del último movimiento (mismo valor con que se ordena la lista). */}
+          <p className="t-caption mt-1.5 inline-flex items-center gap-1 text-fg-muted">
+            <Clock className="size-3" aria-hidden />
+            Último movimiento: {formatearFechaHoraBogota(e.ultimaFecha)}
+          </p>
         </div>
 
-        <MarcadorActual e={e} />
-        <ChevronRight className="size-5 shrink-0 text-fg-subtle" aria-hidden />
+        {/* Marcador a la derecha (solo desktop): aprovecha el ancho de la tarjeta. */}
+        <div className="hidden shrink-0 sm:block">
+          <MarcadorActual e={e} />
+        </div>
+
+        <ChevronRight
+          className="mt-0.5 size-5 shrink-0 self-start text-fg-subtle sm:mt-0 sm:self-center"
+          aria-hidden
+        />
       </button>
 
       <HistorialSheet e={e} abierto={abierto} onOpenChange={setAbierto} />
@@ -392,10 +439,7 @@ function HistorialSheet({
               <SheetTitle className="truncate text-base">
                 {e.usuario_nombre}
               </SheetTitle>
-              <p className="t-caption truncate text-fg-muted">
-                {e.partido_numero != null ? `#${e.partido_numero} · ` : ""}
-                {e.partido_label}
-              </p>
+              <EtiquetaPartido e={e} />
             </div>
             <MarcadorActual e={e} size="lg" />
           </div>
@@ -419,6 +463,44 @@ function HistorialSheet({
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** Chip de marcador con banderas, para el historial de cambios. */
+function ChipMarcador({
+  local,
+  visitante,
+  isoLocal,
+  isoVisitante,
+  variante,
+}: {
+  local: number | null;
+  visitante: number | null;
+  isoLocal: string | null;
+  isoVisitante: string | null;
+  variante: "anterior" | "nuevo" | "neutral" | "eliminado";
+}) {
+  const estilo = {
+    anterior: "bg-sunken text-fg-muted",
+    nuevo: "bg-primary-soft font-bold text-primary",
+    neutral: "bg-sunken font-bold text-fg-strong",
+    eliminado: "bg-destructive-soft text-destructive",
+  }[variante];
+  const tachado = variante === "anterior" || variante === "eliminado";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-sm tabular-nums",
+        estilo,
+      )}
+    >
+      <Flag code={isoLocal} size={12} className="shrink-0" />
+      <span className={tachado ? "line-through" : undefined}>
+        {local ?? "—"}-{visitante ?? "—"}
+      </span>
+      <Flag code={isoVisitante} size={12} className="shrink-0" />
+    </span>
   );
 }
 
@@ -466,24 +548,40 @@ function PasoEvolucion({
 
           {esUpdate ? (
             <span className="inline-flex items-center gap-1.5">
-              <span className="rounded-md bg-sunken px-2 py-0.5 font-mono text-sm text-fg-muted line-through tabular-nums">
-                {fmt(m.goles_local_anterior, m.goles_visitante_anterior)}
-              </span>
+              <ChipMarcador
+                local={m.goles_local_anterior}
+                visitante={m.goles_visitante_anterior}
+                isoLocal={m.equipo_local_iso}
+                isoVisitante={m.equipo_visitante_iso}
+                variante="anterior"
+              />
               <span className="text-fg-subtle" aria-hidden>
                 →
               </span>
-              <span className="rounded-md bg-primary-soft px-2 py-0.5 font-mono text-sm font-bold text-primary tabular-nums">
-                {fmt(m.goles_local_nuevo, m.goles_visitante_nuevo)}
-              </span>
+              <ChipMarcador
+                local={m.goles_local_nuevo}
+                visitante={m.goles_visitante_nuevo}
+                isoLocal={m.equipo_local_iso}
+                isoVisitante={m.equipo_visitante_iso}
+                variante="nuevo"
+              />
             </span>
           ) : esDelete ? (
-            <span className="rounded-md bg-destructive-soft px-2 py-0.5 font-mono text-sm text-destructive line-through tabular-nums">
-              {fmt(m.goles_local_anterior, m.goles_visitante_anterior)}
-            </span>
+            <ChipMarcador
+              local={m.goles_local_anterior}
+              visitante={m.goles_visitante_anterior}
+              isoLocal={m.equipo_local_iso}
+              isoVisitante={m.equipo_visitante_iso}
+              variante="eliminado"
+            />
           ) : (
-            <span className="rounded-md bg-sunken px-2 py-0.5 font-mono text-sm font-bold text-fg-strong tabular-nums">
-              {fmt(m.goles_local_nuevo, m.goles_visitante_nuevo)}
-            </span>
+            <ChipMarcador
+              local={m.goles_local_nuevo}
+              visitante={m.goles_visitante_nuevo}
+              isoLocal={m.equipo_local_iso}
+              isoVisitante={m.equipo_visitante_iso}
+              variante="neutral"
+            />
           )}
         </div>
 

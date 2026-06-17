@@ -1,5 +1,4 @@
 import type { FaseTorneo, Partido, ReglasGrupo } from "@/lib/types/dominio";
-import { ETIQUETA_FASE } from "@/lib/types/dominio";
 
 /**
  * Fecha centinela "sin cierre": un partido con `fecha_hora` anterior a 1901
@@ -110,8 +109,29 @@ export function clasificarAcierto(
 }
 
 /**
- * Bono de ronda que otorga la fase al acertar marcador exacto (según las reglas
- * del grupo). 0 para fase de grupos y tercer lugar (no tienen bono).
+ * Fases eliminatorias en las que un equipo "avanza" (y que otorgan bono): si el
+ * usuario predice un empate en una de ellas debe indicar quién pasa. Excluye
+ * `fase_grupos` (no hay avance directo) y `tercer_lugar` (no avanza a ninguna
+ * ronda ni tiene bono). Para `final`, "avanzar" = ser campeón.
+ */
+const FASES_CON_AVANCE: readonly FaseTorneo[] = [
+  "dieciseisavos",
+  "octavos",
+  "cuartos",
+  "semifinales",
+  "final",
+];
+
+/** ¿Esta fase define un equipo que avanza (y por tanto requiere desempate al predecir empate)? */
+export function faseTieneAvance(fase: FaseTorneo): boolean {
+  return FASES_CON_AVANCE.includes(fase);
+}
+
+/**
+ * Monto del bono configurado para una fase eliminatoria (según las reglas del
+ * grupo). Es el bono TODO-O-NADA que se gana al acertar el equipo que avanza en
+ * TODOS los partidos de esa fase (ver tblBonosFase / recalcular_bonos_fase_grupo).
+ * 0 para fase de grupos y tercer lugar (no tienen bono).
  */
 export function bonoDeFase(reglas: ReglasGrupo, fase: FaseTorneo): number {
   switch (fase) {
@@ -187,14 +207,8 @@ export function desglosePuntaje(
       motivo: `Clavaste el ${rl}-${rv}`,
       puntos: reglas.pts_marcador_exacto,
     });
-    const bono = bonoDeFase(reglas, partido.fase);
-    if (bono > 0) {
-      items.push({
-        label: `Bono ${ETIQUETA_FASE[partido.fase]}`,
-        motivo: "Marcador exacto en fase eliminatoria",
-        puntos: bono,
-      });
-    }
+    // El bono por fase ya NO es por-partido: se otorga aparte (todo-o-nada por
+    // acertar los equipos que avanzan en toda la fase). Ver tblBonosFase.
     if (prediccion.prediccion_unica && reglas.pts_prediccion_unica > 0) {
       items.push({
         label: "Predicción única",

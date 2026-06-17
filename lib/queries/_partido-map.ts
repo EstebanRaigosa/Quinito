@@ -3,6 +3,7 @@ import type {
   EstadoPartido,
   FaseTorneo,
   Partido,
+  TipoDefinicion,
 } from "@/lib/types/dominio";
 
 // Select con ambos equipos embebidos vía el FK explícito (hay dos FKs a
@@ -10,7 +11,8 @@ import type {
 export const SELECT_PARTIDOS = `
   id, torneo_id, numero_partido, fase, grupo,
   placeholder_local, placeholder_visitante, fecha_hora, estadio, ciudad,
-  goles_local, goles_visitante, estado,
+  goles_local, goles_visitante, penales_local, penales_visitante,
+  tipo_definicion, estado,
   equipo_local:tblEquipos!tblPartidos_equipo_local_id_fkey (id, nombre, codigo_iso, bandera_url, grupo),
   equipo_visitante:tblEquipos!tblPartidos_equipo_visitante_id_fkey (id, nombre, codigo_iso, bandera_url, grupo)
 `;
@@ -51,6 +53,9 @@ export function mapPartidoRow(p: {
   ciudad: string | null;
   goles_local: number | null;
   goles_visitante: number | null;
+  penales_local?: number | null;
+  penales_visitante?: number | null;
+  tipo_definicion?: string | null;
   estado: string;
   equipo_local: EquipoEmbebido | EquipoEmbebido[];
   equipo_visitante: EquipoEmbebido | EquipoEmbebido[];
@@ -70,6 +75,9 @@ export function mapPartidoRow(p: {
     ciudad: p.ciudad,
     goles_local: p.goles_local,
     goles_visitante: p.goles_visitante,
+    penales_local: p.penales_local ?? null,
+    penales_visitante: p.penales_visitante ?? null,
+    tipo_definicion: (p.tipo_definicion ?? "regular") as TipoDefinicion,
     estado: p.estado as EstadoPartido,
   };
 }

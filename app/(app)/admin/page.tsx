@@ -76,6 +76,10 @@ export default async function AdminResultadosPage() {
           estado: p.estado,
           golesLocal: p.goles_local,
           golesVisitante: p.goles_visitante,
+          esEliminatoria: ["dieciseisavos", "octavos", "cuartos", "semifinales", "final"].includes(p.fase),
+          penalesLocal: p.penales_local,
+          penalesVisitante: p.penales_visitante,
+          tipoDefinicion: p.tipo_definicion,
         };
         return <FilaResultado key={p.id} partido={datos} />;
       }),

@@ -167,6 +167,7 @@ export function EstadisticasGrupo({
                       goles_visitante: g.goles_visitante,
                       puntos_obtenidos: g.puntos,
                       prediccion_unica: g.prediccion_unica,
+                      equipo_avanza_id: null,
                     }}
                     partido={partido}
                     reglas={reglas}

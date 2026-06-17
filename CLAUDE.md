@@ -147,6 +147,9 @@ export function NombreComponente({ ...props }: Props) {
 - **Nunca** mostrar stack traces al usuario.
 - Loggear con `console.error` solo en desarrollo.
 
+### 4.7 Modales (Dialog / Sheet)
+- **Botón/gesto "atrás" cierra la modal** (no navega): lo maneja `useModalBackClose` dentro del `Content` vía historial. No lo re-implementes por modal. Ver `lib/utils/modal-historial.ts`.
+
 ---
 
 ## 5. Modelo de datos — referencia rápida

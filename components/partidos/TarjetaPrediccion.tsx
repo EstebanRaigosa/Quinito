@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Clock, Check } from "lucide-react";
+import { BarChart3, Clock, Check, Lock } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import {
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
 import { CuentaRegresiva } from "@/components/shared/CuentaRegresiva";
 import { FormularioPrediccion } from "@/components/partidos/FormularioPrediccion";
+import { DefinicionPartido } from "@/components/partidos/DefinicionPartido";
 import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -58,6 +60,17 @@ export function TarjetaPrediccion({
   // Estado "guardado" reactivo: parte de la predicción del server y se actualiza
   // en cliente cuando el formulario guarda con éxito (sin recargar).
   const [guardada, setGuardada] = useState(!!miPrediccion);
+  // Marcador propio reactivo para el resaltado en estadísticas. La prop
+  // `miPrediccion` viene del Server Component (estática); si solo dependiéramos
+  // de ella, al guardar habría que recargar para ver resaltada la fila propia.
+  const [miMarcador, setMiMarcador] = useState(
+    miPrediccion
+      ? {
+          goles_local: miPrediccion.goles_local,
+          goles_visitante: miPrediccion.goles_visitante,
+        }
+      : undefined,
+  );
 
   // Estado visual que manda la jerarquía de la tarjeta.
   const estado: "pendiente" | "guardada" | "cerrada" | "final" = finalizado
@@ -67,6 +80,11 @@ export function TarjetaPrediccion({
       : guardada
         ? "guardada"
         : "pendiente";
+
+  // Las estadísticas del grupo se bloquean si la apuesta sigue ABIERTA y aún no
+  // guardaste tu predicción: así nadie copia la tendencia antes de comprometerse.
+  // Una vez cerrada/finalizada (sePuede === false) se muestran igual.
+  const statsBloqueadas = !guardada && sePuede;
 
   const motivoBloqueo = !equiposDefinidos
     ? "Equipos por definir — predicción no disponible aún"
@@ -177,16 +195,26 @@ export function TarjetaPrediccion({
           </div>
         )}
 
+        {/* Definición del cruce: penales o tiempo extra. */}
+        <DefinicionPartido partido={partido} className="mb-2.5" />
+
         <FormularioPrediccion
           partido={partido}
           participanteId={participanteId}
           golesLocalInicial={miPrediccion?.goles_local}
           golesVisitanteInicial={miPrediccion?.goles_visitante}
+          equipoAvanzaInicial={miPrediccion?.equipo_avanza_id}
           bloqueado={!sePuede}
           motivoBloqueo={motivoBloqueo}
           equiposDefinidos={equiposDefinidos}
           esHoy={esHoy}
-          onGuardado={() => setGuardada(true)}
+          onGuardado={(m) => {
+            setGuardada(true);
+            setMiMarcador({
+              goles_local: m.golesLocal,
+              goles_visitante: m.golesVisitante,
+            });
+          }}
         />
 
         {equiposDefinidos && (
@@ -211,6 +239,27 @@ export function TarjetaPrediccion({
               </SheetTitle>
             </SheetHeader>
             <div className="px-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
+              {statsBloqueadas ? (
+                <div className="flex flex-col items-center gap-4 rounded-xl bg-sunken px-4 py-10 text-center">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-surface text-primary shadow-xs">
+                    <Lock className="size-6" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-fg-strong">
+                      Guarda tu predicción primero
+                    </p>
+                    <p className="mt-1 text-xs text-fg-muted">
+                      Para ver las estadísticas del grupo debes guardar tu
+                      marcador.
+                    </p>
+                  </div>
+                  <SheetClose asChild>
+                    <Button variant="secondary" className="w-full sm:w-auto">
+                      Volver y guardar mi predicción
+                    </Button>
+                  </SheetClose>
+                </div>
+              ) : (
               <Tabs defaultValue="global">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="global">General</TabsTrigger>
@@ -223,7 +272,7 @@ export function TarjetaPrediccion({
                     reglas={reglas}
                     ahora={ahora}
                     totalParticipantes={totalParticipantes}
-                    miPrediccion={miPrediccion}
+                    miPrediccion={miMarcador}
                   />
                 </TabsContent>
                 <TabsContent value="grupo">
@@ -235,6 +284,7 @@ export function TarjetaPrediccion({
                   />
                 </TabsContent>
               </Tabs>
+              )}
             </div>
           </SheetContent>
         </Sheet>

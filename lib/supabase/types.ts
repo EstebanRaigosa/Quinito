@@ -87,6 +87,78 @@ export type Database = {
           },
         ]
       }
+      tblAsignacionTercerosSlot: {
+        Row: {
+          combinacion_grupos: string
+          grupo: string
+          numero_partido: number
+          torneo_id: string
+        }
+        Insert: {
+          combinacion_grupos: string
+          grupo: string
+          numero_partido: number
+          torneo_id: string
+        }
+        Update: {
+          combinacion_grupos?: string
+          grupo?: string
+          numero_partido?: number
+          torneo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblAsignacionTercerosSlot_torneo_id_fkey"
+            columns: ["torneo_id"]
+            isOneToOne: false
+            referencedRelation: "tblTorneos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tblBonosFase: {
+        Row: {
+          fase: Database["public"]["Enums"]["fase_torneo"]
+          otorgado_en: string
+          participante_id: string
+          puntos: number
+        }
+        Insert: {
+          fase: Database["public"]["Enums"]["fase_torneo"]
+          otorgado_en?: string
+          participante_id: string
+          puntos: number
+        }
+        Update: {
+          fase?: Database["public"]["Enums"]["fase_torneo"]
+          otorgado_en?: string
+          participante_id?: string
+          puntos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblBonosFase_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "tblParticipantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblBonosFase_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["participante_id"]
+          },
+          {
+            foreignKeyName: "tblBonosFase_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwTablaPosiciones"
+            referencedColumns: ["participante_id"]
+          },
+        ]
+      }
       tblClasificacionGrupo: {
         Row: {
           asignado_por: string | null
@@ -521,8 +593,11 @@ export type Database = {
           grupo: string | null
           id: string
           numero_partido: number
+          penales_local: number | null
+          penales_visitante: number | null
           placeholder_local: string | null
           placeholder_visitante: string | null
+          tipo_definicion: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id: string
         }
         Insert: {
@@ -539,8 +614,11 @@ export type Database = {
           grupo?: string | null
           id?: string
           numero_partido: number
+          penales_local?: number | null
+          penales_visitante?: number | null
           placeholder_local?: string | null
           placeholder_visitante?: string | null
+          tipo_definicion?: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id: string
         }
         Update: {
@@ -557,8 +635,11 @@ export type Database = {
           grupo?: string | null
           id?: string
           numero_partido?: number
+          penales_local?: number | null
+          penales_visitante?: number | null
           placeholder_local?: string | null
           placeholder_visitante?: string | null
+          tipo_definicion?: Database["public"]["Enums"]["tipo_definicion"]
           torneo_id?: string
         }
         Relationships: [
@@ -589,6 +670,7 @@ export type Database = {
         Row: {
           actualizado_en: string
           creado_en: string
+          equipo_avanza_id: string | null
           goles_local: number
           goles_visitante: number
           id: string
@@ -600,6 +682,7 @@ export type Database = {
         Insert: {
           actualizado_en?: string
           creado_en?: string
+          equipo_avanza_id?: string | null
           goles_local: number
           goles_visitante: number
           id?: string
@@ -611,6 +694,7 @@ export type Database = {
         Update: {
           actualizado_en?: string
           creado_en?: string
+          equipo_avanza_id?: string | null
           goles_local?: number
           goles_visitante?: number
           id?: string
@@ -620,6 +704,13 @@ export type Database = {
           puntos_obtenidos?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "tblPredicciones_equipo_avanza_id_fkey"
+            columns: ["equipo_avanza_id"]
+            isOneToOne: false
+            referencedRelation: "tblEquipos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tblPredicciones_participante_id_fkey"
             columns: ["participante_id"]
@@ -713,6 +804,7 @@ export type Database = {
           id: string
           nombre_completo: string | null
           nombre_confirmado: boolean
+          pwa_instalada_en: string | null
         }
         Insert: {
           actualizado_en?: string
@@ -722,6 +814,7 @@ export type Database = {
           id: string
           nombre_completo?: string | null
           nombre_confirmado?: boolean
+          pwa_instalada_en?: string | null
         }
         Update: {
           actualizado_en?: string
@@ -731,6 +824,7 @@ export type Database = {
           id?: string
           nombre_completo?: string | null
           nombre_confirmado?: boolean
+          pwa_instalada_en?: string | null
         }
         Relationships: []
       }
@@ -897,6 +991,7 @@ export type Database = {
         Row: {
           conectado_en: string
           dispositivo: string
+          es_pwa: boolean
           seccion: string
           ultima_actividad: string
           usuario_id: string
@@ -905,6 +1000,7 @@ export type Database = {
         Insert: {
           conectado_en?: string
           dispositivo?: string
+          es_pwa?: boolean
           seccion?: string
           ultima_actividad?: string
           usuario_id: string
@@ -913,6 +1009,7 @@ export type Database = {
         Update: {
           conectado_en?: string
           dispositivo?: string
+          es_pwa?: boolean
           seccion?: string
           ultima_actividad?: string
           usuario_id?: string
@@ -1181,6 +1278,7 @@ export type Database = {
         Row: {
           aciertos: number | null
           avatar_url: string | null
+          bonos_fase: number | null
           grupo_id: string | null
           marcadores_exactos: number | null
           nombre_completo: string | null
@@ -1280,6 +1378,9 @@ export type Database = {
           p_goles_local: number
           p_goles_visitante: number
           p_partido_id: string
+          p_penales_local?: number
+          p_penales_visitante?: number
+          p_prorroga?: boolean
         }
         Returns: undefined
       }
@@ -1402,6 +1503,17 @@ export type Database = {
           pts: number
         }[]
       }
+      recalcular_bonos_fase_grupo: {
+        Args: {
+          p_fase: Database["public"]["Enums"]["fase_torneo"]
+          p_grupo_id: string
+        }
+        Returns: undefined
+      }
+      recalcular_bonos_fase_partido: {
+        Args: { p_partido_id: string }
+        Returns: undefined
+      }
       recordatorios_pendientes: {
         Args: never
         Returns: {
@@ -1456,6 +1568,18 @@ export type Database = {
           pts: number
         }[]
       }
+      torneos_disponibles: {
+        Args: never
+        Returns: {
+          activo: boolean
+          codigo: string
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          nombre: string
+          pais_sede: string
+        }[]
+      }
       unirse_grupo: { Args: { p_grupo_id: string }; Returns: undefined }
     }
     Enums: {
@@ -1468,6 +1592,7 @@ export type Database = {
         | "tercer_lugar"
         | "final"
       rol_participante: "admin" | "jugador"
+      tipo_definicion: "regular" | "prorroga" | "penales"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1605,6 +1730,7 @@ export const Constants = {
         "final",
       ],
       rol_participante: ["admin", "jugador"],
+      tipo_definicion: ["regular", "prorroga", "penales"],
     },
   },
 } as const

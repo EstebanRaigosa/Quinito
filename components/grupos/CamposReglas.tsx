@@ -147,11 +147,11 @@ const ACIERTOS: { name: CampoKey; etiqueta: string; ayuda: string }[] = [
 ];
 
 const BONOS: { name: CampoKey; etiqueta: string; ayuda: string }[] = [
-  { name: "bono_dieciseisavos", etiqueta: "Dieciseisavos", ayuda: "Bono por marcador exacto en 1/16." },
-  { name: "bono_octavos", etiqueta: "Octavos", ayuda: "Bono por marcador exacto en octavos." },
-  { name: "bono_cuartos", etiqueta: "Cuartos", ayuda: "Bono por marcador exacto en cuartos." },
-  { name: "bono_semifinales", etiqueta: "Semifinales", ayuda: "Bono por marcador exacto en semis." },
-  { name: "bono_final", etiqueta: "Final", ayuda: "Bono por marcador exacto en la final." },
+  { name: "bono_dieciseisavos", etiqueta: "Dieciseisavos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de 1/16." },
+  { name: "bono_octavos", etiqueta: "Octavos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de octavos." },
+  { name: "bono_cuartos", etiqueta: "Cuartos", ayuda: "Bono si aciertas TODOS los equipos que avanzan de cuartos." },
+  { name: "bono_semifinales", etiqueta: "Semifinales", ayuda: "Bono si aciertas los 2 finalistas (avanzan de semis)." },
+  { name: "bono_final", etiqueta: "Final", ayuda: "Bono si aciertas el campeón (gana la final)." },
 ];
 
 const PREMIOS: { name: CampoKey; lugar: string; medalla: string }[] = [
@@ -376,7 +376,7 @@ export function CamposReglas({ control }: { control: Control<ReglasInput> }) {
       <section className="surface-card rounded-2xl p-5 sm:p-6">
         <SeccionHeader
           titulo="Bonos por fase de eliminación"
-          sub="Puntos extra por acertar marcador exacto en estas fases."
+          sub="Puntos extra si aciertas TODOS los equipos que avanzan de la fase (todo o nada)."
         />
         <div className="flex flex-col divide-y divide-border">
           {BONOS.map((c) => (

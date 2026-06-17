@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useViewportModal } from "@/lib/hooks/useViewportModal";
+import { useModalBackClose } from "@/lib/hooks/useModalBackClose";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -35,6 +36,10 @@ const DialogContent = React.forwardRef<
   // abierto (el contenido solo se monta mientras el diálogo está abierto, así
   // que activamos siempre). Ver useViewportModal / COMPATIBILIDAD-MOVIL §4.1.
   const estiloViewport = useViewportModal();
+  // "Atrás" (Android/swipe iOS) cierra el diálogo en vez de navegar. Cerramos
+  // haciendo click en el botón X de ESTE diálogo (sirve controlado o no).
+  const cerrarRef = React.useRef<HTMLButtonElement>(null);
+  useModalBackClose(React.useCallback(() => cerrarRef.current?.click(), []));
   return (
   <DialogPortal>
     <DialogOverlay />
@@ -49,7 +54,10 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-2 top-2 grid size-11 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <DialogPrimitive.Close
+        ref={cerrarRef}
+        className="absolute right-2 top-2 grid size-11 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <X className="size-5" />
         <span className="sr-only">Cerrar</span>
       </DialogPrimitive.Close>

@@ -6,6 +6,7 @@ import { Ban, Check, Clock, Loader2, Lock, Pencil, WifiOff } from "lucide-react"
 import { toast } from "sonner";
 import type { Partido } from "@/lib/types/dominio";
 import { guardarPrediccion } from "@/lib/queries/predicciones";
+import { faseTieneAvance } from "@/lib/utils/prediccion";
 import { formatearHoraBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
@@ -17,14 +18,19 @@ type Props = {
   participanteId: string;
   golesLocalInicial?: number;
   golesVisitanteInicial?: number;
+  /** Equipo que avanza ya guardado (empate predicho en fase eliminatoria). */
+  equipoAvanzaInicial?: string | null;
   bloqueado: boolean;
   motivoBloqueo?: string;
   /** Equipos ya definidos: si está cerrado sin predicción, se avisa en rojo. */
   equiposDefinidos?: boolean;
   /** El partido se juega hoy (zona Bogotá): muestra el badge "¡Es hoy!". */
   esHoy?: boolean;
-  /** Se invoca tras guardar con éxito (para que la tarjeta actualice su estado). */
-  onGuardado?: () => void;
+  /**
+   * Se invoca tras guardar con éxito, con el marcador recién guardado, para que
+   * la tarjeta actualice su estado y el resaltado en estadísticas sin recargar.
+   */
+  onGuardado?: (marcador: { golesLocal: number; golesVisitante: number }) => void;
 };
 
 export function FormularioPrediccion({
@@ -32,6 +38,7 @@ export function FormularioPrediccion({
   participanteId,
   golesLocalInicial,
   golesVisitanteInicial,
+  equipoAvanzaInicial,
   bloqueado,
   motivoBloqueo,
   equiposDefinidos = false,
@@ -43,6 +50,10 @@ export function FormularioPrediccion({
   const [visitante, setVisitante] = useState<number | null>(
     golesVisitanteInicial ?? null,
   );
+  // Equipo que pasa cuando el empate se predice en fase eliminatoria.
+  const [avanza, setAvanza] = useState<string | null>(
+    equipoAvanzaInicial ?? null,
+  );
   const [editando, setEditando] = useState(false);
   // Línea base = último marcador guardado. Se actualiza tras guardar con éxito.
   const [base, setBase] = useState<{ l: number | null; v: number | null }>({
@@ -51,9 +62,18 @@ export function FormularioPrediccion({
   });
 
   const guardado = base.l !== null && base.v !== null;
-  const completo = local !== null && visitante !== null;
+  // En fases eliminatorias, un empate predicho exige marcar quién avanza.
+  const esEmpate = local !== null && visitante !== null && local === visitante;
+  const requiereAvance = faseTieneAvance(partido.fase) && esEmpate;
+  const completo =
+    local !== null &&
+    visitante !== null &&
+    (!requiereAvance || avanza !== null);
   // Solo-lectura: bloqueada por tiempo, o ya guardada y no se está editando.
   const soloLectura = bloqueado || (guardado && !editando);
+
+  const idLocal = partido.equipo_local?.id ?? null;
+  const idVisitante = partido.equipo_visitante?.id ?? null;
 
   /**
    * Guardado con `useMutation`. `networkMode: "online"` es clave: si no hay
@@ -62,12 +82,17 @@ export function FormularioPrediccion({
    * (COMPATIBILIDAD-STACK.md §6). `retry` cubre cortes intermitentes.
    */
   const mutation = useMutation({
-    mutationFn: async (vars: { golesLocal: number; golesVisitante: number }) => {
+    mutationFn: async (vars: {
+      golesLocal: number;
+      golesVisitante: number;
+      equipoAvanzaId: string | null;
+    }) => {
       const { ok, error } = await guardarPrediccion({
         participanteId,
         partidoId: partido.id,
         golesLocal: vars.golesLocal,
         golesVisitante: vars.golesVisitante,
+        equipoAvanzaId: vars.equipoAvanzaId,
       });
       if (!ok) throw new Error(error ?? "No se pudo guardar");
       return vars;
@@ -77,8 +102,9 @@ export function FormularioPrediccion({
     retryDelay: (intento) => Math.min(1000 * 2 ** intento, 8000),
     onSuccess: (vars) => {
       setBase({ l: vars.golesLocal, v: vars.golesVisitante });
+      setAvanza(vars.equipoAvanzaId);
       setEditando(false);
-      onGuardado?.();
+      onGuardado?.(vars);
       toast.success("Predicción guardada");
       // Refresca los agregados del partido (% ganador, marcadores comunes).
       queryClient.invalidateQueries({
@@ -97,11 +123,20 @@ export function FormularioPrediccion({
   const guardando = mutation.isPending;
 
   function guardar() {
-    if (!completo) {
+    if (local === null || visitante === null) {
       toast.error("Ingresa ambos marcadores");
       return;
     }
-    mutation.mutate({ golesLocal: local, golesVisitante: visitante });
+    if (requiereAvance && avanza === null) {
+      toast.error("Empate: marca qué equipo pasa");
+      return;
+    }
+    mutation.mutate({
+      golesLocal: local,
+      golesVisitante: visitante,
+      // El avance solo aplica al empate eliminatorio; si no, se limpia (null).
+      equipoAvanzaId: requiereAvance ? avanza : null,
+    });
   }
 
   const nombreLocal = partido.equipo_local?.nombre ?? "Local";
@@ -160,6 +195,51 @@ export function FormularioPrediccion({
           />
         </div>
       </div>
+
+      {/* Empate en fase eliminatoria: ¿quién pasa? (obligatorio para guardar) */}
+      {requiereAvance && (
+        <div className="rounded-xl border border-warning/30 bg-warning-soft/60 p-3">
+          <p className="t-caption mb-2 text-center font-extrabold uppercase tracking-wide text-warning">
+            {partido.fase === "final"
+              ? "Empate: ¿quién es campeón?"
+              : "Empate: ¿quién pasa de ronda?"}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { id: idLocal, nombre: nombreLocal, iso: partido.equipo_local?.codigo_iso },
+                {
+                  id: idVisitante,
+                  nombre: nombreVisitante,
+                  iso: partido.equipo_visitante?.codigo_iso,
+                },
+              ] as const
+            ).map((eq) => {
+              const seleccionado = eq.id !== null && avanza === eq.id;
+              return (
+                <button
+                  key={eq.id ?? eq.nombre}
+                  type="button"
+                  disabled={soloLectura || eq.id === null}
+                  aria-pressed={seleccionado}
+                  onClick={() => eq.id && setAvanza(eq.id)}
+                  className={cn(
+                    "flex min-h-[44px] items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-bold transition-colors",
+                    seleccionado
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-strong bg-surface text-fg-strong",
+                    !soloLectura && !seleccionado && "hover:border-primary/50",
+                    (soloLectura || eq.id === null) && "opacity-70",
+                  )}
+                >
+                  <Flag code={eq.iso} size={22} round />
+                  <span className="line-clamp-1">{eq.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Pie: estado + acción */}
       {bloqueado ? (

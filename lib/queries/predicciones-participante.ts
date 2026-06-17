@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { BonoFase } from "@/lib/types/dominio";
 import { createClient } from "@/lib/supabase/client";
 
 /** Predicción de un participante en un partido cerrado (sin PII extra). */
@@ -45,6 +46,38 @@ export function usePrediccionesParticipante(
         goles_visitante: p.goles_visitante ?? 0,
         puntos_obtenidos: p.puntos_obtenidos ?? 0,
         prediccion_unica: p.prediccion_unica ?? false,
+      }));
+    },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Bonos de fase ganados por UN participante (todo-o-nada por acertar el equipo
+ * que avanza en toda una fase eliminatoria — ver migración 0054). Se muestran
+ * como registros aparte en el detalle de la tabla de posiciones.
+ *
+ * El RLS de `tblBonosFase` (migración 0054) solo deja leer los bonos de
+ * participantes del propio grupo, así que no hace falta filtrar en cliente.
+ */
+export function useBonosFaseParticipante(
+  participanteId: string | null,
+  habilitado: boolean,
+) {
+  return useQuery({
+    queryKey: ["bonos-fase-participante", participanteId],
+    enabled: habilitado && !!participanteId,
+    queryFn: async (): Promise<BonoFase[]> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("tblBonosFase")
+        .select("fase, puntos")
+        .eq("participante_id", participanteId!);
+      if (error) throw error;
+
+      return (data ?? []).map((b) => ({
+        fase: b.fase,
+        puntos: b.puntos ?? 0,
       }));
     },
     staleTime: 60_000,

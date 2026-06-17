@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Check, Loader2, Trophy } from "lucide-react";
 import { datosGrupoSchema, type DatosGrupoInput } from "@/lib/schemas/grupo";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
-import { useTorneosActivos } from "@/lib/queries/torneos";
+import { useTorneosDisponibles } from "@/lib/queries/torneos";
 import { formatearFechaCorta } from "@/lib/utils/fechas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +40,12 @@ function rangoFechas(inicio: string, fin: string): string {
 
 export function PasoDatos() {
   const { datos, torneoId, setTorneo, setDatos, siguiente } = useWizardGrupo();
-  const { data: torneosActivos = [], isLoading, isError } = useTorneosActivos();
+  const { data: torneosDisponibles = [], isLoading, isError } =
+    useTorneosDisponibles();
 
   // Oculta del wizard los torneos vetados (ej. "Mundial 2"), sin desactivarlos
   // en la BD para no afectar el resto de la app.
-  const torneos = torneosActivos.filter(
+  const torneos = torneosDisponibles.filter(
     (t) => !TORNEOS_OCULTOS_WIZARD.has(t.codigo),
   );
 
@@ -196,8 +197,13 @@ export function PasoDatos() {
                       <Trophy className="size-6" strokeWidth={2.2} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="t-body font-extrabold text-fg-strong">
+                      <div className="t-body flex items-center gap-2 font-extrabold text-fg-strong">
                         {t.nombre}
+                        {!t.activo && (
+                          <span className="shrink-0 rounded-pill bg-warning/15 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-warning">
+                            Prueba
+                          </span>
+                        )}
                       </div>
                       <div className="t-caption mt-0.5">
                         {rangoFechas(t.fecha_inicio, t.fecha_fin)}

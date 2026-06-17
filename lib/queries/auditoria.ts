@@ -17,6 +17,9 @@ export type MovimientoAuditoria = {
   partido_numero: number | null;
   partido_fase: string | null;
   partido_label: string;
+  /** Código ISO del equipo (para la bandera); null en eliminatorias sin equipo. */
+  equipo_local_iso: string | null;
+  equipo_visitante_iso: string | null;
   goles_local_anterior: number | null;
   goles_visitante_anterior: number | null;
   goles_local_nuevo: number | null;

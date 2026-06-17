@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Monitor, Smartphone, Users, Wifi, WifiOff } from "lucide-react";
+import {
+  Download,
+  Globe,
+  Monitor,
+  Smartphone,
+  Users,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import { AvatarNotion, tintePorNombre } from "@/components/shared/AvatarNotion";
 import { cn } from "@/lib/utils";
 import { obtenerConectados, type Conectado } from "./actions";
@@ -89,6 +97,8 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
 
   const conEstado = lista.map((c) => ({ c, ...clasificar(c, ahora) }));
   const activos = conEstado.filter((x) => x.estado === "activo").length;
+  const desdePwa = lista.filter((c) => c.esPwa).length;
+  const desdeNavegador = lista.length - desdePwa;
 
   return (
     <section className="space-y-4">
@@ -98,6 +108,12 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
         </span>
         <span className="inline-flex items-center gap-2 rounded-pill bg-sunken px-3 py-1.5 text-sm font-semibold text-fg-muted">
           <Users className="size-4" /> {lista.length} en total
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-pill bg-violet-50 px-3 py-1.5 text-sm font-semibold text-violet-700">
+          <Download className="size-4" /> {desdePwa} en la app
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-pill bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700">
+          <Globe className="size-4" /> {desdeNavegador} en el navegador
         </span>
       </div>
 
@@ -135,8 +151,25 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-fg-strong">
-                    {c.nombre}
+                  <p className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-bold text-fg-strong">
+                      {c.nombre}
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 rounded-pill px-1.5 py-0.5 text-2xs font-semibold",
+                        c.esPwa
+                          ? "bg-violet-50 text-violet-700"
+                          : "bg-sky-50 text-sky-700",
+                      )}
+                    >
+                      {c.esPwa ? (
+                        <Download className="size-3" />
+                      ) : (
+                        <Globe className="size-3" />
+                      )}
+                      {c.esPwa ? "App" : "Web"}
+                    </span>
                   </p>
                   <p className="flex items-center gap-1.5 truncate text-xs text-fg-muted">
                     <Dispositivo className="size-3.5 shrink-0" />

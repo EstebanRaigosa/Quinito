@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { getPartidosTorneo } from "@/lib/queries/partidos-torneo";
-import { getTorneosActivos } from "@/lib/queries/torneos-server";
+import { getTorneosDisponibles } from "@/lib/queries/torneos-server";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
 import { DestelloPartido } from "@/components/partidos/DestelloPartido";
 import { RealtimePartidos } from "@/components/shared/RealtimePartidos";
@@ -22,7 +22,7 @@ export default async function PartidosPage({
   searchParams: Promise<{ torneo?: string }>;
 }) {
   const { torneo } = await searchParams;
-  const torneos = await getTorneosActivos();
+  const torneos = await getTorneosDisponibles();
 
   // Torneo seleccionado: el del query param (si es válido) o el primero activo.
   const torneoActivo =

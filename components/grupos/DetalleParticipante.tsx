@@ -1,14 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import { ListChecks, Target } from "lucide-react";
+import { Award, ListChecks, Target } from "lucide-react";
 import type {
+  FaseTorneo,
   FilaTablaPosiciones,
   Partido,
   Prediccion,
   ReglasGrupo,
 } from "@/lib/types/dominio";
-import { usePrediccionesParticipante } from "@/lib/queries/predicciones-participante";
+import { ETIQUETA_FASE } from "@/lib/types/dominio";
+import {
+  useBonosFaseParticipante,
+  usePrediccionesParticipante,
+} from "@/lib/queries/predicciones-participante";
 import { agruparPorDia, formatearFechaLarga } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
@@ -32,6 +37,17 @@ const MEDALLA_CHIP: Record<1 | 2 | 3, string> = {
 
 /** Predicción cruzada con su partido (solo partidos cerrados, ver el hook). */
 type ItemDetalle = { partido: Partido; prediccion: Prediccion };
+
+/** Orden de las fases para listar los bonos de menos a más avanzado. */
+const ORDEN_FASE: Record<FaseTorneo, number> = {
+  fase_grupos: 0,
+  dieciseisavos: 1,
+  octavos: 2,
+  cuartos: 3,
+  semifinales: 4,
+  tercer_lugar: 5,
+  final: 6,
+};
 
 /** Una mini-estadística del encabezado (valor + etiqueta). */
 function MiniStat({ valor, etiqueta }: { valor: number; etiqueta: string }) {
@@ -199,6 +215,20 @@ export function DetalleParticipante({
     abierto,
   );
 
+  const { data: bonosData } = useBonosFaseParticipante(
+    fila?.participante_id ?? null,
+    abierto,
+  );
+
+  // Bonos de fase ganados, ordenados de fase menos a más avanzada.
+  const bonos = useMemo(
+    () =>
+      (bonosData ?? [])
+        .slice()
+        .sort((a, b) => ORDEN_FASE[a.fase] - ORDEN_FASE[b.fase]),
+    [bonosData],
+  );
+
   const partidoPorId = useMemo(
     () => new Map(partidos.map((p) => [p.id, p])),
     [partidos],
@@ -226,6 +256,7 @@ export function DetalleParticipante({
           goles_visitante: pp.goles_visitante,
           puntos_obtenidos: pp.puntos_obtenidos,
           prediccion_unica: pp.prediccion_unica,
+          equipo_avanza_id: null,
         };
         return { partido, prediccion };
       })
@@ -322,7 +353,7 @@ export function DetalleParticipante({
                 <p className="px-4 py-10 text-center text-sm text-fg-muted">
                   No se pudo cargar el detalle. Intenta de nuevo.
                 </p>
-              ) : items.length === 0 ? (
+              ) : items.length === 0 && bonos.length === 0 ? (
                 <EmptyState
                   icono={Target}
                   titulo="Aún no hay partidos jugados"
@@ -331,6 +362,38 @@ export function DetalleParticipante({
                 />
               ) : (
                 <div className="space-y-3 py-2">
+                  {bonos.length > 0 && (
+                    <section>
+                      <div className="flex items-center gap-1.5 px-3 pb-1 pt-1.5">
+                        <Award
+                          className="size-3.5 shrink-0 text-fg-subtle"
+                          aria-hidden
+                        />
+                        <h3 className="text-2xs font-extrabold uppercase tracking-wide text-fg-subtle">
+                          Bonos de fase
+                        </h3>
+                      </div>
+                      <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border">
+                        {bonos.map((bono) => (
+                          <li
+                            key={bono.fase}
+                            className="flex min-h-12 items-center justify-between gap-2 px-3 py-2"
+                          >
+                            <span className="flex items-center gap-2 text-sm font-bold text-fg-strong">
+                              <Award
+                                className="size-4 shrink-0 text-[#F59E0B]"
+                                aria-hidden
+                              />
+                              {ETIQUETA_FASE[bono.fase]}
+                            </span>
+                            <span className="shrink-0 rounded-pill bg-[#FCD34D]/20 px-2.5 py-1 text-sm font-black tabular-nums text-[#92600A] ring-1 ring-[#F59E0B]/40">
+                              +{bono.puntos}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
                   {dias.map(([dia, lista]) => (
                     <section key={dia}>
                       <div className="flex items-center gap-1.5 px-3 pb-1 pt-1.5">

@@ -21,6 +21,9 @@ export type EstadoPartido =
   | "finalizado"
   | "cancelado";
 
+/** Cómo se definió un cruce eliminatorio (ver migración 0062). */
+export type TipoDefinicion = "regular" | "prorroga" | "penales";
+
 export type RolParticipante = "admin" | "jugador";
 
 /** Estado derivado del grupo para la UI (no vive en BD). */
@@ -68,6 +71,11 @@ export type Partido = {
   ciudad: string | null;
   goles_local: number | null;
   goles_visitante: number | null;
+  /** Tanda de penales (solo cruces eliminatorios empatados); no puntúa. */
+  penales_local: number | null;
+  penales_visitante: number | null;
+  /** Cómo se definió: 90' (regular), tiempo extra (prorroga) o penales. */
+  tipo_definicion: TipoDefinicion;
   estado: EstadoPartido;
 };
 
@@ -146,6 +154,11 @@ export type Prediccion = {
   goles_visitante: number;
   puntos_obtenidos: number;
   prediccion_unica: boolean;
+  /**
+   * Equipo que el usuario predice que avanza cuando su marcador es empate (solo
+   * fases eliminatorias). `null` en cualquier otro caso. Ver migración 0061.
+   */
+  equipo_avanza_id: string | null;
 };
 
 export type FilaTablaPosiciones = {
@@ -160,8 +173,16 @@ export type FilaTablaPosiciones = {
   marcadores_exactos: number;
   /** Predicciones únicas acertadas (para el desempate). */
   unicas_acertadas: number;
+  /** Total de bonos por fase ganados (incluido ya en puntos_totales). */
+  bonos_fase: number;
   /** True si es el usuario que está consultando. */
   es_actual: boolean;
+};
+
+/** Bono por fase ganado por un participante (todo o nada). */
+export type BonoFase = {
+  fase: FaseTorneo;
+  puntos: number;
 };
 
 /** Distribución agregada y anónima (estadísticas de partido). */

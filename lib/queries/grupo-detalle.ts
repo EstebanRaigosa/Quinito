@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  BonoFase,
   CriterioDesempate,
+  FaseTorneo,
   FilaTablaPosiciones,
   Participante,
   Partido,
@@ -28,6 +30,8 @@ export type GrupoDetalle = {
   tabla: FilaTablaPosiciones[];
   partidos: Partido[];
   misPredicciones: Prediccion[];
+  /** Bonos por fase ganados por el usuario actual. */
+  misBonosFase: BonoFase[];
 };
 
 /** Shape crudo que devuelve el RPC `grupo_detalle` (jsonb). */
@@ -67,7 +71,9 @@ type RawDetalle = {
     aciertos: number;
     marcadores_exactos: number;
     unicas_acertadas: number;
+    bonos_fase: number;
   }[];
+  misBonosFase: { fase: FaseTorneo; puntos: number }[];
   partidos: Parameters<typeof mapPartidoRow>[0][];
   misPredicciones: {
     id: string;
@@ -77,6 +83,7 @@ type RawDetalle = {
     goles_visitante: number;
     puntos_obtenidos: number;
     prediccion_unica: boolean;
+    equipo_avanza_id: string | null;
   }[];
 };
 
@@ -130,7 +137,13 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     aciertos: Number(f.aciertos ?? 0),
     marcadores_exactos: Number(f.marcadores_exactos ?? 0),
     unicas_acertadas: Number(f.unicas_acertadas ?? 0),
+    bonos_fase: Number(f.bonos_fase ?? 0),
     es_actual: f.participante_id === d.miParticipanteId,
+  }));
+
+  const misBonosFase: BonoFase[] = (d.misBonosFase ?? []).map((b) => ({
+    fase: b.fase,
+    puntos: Number(b.puntos ?? 0),
   }));
 
   const partidos: Partido[] = d.partidos.map(mapPartidoRow);
@@ -143,6 +156,7 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     goles_visitante: p.goles_visitante,
     puntos_obtenidos: p.puntos_obtenidos,
     prediccion_unica: p.prediccion_unica,
+    equipo_avanza_id: p.equipo_avanza_id ?? null,
   }));
 
   // `numeric` llega como número en JSON; `Number(...)` normaliza por si acaso.
@@ -190,5 +204,6 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     tabla,
     partidos,
     misPredicciones,
+    misBonosFase,
   };
 }

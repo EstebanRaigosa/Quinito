@@ -9,22 +9,22 @@ export type TorneoOpcion = {
   pais_sede: string | null;
   fecha_inicio: string;
   fecha_fin: string;
+  /** false = torneo de prueba, solo visible para el superadmin (ver 0057). */
+  activo: boolean;
 };
 
 /**
- * Torneos activos disponibles para crear un grupo, del más antiguo al más
- * nuevo. Lectura pública para autenticados (CLAUDE.md §5): no expone PII.
+ * Torneos disponibles para crear un grupo, del más antiguo al más nuevo.
+ * Usa el RPC `torneos_disponibles` (SECURITY DEFINER): devuelve los activos a
+ * todos y, además, los inactivos (de prueba) solo al superadmin. Lectura sin
+ * PII (CLAUDE.md §5).
  */
-export function useTorneosActivos() {
+export function useTorneosDisponibles() {
   return useQuery({
-    queryKey: ["torneos-activos"],
+    queryKey: ["torneos-disponibles"],
     queryFn: async (): Promise<TorneoOpcion[]> => {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from("tblTorneos")
-        .select("id, codigo, nombre, pais_sede, fecha_inicio, fecha_fin")
-        .eq("activo", true)
-        .order("creado_en", { ascending: true });
+      const { data, error } = await supabase.rpc("torneos_disponibles");
       if (error) throw error;
       return data ?? [];
     },

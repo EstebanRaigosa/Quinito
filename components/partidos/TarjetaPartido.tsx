@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
+import { DefinicionPartido } from "@/components/partidos/DefinicionPartido";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
 import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 
@@ -171,6 +172,9 @@ export function TarjetaPartido({
           />
         </div>
       </div>
+
+      {/* Definición del cruce: penales (dorado) o tiempo extra (azul). */}
+      <DefinicionPartido partido={partido} className="mt-2.5" />
 
       {miPrediccion ? (
         <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2.5 text-2xs">

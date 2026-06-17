@@ -45,7 +45,9 @@ export function EstadisticasGrupoResumen({
   ahora: Date;
   /** Nº de integrantes del grupo: decide si se puede mostrar el agregado. */
   totalParticipantes: number;
-  miPrediccion?: Prediccion;
+  /** Solo se usa el marcador para resaltar la fila propia (acepta el objeto
+   * reactivo que mantiene la tarjeta tras guardar, no solo la prop del server). */
+  miPrediccion?: Pick<Prediccion, "goles_local" | "goles_visitante">;
 }) {
   const cerrada = prediccionCerrada(
     partido,

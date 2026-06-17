@@ -19,6 +19,23 @@ function detectarDispositivo(): "movil" | "escritorio" {
     : "escritorio";
 }
 
+/**
+ * ¿La app corre como PWA instalada (modo standalone) o en el navegador?
+ * - Android/escritorio: media query `(display-mode: standalone)`.
+ * - iOS Safari (no estándar): `navigator.standalone`.
+ * Se evalúa en cada latido porque el modo no cambia dentro de una sesión, pero
+ * sí difiere entre abrir desde el ícono instalado y abrir desde el navegador.
+ */
+function detectarEsPwa(): boolean {
+  if (typeof window === "undefined") return false;
+  const standalone =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(display-mode: standalone)").matches;
+  const iosStandalone =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return standalone || iosStandalone;
+}
+
 /** ¿La ruta es el detalle de UNA polla (donde hay sub-pestañas de cliente)? */
 function enDetalleDePolla(pathname: string): boolean {
   return (
@@ -55,6 +72,7 @@ export function LatidoPresencia({ usuarioId }: { usuarioId: string }) {
   useEffect(() => {
     const supabase = createClient();
     const dispositivo = detectarDispositivo();
+    const esPwa = detectarEsPwa();
     let inicioEnviado = false;
 
     // Dentro de una polla usamos el detalle de la pestaña ("{polla} · {sección}")
@@ -72,6 +90,7 @@ export function LatidoPresencia({ usuarioId }: { usuarioId: string }) {
         ultima_actividad: ahora,
         seccion: seccionActual(),
         dispositivo,
+        es_pwa: esPwa,
         visible,
       };
       // Solo en el primer latido del montaje reiniciamos "conectado desde".

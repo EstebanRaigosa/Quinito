@@ -45,7 +45,7 @@ import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
 import { PanelParticipantes } from "@/components/grupos/PanelParticipantes";
 import { PanelBaneados } from "@/components/grupos/PanelBaneados";
-import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
+import type { BonoFase, Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 
 /**
  * Pestaña tipo bottom-nav: icono + etiqueta siempre visibles para que en móvil
@@ -90,14 +90,24 @@ function PestanaTab({
 function FilaRegla({
   etiqueta,
   valor,
+  ganado = false,
 }: {
   etiqueta: string;
   valor: string | number;
+  /** Resalta la fila como un bono ya ganado por el usuario. */
+  ganado?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between py-2">
       <span className="t-body-sm text-fg-muted">{etiqueta}</span>
-      <span className="t-body-sm font-bold text-fg-strong">{valor}</span>
+      <span className="flex items-center gap-1.5">
+        {ganado && (
+          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            Ganado
+          </span>
+        )}
+        <span className="t-body-sm font-bold text-fg-strong">{valor}</span>
+      </span>
     </div>
   );
 }
@@ -181,23 +191,32 @@ function GlosarioPuntaje({ reglas }: { reglas: ReglasGrupo }) {
   );
 }
 
-function ResumenReglas({ reglas }: { reglas: ReglasGrupo }) {
+function ResumenReglas({
+  reglas,
+  misBonosFase,
+}: {
+  reglas: ReglasGrupo;
+  misBonosFase: BonoFase[];
+}) {
+  const ganadas = new Set(misBonosFase.map((b) => b.fase));
   return (
     <div className="space-y-5">
       <GlosarioPuntaje reglas={reglas} />
       <div>
         <p className="overline mb-2">Bonos por fase</p>
         <p className="t-caption mb-2 px-1 text-fg-muted">
-          Puntos extra que se suman al clavar el <b className="font-bold text-fg-strong">marcador
-          exacto</b> en partidos de eliminación directa (a más avanzada la fase, mayor el bono).
+          Bono <b className="font-bold text-fg-strong">todo o nada</b>: lo ganas solo si aciertas{" "}
+          <b className="font-bold text-fg-strong">quién avanza en todos los partidos</b> de esa ronda
+          (los que apuesta tu grupo). Si fallas aunque sea un cruce, no hay bono. Mientras más
+          avanzada la fase, mayor el premio.
         </p>
         <Card>
           <CardContent className="divide-y divide-border p-4 pt-2">
-            <FilaRegla etiqueta="Dieciseisavos" valor={`+${reglas.bono_dieciseisavos}`} />
-            <FilaRegla etiqueta="Octavos" valor={`+${reglas.bono_octavos}`} />
-            <FilaRegla etiqueta="Cuartos" valor={`+${reglas.bono_cuartos}`} />
-            <FilaRegla etiqueta="Semifinales" valor={`+${reglas.bono_semifinales}`} />
-            <FilaRegla etiqueta="Final" valor={`+${reglas.bono_final}`} />
+            <FilaRegla etiqueta="Dieciseisavos" valor={`+${reglas.bono_dieciseisavos}`} ganado={ganadas.has("dieciseisavos")} />
+            <FilaRegla etiqueta="Octavos" valor={`+${reglas.bono_octavos}`} ganado={ganadas.has("octavos")} />
+            <FilaRegla etiqueta="Cuartos" valor={`+${reglas.bono_cuartos}`} ganado={ganadas.has("cuartos")} />
+            <FilaRegla etiqueta="Semifinales" valor={`+${reglas.bono_semifinales}`} ganado={ganadas.has("semifinales")} />
+            <FilaRegla etiqueta="Final" valor={`+${reglas.bono_final}`} ganado={ganadas.has("final")} />
           </CardContent>
         </Card>
       </div>
@@ -469,6 +488,7 @@ export default async function GrupoDetallePage({
     tabla,
     partidos,
     misPredicciones,
+    misBonosFase,
     esAdmin,
     miParticipanteId,
   } = detalle;
@@ -745,7 +765,7 @@ export default async function GrupoDetallePage({
 
         {/* REGLAS */}
         <TabsContent value="reglas" className="space-y-6 md:max-w-xl">
-          <ResumenReglas reglas={reglas} />
+          <ResumenReglas reglas={reglas} misBonosFase={misBonosFase} />
         </TabsContent>
 
         {/* PARTICIPANTES — solo visible para el administrador de la polla */}

@@ -17,8 +17,16 @@ export async function guardarPrediccion(input: {
   partidoId: string;
   golesLocal: number;
   golesVisitante: number;
+  /**
+   * Equipo que avanza cuando el marcador predicho es empate en una fase
+   * eliminatoria. Se envía `null` (limpiando el guardado previo) en cualquier
+   * otro caso: si el usuario cambia el empate por un marcador con ganador, el
+   * avance lo dicta el marcador y este campo deja de aplicar.
+   */
+  equipoAvanzaId?: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient();
+  const equipoAvanzaId = input.equipoAvanzaId ?? null;
 
   const { data: existente, error: selErr } = await supabase
     .from("tblPredicciones")
@@ -34,6 +42,7 @@ export async function guardarPrediccion(input: {
       .update({
         goles_local: input.golesLocal,
         goles_visitante: input.golesVisitante,
+        equipo_avanza_id: equipoAvanzaId,
       })
       .eq("id", existente.id);
     if (error) return { ok: false, error: error.message };
@@ -43,6 +52,7 @@ export async function guardarPrediccion(input: {
       partido_id: input.partidoId,
       goles_local: input.golesLocal,
       goles_visitante: input.golesVisitante,
+      equipo_avanza_id: equipoAvanzaId,
     });
     if (error) return { ok: false, error: error.message };
   }

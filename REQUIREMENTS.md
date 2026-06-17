@@ -20,7 +20,7 @@ El primer torneo soportado será el **Mundial 2026** (México, Estados Unidos y 
 | **Torneo** | Competencia deportiva completa (ej. Mundial 2026) con sus partidos, fases y equipos. |
 | **Predicción** | Marcador exacto que un usuario predice para un partido específico. |
 | **Regla de puntuación** | Configuración que define cuántos puntos otorga cada tipo de acierto. |
-| **Bono** | Puntos extra otorgados por aciertos en fases de eliminación directa. |
+| **Bono** | Puntos extra **todo o nada** por acertar TODOS los equipos que avanzan de una fase de eliminación directa. |
 | **Premio %** | Porcentaje del pozo total que recibe el ganador de cada lugar. |
 | **Admin de grupo** | Creador/gestor de una polla. Rol `admin` en `tblParticipantes`; privilegios solo sobre su grupo. No registra marcadores reales. Ver §4.6. |
 | **Admin de plataforma** | Quien gestiona el torneo y registra los marcadores reales. Vía `service_role` / job, no es rol de grupo. Ver §4.6. |
@@ -186,11 +186,11 @@ Cada campo es numérico (entero ≥ 0) con su tooltip explicativo:
 | **Ganador acertado** | Si aciertas únicamente el ganador (o empate) del partido se sumarán los puntos seleccionados. | 2 |
 | **Gol acertado** | Si aciertas el número exacto de goles de uno de los equipos. | 1 |
 | **Predicción única** | Bono por ser el único en acertar el marcador exacto de un partido. | 2 |
-| **Bono Dieciseisavos** | Puntos extra por acertar marcador exacto en partidos de Dieciseisavos. | 10 |
-| **Bono octavos** | Puntos extra por acertar marcador exacto en partidos de Octavos. | 8 |
-| **Bono cuartos** | Puntos extra por acertar marcador exacto en partidos de Cuartos. | 4 |
-| **Bono semifinales** | Puntos extra por acertar marcador exacto en Semifinales. | 2 |
-| **Bono final** | Puntos extra por acertar marcador exacto en la Final. | 5 |
+| **Bono Dieciseisavos** | Bono **todo o nada**: si aciertas TODOS los equipos que avanzan de Dieciseisavos (los partidos de esa fase que apuesta el grupo). | 10 |
+| **Bono octavos** | Bono **todo o nada**: si aciertas TODOS los equipos que avanzan de Octavos. | 8 |
+| **Bono cuartos** | Bono **todo o nada**: si aciertas TODOS los equipos que avanzan de Cuartos. | 4 |
+| **Bono semifinales** | Bono **todo o nada**: si aciertas los 2 finalistas (avanzan de Semifinales). | 2 |
+| **Bono final** | Bono **todo o nada**: si aciertas el campeón (gana la Final). | 5 |
 | **Valor apuesta** | Monto en COP que paga cada participante al inscribirse al grupo (0 = grupo gratis). | 0 |
 | **Premio 1er lugar %** | Porcentaje del pozo total para el primer lugar. | 60 |
 | **Premio 2do lugar %** | Porcentaje del pozo total para el segundo lugar. | 30 |
@@ -1222,15 +1222,7 @@ funcion calcular_puntos(prediccion, partido, reglas):
      y prediccion.goles_visitante == partido.goles_visitante:
     puntos += reglas.pts_marcador_exacto
 
-    // 1.1 Bono por fase (solo si acertó marcador exacto)
-    segun partido.fase:
-      'dieciseisavos': puntos += reglas.bono_dieciseisavos
-      'octavos':       puntos += reglas.bono_octavos
-      'cuartos':       puntos += reglas.bono_cuartos
-      'semifinales':   puntos += reglas.bono_semifinales
-      'final':         puntos += reglas.bono_final
-
-    // 1.2 Predicción única — solo se asigna en post-procesamiento
+    // 1.1 Predicción única — solo se asigna en post-procesamiento
     si prediccion.predicccion_unica == true:
       puntos += reglas.pts_prediccion_unica
 
@@ -1256,6 +1248,24 @@ Después de calcular los aciertos de marcador exacto de un partido para todos lo
 ### 7.3 Trigger de cálculo
 - Se ejecuta vía Edge Function `calcular_puntos_partido(partido_id, grupo_id)` cuando se actualiza el resultado de un partido.
 - Implementación recomendada: trigger PostgreSQL `after update on "tblPartidos"` que llame a una función PL/pgSQL, o Edge Function invocada desde el panel de admin.
+
+### 7.4 Bono por fase (todo o nada)
+El bono por fase **no** se calcula por partido junto al marcador. Es un bono
+**todo o nada** que se otorga cuando una fase eliminatoria queda completa:
+
+- **Equipo que avanza:** el ganador del partido por marcador (más goles). Se
+  deriva igual del marcador real y del predicho. Un empate (real o predicho) es
+  indeterminado y **no** cuenta como avance acertado (el sistema no modela
+  penales; ver `ganador_partido`).
+- **Otorgamiento:** el participante gana el bono de la fase F si acierta el
+  equipo que avanza en **TODOS** los partidos de F que su grupo apuesta. Se
+  evalúa cuando todos esos partidos están finalizados.
+- **Reversión:** si se revierte el resultado de un partido de F, la fase deja de
+  estar completa y el bono se retira automáticamente.
+- **Persistencia:** se guarda en `tblBonosFase` (1 fila por participante/fase) y
+  se suma a `puntos_totales` en `vwTablaPosiciones`. Lo gestionan las funciones
+  `recalcular_bonos_fase_grupo` / `recalcular_bonos_fase_partido`, llamadas desde
+  `finalizar_partido` y `revertir_partido`. Ver migración `0054`.
 
 ---
 

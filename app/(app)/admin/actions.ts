@@ -6,11 +6,30 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 
-const schema = z.object({
-  partidoId: z.string().uuid(),
-  golesLocal: z.coerce.number().int().min(0).max(99),
-  golesVisitante: z.coerce.number().int().min(0).max(99),
-});
+const schema = z
+  .object({
+    partidoId: z.string().uuid(),
+    golesLocal: z.coerce.number().int().min(0).max(99),
+    golesVisitante: z.coerce.number().int().min(0).max(99),
+    // Tanda de penales: solo se envía en cruces eliminatorios empatados.
+    penalesLocal: z.coerce.number().int().min(0).max(99).optional(),
+    penalesVisitante: z.coerce.number().int().min(0).max(99).optional(),
+    // Marcador NO empatado de un cruce que se definió en la prórroga (tiempo
+    // extra). Solo informativo: no cambia la puntuación.
+    prorroga: z.boolean().optional(),
+  })
+  .refine(
+    (d) =>
+      (d.penalesLocal === undefined) === (d.penalesVisitante === undefined),
+    { message: "Penales incompletos" },
+  )
+  .refine(
+    (d) =>
+      d.penalesLocal === undefined ||
+      (d.golesLocal === d.golesVisitante &&
+        d.penalesLocal !== d.penalesVisitante),
+    { message: "Los penales solo aplican a un empate y no pueden quedar iguales" },
+  );
 
 export type ResultadoInput = z.input<typeof schema>;
 
@@ -39,6 +58,9 @@ export async function registrarResultado(
     p_partido_id: parsed.data.partidoId,
     p_goles_local: parsed.data.golesLocal,
     p_goles_visitante: parsed.data.golesVisitante,
+    p_penales_local: parsed.data.penalesLocal ?? undefined,
+    p_penales_visitante: parsed.data.penalesVisitante ?? undefined,
+    p_prorroga: parsed.data.prorroga ?? undefined,
   });
   if (error) return { ok: false, error: error.message };
 
