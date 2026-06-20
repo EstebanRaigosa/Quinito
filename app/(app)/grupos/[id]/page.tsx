@@ -30,6 +30,7 @@ import {
 } from "@/lib/utils/fechas";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsConRefresh } from "@/components/grupos/TabsConRefresh";
+import { PESTANAS_GRUPO_VALIDAS } from "@/lib/constants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -387,6 +388,7 @@ function DiaDePredicciones({
 function SeccionHoyPartidos({
   partidos,
   grupoId,
+  participanteActualId,
   reglas,
   prediccionPorPartido,
   ahora,
@@ -394,6 +396,7 @@ function SeccionHoyPartidos({
 }: {
   partidos: Partido[];
   grupoId: string;
+  participanteActualId?: string;
   reglas: ReglasGrupo;
   prediccionPorPartido: Map<string, Prediccion>;
   ahora: Date;
@@ -450,6 +453,7 @@ function SeccionHoyPartidos({
               reglas={reglas}
               ahora={ahora}
               grupoId={grupoId}
+              participanteActualId={participanteActualId}
               totalParticipantes={totalParticipantes}
             />
           </DestelloPartido>
@@ -467,6 +471,7 @@ function SeccionHoyPartidos({
 function DiaDePartidos({
   partidos,
   grupoId,
+  participanteActualId,
   reglas,
   prediccionPorPartido,
   ahora,
@@ -474,6 +479,7 @@ function DiaDePartidos({
 }: {
   partidos: Partido[];
   grupoId: string;
+  participanteActualId?: string;
   reglas: ReglasGrupo;
   prediccionPorPartido: Map<string, Prediccion>;
   ahora: Date;
@@ -495,6 +501,7 @@ function DiaDePartidos({
               reglas={reglas}
               ahora={ahora}
               grupoId={grupoId}
+              participanteActualId={participanteActualId}
               totalParticipantes={totalParticipantes}
             />
           </DestelloPartido>
@@ -506,10 +513,19 @@ function DiaDePartidos({
 
 export default async function GrupoDetallePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  // Pestaña inicial desde la URL (`?tab=`): así, si la página se re-monta por
+  // una recarga completa (deep-link de notificación o el fallback MPA de Next
+  // tras rotar cookies en el primer `router.refresh()` post-login), arranca en
+  // la pestaña correcta en SSR y NO salta a "Predicciones".
+  const { tab } = await searchParams;
+  const pestanaInicial =
+    tab && PESTANAS_GRUPO_VALIDAS.has(tab) ? tab : "jugar";
   const detalle = await getGrupoDetalle(id);
 
   if (!detalle) {
@@ -737,7 +753,7 @@ export default async function GrupoDetallePage({
       </div>
 
       {/* Tabs principales */}
-      <TabsConRefresh defaultValue="jugar" grupoNombre={grupo.nombre}>
+      <TabsConRefresh defaultValue={pestanaInicial} grupoNombre={grupo.nombre}>
         {/* Aviso (solo admin): la polla se creó con partidos ya cerrados → hay
             que cargar el "arranque" de cada participante. Va dentro de los Tabs
             para poder abrir "Participantes" y resaltar el botón de arranque. */}
@@ -806,6 +822,7 @@ export default async function GrupoDetallePage({
             <SeccionHoyPartidos
               partidos={partidosHoy}
               grupoId={grupo.id}
+              participanteActualId={miParticipanteId}
               reglas={reglas}
               prediccionPorPartido={prediccionPorPartido}
               ahora={ahora}
@@ -819,6 +836,7 @@ export default async function GrupoDetallePage({
                   key={dia}
                   partidos={lista}
                   grupoId={grupo.id}
+                  participanteActualId={miParticipanteId}
                   reglas={reglas}
                   prediccionPorPartido={prediccionPorPartido}
                   ahora={ahora}

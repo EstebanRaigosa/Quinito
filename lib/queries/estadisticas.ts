@@ -34,8 +34,15 @@ export function useEstadisticasGrupoResumen(grupoId: string, partidoId: string) 
           .select("goles_local, goles_visitante, porcentaje, cantidad")
           .eq("grupo_id", grupoId)
           .eq("partido_id", partidoId)
+          // Orden determinista: por frecuencia y, ante empate, por marcador.
+          // Sin los criterios de desempate y con un `limit` fijo, Postgres
+          // descartaba arbitrariamente uno de los marcadores empatados en el
+          // corte, haciendo "desaparecer" una predicción real (p. ej. un 0-0).
+          // Mostramos todos los marcadores predichos: su número está acotado por
+          // la cantidad de participantes del grupo.
           .order("porcentaje", { ascending: false })
-          .limit(8),
+          .order("goles_local", { ascending: true })
+          .order("goles_visitante", { ascending: true }),
       ]);
 
       return {
@@ -60,6 +67,8 @@ export function useEstadisticasGrupoResumen(grupoId: string, partidoId: string) 
 }
 
 export type PrediccionNominal = {
+  /** Id del participante: permite marcar la fila propia con "Tú" en la UI. */
+  participante_id: string;
   participante: string;
   goles_local: number;
   goles_visitante: number;
@@ -86,7 +95,7 @@ export function usePrediccionesNominales(
       const { data } = await supabase
         .from("vwPrediccionesGrupoPartido")
         .select(
-          "nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, creado_en",
+          "participante_id, nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, creado_en",
         )
         .eq("grupo_id", grupoId)
         .eq("partido_id", partidoId)
@@ -95,6 +104,7 @@ export function usePrediccionesNominales(
         .order("creado_en", { ascending: true });
 
       return (data ?? []).map((n) => ({
+        participante_id: n.participante_id ?? "",
         participante: n.nombre_completo ?? "Jugador",
         goles_local: n.goles_local ?? 0,
         goles_visitante: n.goles_visitante ?? 0,

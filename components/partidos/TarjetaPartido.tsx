@@ -64,6 +64,7 @@ export function TarjetaPartido({
   reglas,
   ahora,
   grupoId,
+  participanteActualId,
   totalParticipantes,
 }: {
   partido: Partido;
@@ -74,6 +75,8 @@ export function TarjetaPartido({
   ahora?: Date;
   /** Grupo al que pertenece la tarjeta: habilita el panel de estadísticas. */
   grupoId?: string;
+  /** Id del participante que mira: marca su fila con "Tú" en las estadísticas. */
+  participanteActualId?: string;
   /**
    * Nº de integrantes del grupo (umbral de privacidad del agregado). Opcional:
    * en el calendario global no hay grupo. Aquí el panel solo se ve tras el
@@ -248,6 +251,7 @@ export function TarjetaPartido({
                     partido={partido}
                     reglas={reglas!}
                     ahora={ahora!}
+                    participanteActualId={participanteActualId}
                   />
                 </TabsContent>
               </Tabs>

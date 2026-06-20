@@ -281,6 +281,7 @@ export function TarjetaPrediccion({
                     partido={partido}
                     reglas={reglas}
                     ahora={ahora}
+                    participanteActualId={participanteId}
                   />
                 </TabsContent>
               </Tabs>

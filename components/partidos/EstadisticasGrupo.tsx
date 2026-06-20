@@ -21,11 +21,14 @@ export function EstadisticasGrupo({
   partido,
   reglas,
   ahora,
+  participanteActualId,
 }: {
   grupoId: string;
   partido: Partido;
   reglas: ReglasGrupo;
   ahora: Date;
+  /** Id del participante que mira: su fila se marca con la etiqueta "Tú". */
+  participanteActualId?: string;
 }) {
   const cerrada = prediccionCerrada(
     partido,
@@ -83,6 +86,7 @@ export function EstadisticasGrupo({
   // Agrupamos por marcador: el resultado manda la jerarquía y debajo van las
   // personas que lo pusieron. Los puntos dependen solo del marcador, así que
   // viven en la cabecera del grupo (no se repiten por persona).
+  type Persona = { nombre: string; esTu: boolean };
   type GrupoMarcador = {
     clave: string;
     goles_local: number;
@@ -90,7 +94,7 @@ export function EstadisticasGrupo({
     puntos: number | null;
     /** El marcador fue predicción única (mismo valor para todo el grupo). */
     prediccion_unica: boolean;
-    personas: string[];
+    personas: Persona[];
   };
   const grupos: GrupoMarcador[] = Object.values(
     nominales.data.reduce<Record<string, GrupoMarcador>>((acc, n) => {
@@ -104,7 +108,11 @@ export function EstadisticasGrupo({
         personas: [],
       };
       acc[clave].prediccion_unica ||= n.prediccion_unica;
-      acc[clave].personas.push(n.participante);
+      acc[clave].personas.push({
+        nombre: n.participante,
+        esTu:
+          !!participanteActualId && n.participante_id === participanteActualId,
+      });
       return acc;
     }, {}),
   ).sort(
@@ -112,6 +120,11 @@ export function EstadisticasGrupo({
       (b.puntos ?? 0) - (a.puntos ?? 0) ||
       b.personas.length - a.personas.length,
   );
+  // Dentro de cada marcador, la fila propia ("Tú") va primero para que sea fácil
+  // de encontrar; el resto conserva el orden de llegada (por `creado_en`).
+  for (const g of grupos) {
+    g.personas.sort((a, b) => Number(b.esTu) - Number(a.esTu));
+  }
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -188,21 +201,40 @@ export function EstadisticasGrupo({
                 acerto ? "divide-mustard-400/20" : "divide-mustard-400/10",
               )}
             >
-              {g.personas.map((nombre, i) => (
+              {g.personas.map((persona, i) => (
                 <li
                   key={`${g.clave}-${i}`}
-                  className="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10"
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10",
+                    // La fila propia se resalta con un velo de marca para ubicarla
+                    // de un vistazo entre todas las predicciones del grupo.
+                    persona.esTu && "bg-primary-soft/60",
+                  )}
                 >
                   <span
                     aria-hidden
                     className={cn(
                       "size-1.5 shrink-0 rounded-full",
-                      acerto ? "bg-mustard-500" : "bg-mustard-400",
+                      persona.esTu
+                        ? "bg-primary"
+                        : acerto
+                          ? "bg-mustard-500"
+                          : "bg-mustard-400",
                     )}
                   />
-                  <span className="truncate text-sm font-semibold text-fg-strong">
-                    {nombre}
+                  <span
+                    className={cn(
+                      "truncate text-sm font-semibold",
+                      persona.esTu ? "text-primary" : "text-fg-strong",
+                    )}
+                  >
+                    {persona.nombre}
                   </span>
+                  {persona.esTu && (
+                    <span className="ml-auto shrink-0 rounded-full bg-primary px-2 py-0.5 text-2xs font-bold text-primary-foreground shadow-sm">
+                      Tú
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

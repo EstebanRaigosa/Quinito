@@ -11,17 +11,17 @@ import { RecorridoArranque } from "@/components/grupos/RecorridoArranque";
 const PESTANAS_CON_DATOS_VIVOS = new Set(["jugar", "partidos", "tabla"]);
 
 /**
- * Pestañas válidas para el deep-link `?tab=` (ej. una notificación que enlaza
- * directo a la tabla: `/grupos/<id>?tab=tabla`). Un valor fuera de este set se
- * ignora y se cae al `defaultValue`.
+ * Ventana de frescura: tras un render del servidor, los datos vivos (marcadores,
+ * tabla) se consideran frescos por este tiempo. Entrar a una pestaña dentro de la
+ * ventana NO dispara `router.refresh()`, así la página no "se recarga a media
+ * lectura" mientras el usuario cambia de pestaña o hace scroll. Pasada la ventana,
+ * la próxima entrada a una pestaña viva refresca una vez.
+ *
+ * Esto NO sacrifica liveness: los cambios reales en vivo (un marcador que carga el
+ * admin, el paso a "En juego") llegan igual por `RealtimePartidos` y el cierre por
+ * tiempo por `AutoRefrescoCierre`, ambos independientes de este refresco por clic.
  */
-const PESTANAS_VALIDAS = new Set([
-  "jugar",
-  "partidos",
-  "tabla",
-  "reglas",
-  "gente",
-]);
+const FRESCURA_MS = 60_000;
 
 /** Nombre legible de cada pestaña para el panel de presencia (admin). */
 const ETIQUETA_PESTANA: Record<string, string> = {
@@ -58,6 +58,9 @@ export function TabsConRefresh({
   const router = useRouter();
   const [, startTransition] = React.useTransition();
   // Arranca en `defaultValue` para que SSR e hidratación coincidan (sin desfase).
+  // El server ya resuelve la pestaña inicial desde `?tab=` (deep-link de
+  // notificación o restauración tras una recarga completa), así que aquí no hay
+  // que releerla del `window.location`: llega correcta en `defaultValue`.
   const [activa, setActiva] = React.useState(defaultValue);
   // Recorrido guiado que señala el botón "Arranque" (lo dispara el aviso de
   // partidos cerrados al crear, para guiar al admin hasta la acción).
@@ -66,6 +69,14 @@ export function TabsConRefresh({
   // Raíz de los Tabs: la usamos como ancla para subir el scroll al cambiar de
   // pestaña, de modo que el contenido nuevo siempre arranque desde arriba.
   const raizRef = React.useRef<HTMLDivElement>(null);
+  // Marca del último momento en que los datos del servidor estuvieron frescos
+  // (montaje o último `router.refresh()`). Gobierna la ventana de `FRESCURA_MS`
+  // para no refrescar al entrar a una pestaña si los datos son recientes.
+  const ultimoFrescoRef = React.useRef(0);
+  React.useEffect(() => {
+    // El render del servidor en el montaje ya es fresco.
+    ultimoFrescoRef.current = Date.now();
+  }, []);
 
   /**
    * Sube el scroll para dejar la barra de pestañas pegada bajo el header.
@@ -85,14 +96,6 @@ export function TabsConRefresh({
     if (window.scrollY > objetivo) {
       window.scrollTo({ top: Math.max(0, objetivo), behavior: "auto" });
     }
-  }, []);
-
-  // Deep-link: si la URL trae `?tab=<pestaña>` válida (ej. desde una
-  // notificación que enlaza a la tabla), abre esa pestaña tras montar. Se lee
-  // de `window.location` (no `useSearchParams`) para no forzar un Suspense extra.
-  React.useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab && PESTANAS_VALIDAS.has(tab)) setActiva(tab);
   }, []);
 
   // Abre "Participantes" e inicia el recorrido guiado hacia "Arranque".
@@ -122,10 +125,28 @@ export function TabsConRefresh({
         className={className}
         onValueChange={(valor) => {
           setActiva(valor);
+          // Persistimos la pestaña en la URL (`?tab=`) sin navegar, para que
+          // sobreviva a un remount/recarga. Si Next degrada un `router.refresh()`
+          // a recarga completa del documento (p. ej. rotación de cookies de
+          // Supabase justo tras login), la página vuelve a la MISMA pestaña en
+          // vez de saltar a "Predicciones". `replaceState` no dispara navegación
+          // ni middleware y es seguro en iOS Safari (no toca el scroll).
+          const url = new URL(window.location.href);
+          if (valor === "jugar") url.searchParams.delete("tab");
+          else url.searchParams.set("tab", valor);
+          window.history.replaceState(null, "", url);
           desplazarAlTope();
           // Cambiar de pestaña a mano cancela el recorrido guiado en curso.
           if (tourArranque) setTourArranque(false);
-          if (PESTANAS_CON_DATOS_VIVOS.has(valor)) {
+          // Solo refrescamos al entrar a una pestaña viva si los datos ya están
+          // "viejos" (fuera de la ventana de frescura). Así, navegar entre
+          // pestañas o hacer scroll recién cargada la página NO dispara una
+          // recarga a media lectura. La liveness real la cubre `RealtimePartidos`.
+          if (
+            PESTANAS_CON_DATOS_VIVOS.has(valor) &&
+            Date.now() - ultimoFrescoRef.current > FRESCURA_MS
+          ) {
+            ultimoFrescoRef.current = Date.now();
             startTransition(() => router.refresh());
           }
         }}
