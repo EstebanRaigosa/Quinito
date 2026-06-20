@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   Clock,
   History,
   Pencil,
+  Search,
   ShieldAlert,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import type { MovimientoAuditoria } from "@/lib/queries/auditoria";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
@@ -15,6 +17,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -28,6 +31,17 @@ type Props = {
 };
 
 const TODOS = "todos";
+
+/** Cuántos expedientes se pintan por lote en el scroll incremental. */
+const LOTE = 16;
+
+/** Normaliza para buscar sin tildes ni mayúsculas (es-CO). */
+function normalizar(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
 
 /**
  * Una predicción concreta (un usuario en un partido) con toda su evolución de
@@ -116,6 +130,7 @@ export function AuditoriaPolla({ movimientos }: Props) {
   const [usuarioId, setUsuarioId] = useState<string>(TODOS);
   const [partidoId, setPartidoId] = useState<string>(TODOS);
   const [soloModificadas, setSoloModificadas] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
 
   const usuarios = useMemo(() => {
     const mapa = new Map<string, string>();
@@ -142,6 +157,7 @@ export function AuditoriaPolla({ movimientos }: Props) {
   }, [movimientos]);
 
   const expedientes = useMemo(() => {
+    const q = normalizar(busqueda.trim());
     const filtrados = movimientos.filter(
       (m) =>
         (usuarioId === TODOS || m.usuario_id === usuarioId) &&
@@ -149,15 +165,70 @@ export function AuditoriaPolla({ movimientos }: Props) {
     );
     return agruparEnExpedientes(filtrados)
       .filter((e) => !soloModificadas || e.numModificaciones > 0)
+      .filter((e) => {
+        if (!q) return true;
+        // Busca por nombre de usuario, equipos del partido y número de partido.
+        const heno = normalizar(
+          `${e.usuario_nombre} ${e.partido_label} ${
+            e.partido_numero != null ? `#${e.partido_numero}` : ""
+          }`,
+        );
+        return heno.includes(q);
+      })
       // Orden puro por fecha del último movimiento: lo más reciente arriba. Una
       // predicción recién modificada sube sola (su último movimiento es reciente).
       .sort((a, b) => b.ultimaFecha.localeCompare(a.ultimaFecha));
-  }, [movimientos, usuarioId, partidoId, soloModificadas]);
+  }, [movimientos, usuarioId, partidoId, soloModificadas, busqueda]);
 
   const totalModificadas = useMemo(
     () => agruparEnExpedientes(movimientos).filter((e) => e.numModificaciones > 0).length,
     [movimientos],
   );
+
+  const hayFiltro =
+    usuarioId !== TODOS || partidoId !== TODOS || soloModificadas || busqueda.trim() !== "";
+
+  const limpiarFiltros = () => {
+    setUsuarioId(TODOS);
+    setPartidoId(TODOS);
+    setSoloModificadas(false);
+    setBusqueda("");
+  };
+
+  // Ventana incremental: solo pintamos `visibles` expedientes y vamos sumando
+  // lotes a medida que el usuario hace scroll. Evita montar cientos de tarjetas
+  // (avatares + banderas + sheets) de golpe, que es lo que volvía lenta la vista.
+  const [visibles, setVisibles] = useState(LOTE);
+
+  // Cualquier cambio de filtro vuelve a arrancar la ventana desde el primer lote.
+  // Patrón de React: ajustar estado en render al detectar el cambio (sin effect).
+  const filtroKey = `${usuarioId}|${partidoId}|${soloModificadas}|${busqueda}`;
+  const [filtroPrevio, setFiltroPrevio] = useState(filtroKey);
+  if (filtroPrevio !== filtroKey) {
+    setFiltroPrevio(filtroKey);
+    setVisibles(LOTE);
+  }
+
+  const sentinelaRef = useRef<HTMLDivElement | null>(null);
+  const total = expedientes.length;
+  useEffect(() => {
+    const el = sentinelaRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        if (entradas[0]?.isIntersecting) {
+          setVisibles((v) => Math.min(v + LOTE, total));
+        }
+      },
+      // Precarga el siguiente lote antes de llegar al fondo (scroll fluido).
+      { rootMargin: "600px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [total]);
+
+  const mostrados = expedientes.slice(0, visibles);
+  const hayMas = visibles < total;
 
   if (movimientos.length === 0) {
     return (
@@ -172,11 +243,51 @@ export function AuditoriaPolla({ movimientos }: Props) {
   return (
     <div className="space-y-4">
       {/* Filtros */}
-      <div className="surface-card rounded-2xl p-3">
-        <div className="mb-2 flex items-center gap-1.5 text-fg-muted">
-          <SlidersHorizontal className="size-3.5" aria-hidden />
-          <span className="t-caption font-semibold">Filtros</span>
+      <div className="surface-card space-y-3 rounded-2xl p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-fg-muted">
+            <SlidersHorizontal className="size-3.5" aria-hidden />
+            <span className="t-caption font-semibold">Filtros</span>
+          </div>
+          {hayFiltro && (
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="t-caption inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold text-fg-muted transition-colors hover:bg-sunken hover:text-fg-strong"
+            >
+              <X className="size-3.5" aria-hidden />
+              Limpiar
+            </button>
+          )}
         </div>
+
+        {/* Búsqueda libre por usuario o partido */}
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle"
+            aria-hidden
+          />
+          <Input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por usuario o partido…"
+            aria-label="Buscar en la auditoría"
+            autoComplete="off"
+            className="h-11 rounded-xl pl-9 pr-9"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda("")}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-1 top-1/2 grid h-11 w-10 -translate-y-1/2 place-items-center rounded-full text-fg-subtle transition-colors hover:text-fg-strong"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
             <span className="t-caption text-fg-muted">Usuario</span>
@@ -213,7 +324,7 @@ export function AuditoriaPolla({ movimientos }: Props) {
         </div>
 
         {/* Atajo: solo predicciones que tuvieron cambios */}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setSoloModificadas(false)}
@@ -266,14 +377,25 @@ export function AuditoriaPolla({ movimientos }: Props) {
       ) : (
         <>
           <p className="t-caption text-fg-muted">
-            {expedientes.length}{" "}
-            {expedientes.length === 1 ? "predicción" : "predicciones"}
+            {hayMas ? `${mostrados.length} de ${total}` : total}{" "}
+            {total === 1 ? "predicción" : "predicciones"}
           </p>
           <div className="space-y-2.5">
-            {expedientes.map((e) => (
+            {mostrados.map((e) => (
               <ExpedienteCard key={e.key} e={e} />
             ))}
           </div>
+
+          {/* Centinela: al entrar en viewport carga el siguiente lote. */}
+          {hayMas && (
+            <div
+              ref={sentinelaRef}
+              className="flex items-center justify-center gap-2 py-4 text-fg-muted"
+            >
+              <span className="size-1.5 animate-pulse rounded-full bg-fg-subtle" aria-hidden />
+              <span className="t-caption">Cargando más…</span>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -354,13 +476,22 @@ function MarcadorActual({
  */
 function ExpedienteCard({ e }: { e: Expediente }) {
   const [abierto, setAbierto] = useState(false);
+  // El Sheet (Radix Dialog) solo se monta tras el primer toque; luego se queda
+  // montado para que la animación de cierre funcione. Así no cargamos cientos de
+  // sheets en una lista larga.
+  const [montado, setMontado] = useState(false);
   const modificada = e.numModificaciones > 0;
+
+  const abrir = () => {
+    setMontado(true);
+    setAbierto(true);
+  };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setAbierto(true)}
+        onClick={abrir}
         className="surface-card hover-lift flex w-full items-start gap-3 rounded-2xl p-3.5 text-left sm:items-center"
       >
         <AvatarNotion nombre={e.usuario_nombre} size="md" />
@@ -407,7 +538,9 @@ function ExpedienteCard({ e }: { e: Expediente }) {
         />
       </button>
 
-      <HistorialSheet e={e} abierto={abierto} onOpenChange={setAbierto} />
+      {montado && (
+        <HistorialSheet e={e} abierto={abierto} onOpenChange={setAbierto} />
+      )}
     </>
   );
 }

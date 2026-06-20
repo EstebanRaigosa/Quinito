@@ -18,12 +18,12 @@ export const SITE_URL =
 export const RUTAS_PUBLICAS = ["/", "/login", "/forgot-password", "/reset-password"];
 
 /**
- * Inactividad máxima antes de cerrar la sesión automáticamente (60 min).
+ * Inactividad máxima antes de cerrar la sesión automáticamente (6 horas).
  * Equilibrio UX/seguridad para una quiniela: protege la privacidad de las
  * predicciones en dispositivos compartidos sin castigar el uso normal en móvil
  * (dejar la app en segundo plano un rato y volver). Lo consume `useIdleTimeout`.
  */
-export const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+export const IDLE_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 
 /** Ítems del bottom nav (móvil). */
 export const NAV_ITEMS = [
