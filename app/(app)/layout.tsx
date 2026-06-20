@@ -5,6 +5,7 @@ import { Logo } from "@/components/shared/Logo";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { LatidoPresencia } from "@/components/shared/LatidoPresencia";
+import { BannerConexion } from "@/components/shared/BannerConexion";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { BotonInstalarPWA } from "@/components/shared/BotonInstalarPWA";
 import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
@@ -45,6 +46,9 @@ export default async function AppLayout({
     <div className="flex min-h-dvh bg-app">
       {/* Latido de presencia (cada usuario actualiza solo su propia fila). */}
       <LatidoPresencia usuarioId={user.id} />
+
+      {/* Estado de conexión + predicciones pendientes de enviar (global). */}
+      <BannerConexion />
 
       <Sidebar usuario={usuario} grupos={grupos} esAdmin={superAdmin} />
 

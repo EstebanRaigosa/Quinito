@@ -2,13 +2,33 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
 import { PasoDatos } from "@/components/grupos/wizard/PasoDatos";
-import { PasoReglas } from "@/components/grupos/wizard/PasoReglas";
-import { PasoPartidos } from "@/components/grupos/wizard/PasoPartidos";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { cn } from "@/lib/utils";
+
+/**
+ * Pasos 2 y 3 cargados bajo demanda: su JS solo se descarga cuando el usuario
+ * llega a ese paso, no al entrar al wizard. El paso 1 (PasoDatos) sí es estático
+ * porque es lo primero que se ve. `ssr:false` es válido aquí (página cliente) y
+ * apropiado: los pasos no existen en el HTML inicial (el wizard arranca en 1).
+ */
+const cargando = () => (
+  <div className="grid place-items-center py-16 text-fg-muted">
+    <Loader2 className="size-6 animate-spin" aria-label="Cargando" />
+  </div>
+);
+const PasoReglas = dynamic(
+  () => import("@/components/grupos/wizard/PasoReglas").then((m) => m.PasoReglas),
+  { ssr: false, loading: cargando },
+);
+const PasoPartidos = dynamic(
+  () =>
+    import("@/components/grupos/wizard/PasoPartidos").then((m) => m.PasoPartidos),
+  { ssr: false, loading: cargando },
+);
 
 const PASOS = ["Datos", "Reglas", "Partidos"] as const;
 

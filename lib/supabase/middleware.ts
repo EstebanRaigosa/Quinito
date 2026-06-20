@@ -1,5 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { crearFetchConTimeout } from "./fetch-timeout";
+
+/**
+ * Timeout del `getUser()` del middleware. Corre en cada navegación; si GoTrue
+ * cuelga con red mala, sin esto la navegación entera se queda sin responder.
+ * Al rechazar, entra al `catch` de red y seguimos como invitado/dejamos pasar.
+ */
+const TIMEOUT_MIDDLEWARE_MS = 8_000;
 
 /** Rutas accesibles sin sesión (PLAN.md §Fase 1). */
 const RUTAS_PUBLICAS = [
@@ -8,6 +16,9 @@ const RUTAS_PUBLICAS = [
   "/registro",
   "/forgot-password",
   "/reset-password",
+  // Fallback offline del SW: debe servirse sin sesión (la precachea el SW y la
+  // muestra cuando no hay red). Es estática y neutra, sin PII.
+  "/offline",
 ];
 
 /**
@@ -64,6 +75,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: crearFetchConTimeout(TIMEOUT_MIDDLEWARE_MS) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -89,6 +101,9 @@ export async function updateSession(request: NextRequest) {
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] =
     null;
   let cookiesCorruptas = false;
+  // Error de red/timeout hacia GoTrue (distinto de cookie inválida): la sesión
+  // probablemente es buena, solo falló la conexión. NO debemos expulsar a login.
+  let errorRed = false;
   try {
     const resultado = await supabase.auth.getUser();
     user = resultado.data.user;
@@ -99,18 +114,31 @@ export async function updateSession(request: NextRequest) {
       // Cookie de sesión inválida → limpiar y seguir como invitado.
       cookiesCorruptas = true;
     } else {
-      // Error inesperado (p.ej. red hacia GoTrue): no tumbamos la request ni
-      // borramos la sesión; seguimos como invitado y reintentará al siguiente.
+      // Error inesperado (red hacia GoTrue / timeout): no tumbamos la request ni
+      // borramos la sesión; marcamos error de red para no redirigir a login.
       console.error("[middleware] Error inesperado en getUser:", error);
+      errorRed = true;
     }
   }
 
   // `/auth/*` ya retornó arriba; aquí solo quedan rutas normales.
   const esPublica = esRutaPublica(pathname);
 
+  // ¿El navegador trae una cookie de sesión de Supabase? Si la hay pero el
+  // getUser falló por RED, asumimos que el usuario sí está logueado.
+  const tieneCookieSesion = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-"));
+
   // Sin sesión en ruta protegida → al login, preservando el destino para volver
   // tras autenticar (no perder el contexto de un enlace compartido).
   if (!user && !esPublica) {
+    // Excepción: si fue un error de RED transitorio y hay cookie de sesión, no
+    // expulsamos a login (sería echar a un usuario logueado por un bache de
+    // red). Dejamos pasar; el RSC/cliente reintentará cuando vuelva la conexión.
+    if (errorRed && tieneCookieSesion) {
+      return supabaseResponse;
+    }
     const url = request.nextUrl.clone();
     const destino = pathname + url.search;
     url.pathname = "/login";

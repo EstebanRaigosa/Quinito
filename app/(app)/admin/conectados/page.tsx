@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Radio } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { obtenerConectados, obtenerResumenPwa } from "./actions";
@@ -16,10 +16,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminConectadosPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Reusa la sesión ya validada por el layout (acierto de caché, sin round-trip).
+  const user = await getUsuarioActual();
   if (!user) redirect("/login");
   // Solo super-admin de plataforma.
   if (!esSuperAdmin(user.email)) redirect("/dashboard");

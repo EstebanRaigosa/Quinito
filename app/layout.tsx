@@ -10,7 +10,10 @@ import { SITE_URL } from "@/lib/constants";
 
 const mulish = Mulish({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  // Pesos realmente usados en la UI (auditado por clases `font-*`): 400 base,
+  // 500 medium, 600 semibold, 700 bold, 800 extrabold, 900 black. Se omite 300
+  // (light) porque no se usa en ningún componente → un archivo woff2 menos.
+  weight: ["400", "500", "600", "700", "800", "900"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -34,7 +37,10 @@ export const metadata: Metadata = {
       "Crea y participa en pollas grupales del Mundial 2026. Predice marcadores, compite con tu grupo y sube en la tabla.",
     images: [
       {
-        url: "/images/estadio.png",
+        // JPEG dedicado para previews (los crawlers no pasan por el optimizador
+        // de next/image): 144 KB vs 423 KB del PNG. La app interna sigue usando
+        // el PNG vía next/image.
+        url: "/images/estadio-og.jpg",
         width: 1200,
         height: 630,
         alt: "Estadio de fútbol lleno visto desde la grada, con las luces encendidas",
@@ -45,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pollota Mundial 2026",
     description: "Crea y participa en pollas grupales del Mundial 2026.",
-    images: ["/images/estadio.png"],
+    images: ["/images/estadio-og.jpg"],
   },
   appleWebApp: {
     capable: true,

@@ -6,6 +6,12 @@ import {
   QueryClientProvider,
   focusManager,
 } from "@tanstack/react-query";
+import { IdleGuard } from "@/components/shared/IdleGuard";
+import {
+  instalarOnlineManager,
+  instalarPersistenciaMutaciones,
+  registrarDefaultsMutaciones,
+} from "@/lib/queries/mutaciones-predicciones";
 
 /**
  * Providers de cliente. Por ahora solo TanStack Query.
@@ -36,31 +42,55 @@ function instalarFocusManager() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            networkMode: "online",
-            staleTime: 60_000,
-            retry: 2,
-            // El refetch al recuperar foco usa nuestro focusManager (pageshow/
-            // visibilitychange), fiable en iOS standalone.
-            refetchOnWindowFocus: true,
-          },
-          mutations: {
-            networkMode: "online",
-            retry: 2,
-          },
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          networkMode: "online",
+          staleTime: 60_000,
+          retry: 2,
+          // El refetch al recuperar foco usa nuestro focusManager (pageshow/
+          // visibilitychange), fiable en iOS standalone.
+          refetchOnWindowFocus: true,
         },
-      }),
-  );
+        mutations: {
+          networkMode: "online",
+          retry: 2,
+        },
+      },
+    });
+    // Defaults de la mutación de predicción (mutationFn + reintentos) para que la
+    // cola persistida pueda reanudarla aunque su formulario ya no exista.
+    registrarDefaultsMutaciones(client);
+    return client;
+  });
 
   useEffect(() => {
+    // onlineManager real (eventos online/offline) antes de instalar la cola, para
+    // que la reanudación al reconectar se dispare con el estado correcto.
+    instalarOnlineManager();
     instalarFocusManager();
-  }, []);
+    // Hidrata, persiste y reanuda la cola de predicciones pendientes. Además,
+    // reanuda también al recuperar foco (volver de segundo plano en iOS).
+    const limpiarPersistencia = instalarPersistenciaMutaciones(queryClient);
+    const reanudarEnFoco = () => {
+      if (document.visibilityState === "visible") {
+        void queryClient.resumePausedMutations();
+      }
+    };
+    window.addEventListener("pageshow", reanudarEnFoco);
+    document.addEventListener("visibilitychange", reanudarEnFoco);
+    return () => {
+      limpiarPersistencia();
+      window.removeEventListener("pageshow", reanudarEnFoco);
+      document.removeEventListener("visibilitychange", reanudarEnFoco);
+    };
+  }, [queryClient]);
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <IdleGuard />
+      {children}
+    </QueryClientProvider>
   );
 }

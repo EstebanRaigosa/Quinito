@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
+ * Variables de un guardado de predicción. Incluye `participanteId`/`partidoId`
+ * (no solo el marcador) para que la mutación sea **autocontenida**: así puede
+ * serializarse y reanudarse desde la cola persistida aunque el formulario que la
+ * originó ya no esté montado. Ver `mutaciones-predicciones.ts`.
+ */
+export type GuardarPrediccionVars = {
+  participanteId: string;
+  partidoId: string;
+  golesLocal: number;
+  golesVisitante: number;
+  /**
+   * Equipo que avanza cuando el marcador predicho es empate en una fase
+   * eliminatoria. `null` en cualquier otro caso.
+   */
+  equipoAvanzaId?: string | null;
+};
+
+/**
  * Guarda (crea o actualiza) la predicción del usuario para un partido.
  *
  * Usamos insert-o-update explícito (NO `upsert`): el upsert de PostgREST genera
@@ -12,19 +30,9 @@ import { createClient } from "@/lib/supabase/client";
  * El RLS de `tblPredicciones` valida que sea su propia predicción y que la
  * ventana no esté cerrada.
  */
-export async function guardarPrediccion(input: {
-  participanteId: string;
-  partidoId: string;
-  golesLocal: number;
-  golesVisitante: number;
-  /**
-   * Equipo que avanza cuando el marcador predicho es empate en una fase
-   * eliminatoria. Se envía `null` (limpiando el guardado previo) en cualquier
-   * otro caso: si el usuario cambia el empate por un marcador con ganador, el
-   * avance lo dicta el marcador y este campo deja de aplicar.
-   */
-  equipoAvanzaId?: string | null;
-}): Promise<{ ok: boolean; error?: string }> {
+export async function guardarPrediccion(
+  input: GuardarPrediccionVars,
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient();
   const equipoAvanzaId = input.equipoAvanzaId ?? null;
 

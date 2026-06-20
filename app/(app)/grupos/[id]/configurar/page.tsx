@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -17,14 +18,10 @@ export default async function ConfigurarGrupoPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [
-    {
-      data: { user },
-    },
-    { data: esSuperadmin },
-    detalle,
-  ] = await Promise.all([
-    supabase.auth.getUser(),
+  // getUsuarioActual() reusa la validación del layout (acierto de caché) en vez
+  // de un getUser() nuevo contra GoTrue.
+  const [user, { data: esSuperadmin }, detalle] = await Promise.all([
+    getUsuarioActual(),
     supabase.rpc("es_superadmin"),
     getGrupoDetalle(id),
   ]);

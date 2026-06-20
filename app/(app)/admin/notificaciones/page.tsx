@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BellRing, Bell, Globe, ShieldCheck, Smartphone, User, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import { getTodasLasPollas, getUsuariosSuscritos } from "@/lib/queries/superadmin";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
@@ -22,9 +23,8 @@ const AUDIENCIA_META: Record<string, { etiqueta: string; icono: typeof Globe }> 
 
 export default async function AdminNotificacionesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Reusa la sesión ya validada por el layout (acierto de caché, sin round-trip).
+  const user = await getUsuarioActual();
   if (!user) redirect("/login");
   if (!esSuperAdmin(user.email)) redirect("/dashboard");
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Bell, ListOrdered, Radio, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import { getPartidosTorneo } from "@/lib/queries/partidos-torneo";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
@@ -17,9 +18,10 @@ export const metadata: Metadata = {
 
 export default async function AdminResultadosPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // El layout (app) ya validó la sesión con getUsuarioActual() en este mismo
+  // render: reusarlo es un acierto de caché (0 round-trips a GoTrue) en vez de
+  // un getUser() nuevo.
+  const user = await getUsuarioActual();
   if (!user) redirect("/login");
   // Solo super-admin de plataforma (no admin de grupo).
   if (!esSuperAdmin(user.email)) redirect("/dashboard");

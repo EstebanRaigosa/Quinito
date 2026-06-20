@@ -2,6 +2,7 @@
 import {
   CacheFirst,
   ExpirationPlugin,
+  NetworkOnly,
   Serwist,
   StaleWhileRevalidate,
   type PrecacheEntry,
@@ -66,6 +67,15 @@ const runtimeCaching: RuntimeCaching[] = [
       ],
     }),
   },
+  // Navegaciones: SIEMPRE a la red, SIN cachear (NetworkOnly preserva la
+  // privacidad — no guarda HTML/RSC con predicciones nominales). PERO si la red
+  // falla, en vez del error del navegador servimos la página /offline neutra
+  // (precacheada vía additionalPrecacheEntries). Esto NO viola §3.4: NetworkOnly
+  // no almacena ninguna navegación real; el único documento en caché es /offline.
+  {
+    matcher: ({ request }) => request.mode === "navigate",
+    handler: new NetworkOnly(),
+  },
 ];
 
 const serwist = new Serwist({
@@ -75,6 +85,18 @@ const serwist = new Serwist({
   // Sin caché de navegaciones → el preload de navegación no tiene consumidor.
   navigationPreload: false,
   runtimeCaching,
+  // Fallback offline: cuando una navegación (documento) falla por falta de red,
+  // se sirve la página /offline precacheada en vez del error del navegador.
+  // Serwist cablea la instancia internamente. /offline se precachea vía
+  // `additionalPrecacheEntries` en next.config.
+  fallbacks: {
+    entries: [
+      {
+        url: "/offline",
+        matcher: ({ request }) => request.destination === "document",
+      },
+    ],
+  },
 });
 
 serwist.addEventListeners();

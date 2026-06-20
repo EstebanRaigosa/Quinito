@@ -1,4 +1,5 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Trophy,
   ChevronRight,
@@ -45,11 +46,28 @@ import { DestelloPartido } from "@/components/partidos/DestelloPartido";
 import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
 import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
-import { PanelParticipantes } from "@/components/grupos/PanelParticipantes";
-import { PanelBaneados } from "@/components/grupos/PanelBaneados";
 import { PildoraInfo } from "@/components/grupos/PildoraInfo";
-import { AvisoPartidosCerrados } from "@/components/grupos/AvisoPartidosCerrados";
 import type { BonoFase, Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
+
+/**
+ * Paneles SOLO de admin, cargados bajo demanda. Con import estático su JS
+ * entraba al bundle de la ruta para TODOS los usuarios, aunque solo el admin de
+ * la polla los renderiza. Con `next/dynamic` los no-admin ya no los descargan;
+ * el admin los recibe por SSR (ssr por defecto) sin cambio funcional.
+ */
+const PanelParticipantes = dynamic(() =>
+  import("@/components/grupos/PanelParticipantes").then(
+    (m) => m.PanelParticipantes,
+  ),
+);
+const PanelBaneados = dynamic(() =>
+  import("@/components/grupos/PanelBaneados").then((m) => m.PanelBaneados),
+);
+const AvisoPartidosCerrados = dynamic(() =>
+  import("@/components/grupos/AvisoPartidosCerrados").then(
+    (m) => m.AvisoPartidosCerrados,
+  ),
+);
 
 /**
  * Pestaña tipo bottom-nav: icono + etiqueta siempre visibles para que en móvil

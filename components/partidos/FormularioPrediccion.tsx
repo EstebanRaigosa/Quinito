@@ -5,7 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ban, Check, Clock, Loader2, Lock, Pencil, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import type { Partido } from "@/lib/types/dominio";
-import { guardarPrediccion } from "@/lib/queries/predicciones";
+import { KEY_GUARDAR_PREDICCION } from "@/lib/queries/mutaciones-predicciones";
+import type { GuardarPrediccionVars } from "@/lib/queries/predicciones";
 import { faseTieneAvance } from "@/lib/utils/prediccion";
 import { formatearHoraBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
@@ -76,33 +77,23 @@ export function FormularioPrediccion({
   const idVisitante = partido.equipo_visitante?.id ?? null;
 
   /**
-   * Guardado con `useMutation`. `networkMode: "online"` es clave: si no hay
-   * conexión (WiFi de estadio), la mutación se PAUSA y se reintenta sola al
-   * reconectar, en vez de fallar en silencio y perder la predicción
-   * (COMPATIBILIDAD-STACK.md §6). `retry` cubre cortes intermitentes.
+   * Guardado con `useMutation`. Usa la `mutationKey` global cuyo `mutationFn` y
+   * reintentos viven en `registrarDefaultsMutaciones` (providers): así la
+   * mutación es REANUDABLE desde la cola persistida aunque este formulario ya no
+   * esté montado. Con `networkMode:"online"`, sin red la mutación se PAUSA y se
+   * persiste en disco, en vez de perderse al navegar (COMPATIBILIDAD-STACK §6).
+   * Las variables van autocontenidas (incluyen participante y partido) para que
+   * la cola pueda replayearlas sin este componente.
    */
-  const mutation = useMutation({
-    mutationFn: async (vars: {
-      golesLocal: number;
-      golesVisitante: number;
-      equipoAvanzaId: string | null;
-    }) => {
-      const { ok, error } = await guardarPrediccion({
-        participanteId,
-        partidoId: partido.id,
-        golesLocal: vars.golesLocal,
-        golesVisitante: vars.golesVisitante,
-        equipoAvanzaId: vars.equipoAvanzaId,
-      });
-      if (!ok) throw new Error(error ?? "No se pudo guardar");
-      return vars;
-    },
-    networkMode: "online",
-    retry: 2,
-    retryDelay: (intento) => Math.min(1000 * 2 ** intento, 8000),
+  const mutation = useMutation<
+    GuardarPrediccionVars,
+    Error,
+    GuardarPrediccionVars
+  >({
+    mutationKey: KEY_GUARDAR_PREDICCION,
     onSuccess: (vars) => {
       setBase({ l: vars.golesLocal, v: vars.golesVisitante });
-      setAvanza(vars.equipoAvanzaId);
+      setAvanza(vars.equipoAvanzaId ?? null);
       setEditando(false);
       onGuardado?.(vars);
       toast.success("Predicción guardada");
@@ -132,6 +123,8 @@ export function FormularioPrediccion({
       return;
     }
     mutation.mutate({
+      participanteId,
+      partidoId: partido.id,
       golesLocal: local,
       golesVisitante: visitante,
       // El avance solo aplica al empate eliminatorio; si no, se limpia (null).

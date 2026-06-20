@@ -1263,6 +1263,7 @@ export type Database = {
       vwPrediccionesGrupoPartido: {
         Row: {
           avatar_url: string | null
+          creado_en: string | null
           goles_local: number | null
           goles_visitante: number | null
           grupo_id: string | null

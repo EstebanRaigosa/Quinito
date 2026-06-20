@@ -31,7 +31,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `/unirse/${codigo}`,
       images: [
         {
-          url: "/images/estadio.png",
+          // JPEG dedicado para previews (144 KB vs 423 KB del PNG).
+          url: "/images/estadio-og.jpg",
           width: 1200,
           height: 630,
           alt: "Estadio de fútbol lleno visto desde la grada, con las luces encendidas",
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: "summary_large_image",
       title: titulo,
       description: descripcion,
-      images: ["/images/estadio.png"],
+      images: ["/images/estadio-og.jpg"],
     },
   };
 }

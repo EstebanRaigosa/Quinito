@@ -86,10 +86,13 @@ export function usePrediccionesNominales(
       const { data } = await supabase
         .from("vwPrediccionesGrupoPartido")
         .select(
-          "nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica",
+          "nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, creado_en",
         )
         .eq("grupo_id", grupoId)
-        .eq("partido_id", partidoId);
+        .eq("partido_id", partidoId)
+        // Orden estable: quién apostó primero aparece primero dentro de cada
+        // marcador (el componente conserva este orden al agrupar).
+        .order("creado_en", { ascending: true });
 
       return (data ?? []).map((n) => ({
         participante: n.nombre_completo ?? "Jugador",
