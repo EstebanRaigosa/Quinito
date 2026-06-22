@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, ListOrdered, Radio, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
@@ -110,26 +109,6 @@ export default async function AdminResultadosPage() {
           Escoge el torneo e ingresa el marcador real de cada partido. Al guardar
           se recalculan los puntos de todas las pollas que lo apuestan.
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link
-            href="/admin/clasificacion"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            <ListOrdered className="size-4" /> Clasificación de grupos
-          </Link>
-          <Link
-            href="/admin/notificaciones"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            <Bell className="size-4" /> Centro de notificaciones
-          </Link>
-          <Link
-            href="/admin/conectados"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            <Radio className="size-4" /> Usuarios conectados
-          </Link>
-        </div>
       </header>
 
       <PanelResultados secciones={secciones} />

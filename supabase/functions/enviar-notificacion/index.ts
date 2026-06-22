@@ -97,6 +97,11 @@ Deno.serve(async (req) => {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
         payload,
+        // `urgency: high` evita que Android (Doze) retenga el push hasta que el
+        // usuario desbloquee. `TTL` en segundos = 24h: una notificación del
+        // admin conserva valor un buen rato (no caduca con el cierre de un
+        // partido), pero no debe quedar colgada para siempre.
+        { urgency: "high", TTL: 86400 },
       );
       enviados++;
       await supabase

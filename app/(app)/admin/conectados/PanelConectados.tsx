@@ -126,14 +126,14 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
           </p>
         </div>
       ) : (
-        <ul className="grid gap-2.5 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {conEstado.map(({ c, segundos, estado }) => {
             const ui = ESTADO_UI[estado];
             const Dispositivo = c.dispositivo === "movil" ? Smartphone : Monitor;
             return (
               <li
                 key={c.usuarioId}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
+                className="flex items-center gap-3 overflow-hidden rounded-2xl border border-border bg-surface p-3"
               >
                 <div className="relative shrink-0">
                   <AvatarNotion
@@ -151,7 +151,7 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5">
+                  <p className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-bold text-fg-strong">
                       {c.nombre}
                     </span>
@@ -171,9 +171,9 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
                       {c.esPwa ? "App" : "Web"}
                     </span>
                   </p>
-                  <p className="flex items-center gap-1.5 truncate text-xs text-fg-muted">
+                  <p className="flex min-w-0 items-center gap-1.5 text-xs text-fg-muted">
                     <Dispositivo className="size-3.5 shrink-0" />
-                    {c.seccion}
+                    <span className="truncate">{c.seccion}</span>
                   </p>
                 </div>
 

@@ -1296,6 +1296,9 @@ export type Database = {
           aciertos: number | null
           avatar_url: string | null
           bonos_fase: number | null
+          dif_gol_acertada: number | null
+          ganador_acertado: number | null
+          goles_individuales: number | null
           grupo_id: string | null
           marcadores_exactos: number | null
           nombre_completo: string | null
@@ -1303,6 +1306,7 @@ export type Database = {
           posicion: number | null
           puntos_iniciales: number | null
           puntos_totales: number | null
+          ultima_edicion: string | null
           unicas_acertadas: number | null
         }
         Relationships: [

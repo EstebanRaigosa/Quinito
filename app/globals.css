@@ -186,6 +186,12 @@
     background-color: var(--bg-app);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Guard anti-desborde horizontal: si un elemento se pasa del ancho del
+       viewport, en WebKit el `BottomNav` (position:fixed, inset-x-0) se ancla al
+       ancho del DOCUMENTO y "se va" al hacer scroll. Clipando en la RAÍZ no hay
+       scroll horizontal y el nav queda fijo. En el elemento raíz no crea un
+       contenedor de scroll que rompa los `sticky` internos (seguro iOS 15+). */
+    overflow-x: hidden;
   }
 
   body {

@@ -93,6 +93,12 @@ Deno.serve(async () => {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           payload,
+          // `urgency: high` evita que Android (modo Doze/ahorro de batería)
+          // retenga el push y lo entregue en lote recién al desbloquear: un
+          // recordatorio que apremia debe sonar de inmediato. `TTL` en segundos
+          // = ventana de vida del aviso en el push service; 1h porque pasado el
+          // cierre del partido ya no sirve (no tiene sentido entregarlo tarde).
+          { urgency: "high", TTL: 3600 },
         );
         entregadoEnAlgunDispositivo = true;
         await supabase

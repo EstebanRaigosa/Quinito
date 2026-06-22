@@ -4,8 +4,15 @@
 export function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "?";
-  if (partes.length === 1) return partes[0]!.slice(0, 2).toUpperCase();
-  return (partes[0]![0]! + partes[partes.length - 1]![0]!).toUpperCase();
+  // `Array.from` itera por code points: no parte emojis/surrogates (un `slice`
+  // o `[0]` crudo dejaría medio carácter → `�` y rompe la hidratación SSR).
+  const primerCodePoint = (s: string) => Array.from(s)[0] ?? "";
+  if (partes.length === 1) {
+    return Array.from(partes[0]!).slice(0, 2).join("").toUpperCase();
+  }
+  return (
+    primerCodePoint(partes[0]!) + primerCodePoint(partes[partes.length - 1]!)
+  ).toUpperCase();
 }
 
 /** Formatea pesos colombianos: 50000 → "$50.000". */

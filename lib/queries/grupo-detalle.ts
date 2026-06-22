@@ -75,6 +75,10 @@ type RawDetalle = {
     marcadores_exactos: number;
     unicas_acertadas: number;
     bonos_fase: number;
+    dif_gol_acertada: number;
+    ganador_acertado: number;
+    goles_individuales: number;
+    ultima_edicion: string | null;
   }[];
   misBonosFase: { fase: FaseTorneo; puntos: number }[];
   partidos: Parameters<typeof mapPartidoRow>[0][];
@@ -141,6 +145,10 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     marcadores_exactos: Number(f.marcadores_exactos ?? 0),
     unicas_acertadas: Number(f.unicas_acertadas ?? 0),
     bonos_fase: Number(f.bonos_fase ?? 0),
+    dif_gol_acertada: Number(f.dif_gol_acertada ?? 0),
+    ganador_acertado: Number(f.ganador_acertado ?? 0),
+    goles_individuales: Number(f.goles_individuales ?? 0),
+    ultima_edicion: f.ultima_edicion ?? null,
     es_actual: f.participante_id === d.miParticipanteId,
   }));
 

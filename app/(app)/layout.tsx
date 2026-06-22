@@ -65,8 +65,8 @@ export default async function AppLayout({
               <CampanaNotificaciones />
               {superAdmin && (
                 <Link
-                  href="/admin"
-                  aria-label="Registrar resultados (admin)"
+                  href="/admin/panel"
+                  aria-label="Administración"
                   className="grid size-9 place-items-center rounded-full text-fg-muted transition-colors hover:bg-sunken hover:text-primary"
                 >
                   <ShieldCheck className="size-5" />
@@ -90,7 +90,7 @@ export default async function AppLayout({
         </main>
 
         <div className="md:hidden">
-          <BottomNav esAdmin={superAdmin} />
+          <BottomNav />
         </div>
       </div>
 

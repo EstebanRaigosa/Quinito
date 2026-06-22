@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, User, Plus, ShieldCheck, ListOrdered, Trophy, Radio, ScrollText, LogOut, Loader2 } from "lucide-react";
+import { Home, Search, User, Plus, ShieldCheck, LogOut, Loader2 } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
@@ -71,102 +71,20 @@ export function Sidebar({
 
         {esAdmin && (
           <Link
-            href="/admin"
-            aria-current={pathname === "/admin" ? "page" : undefined}
+            href="/admin/panel"
+            aria-current={pathname.startsWith("/admin") ? "page" : undefined}
             className={cn(
               "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-              pathname === "/admin"
+              pathname.startsWith("/admin")
                 ? "bg-primary-soft text-primary"
                 : "text-fg-muted hover:bg-sunken",
             )}
           >
             <ShieldCheck
-              className={cn("size-[18px]", pathname === "/admin" && "text-primary")}
-              strokeWidth={pathname === "/admin" ? 2.5 : 2}
+              className={cn("size-[18px]", pathname.startsWith("/admin") && "text-primary")}
+              strokeWidth={pathname.startsWith("/admin") ? 2.5 : 2}
             />
-            Resultados
-          </Link>
-        )}
-
-        {esAdmin && (
-          <Link
-            href="/admin/clasificacion"
-            aria-current={pathname === "/admin/clasificacion" ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-              pathname === "/admin/clasificacion"
-                ? "bg-primary-soft text-primary"
-                : "text-fg-muted hover:bg-sunken",
-            )}
-          >
-            <ListOrdered
-              className={cn(
-                "size-[18px]",
-                pathname === "/admin/clasificacion" && "text-primary",
-              )}
-              strokeWidth={pathname === "/admin/clasificacion" ? 2.5 : 2}
-            />
-            Clasificación
-          </Link>
-        )}
-
-        {esAdmin && (
-          <Link
-            href="/admin/pollas"
-            aria-current={pathname === "/admin/pollas" ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-              pathname === "/admin/pollas"
-                ? "bg-primary-soft text-primary"
-                : "text-fg-muted hover:bg-sunken",
-            )}
-          >
-            <Trophy
-              className={cn("size-[18px]", pathname === "/admin/pollas" && "text-primary")}
-              strokeWidth={pathname === "/admin/pollas" ? 2.5 : 2}
-            />
-            Pollas
-          </Link>
-        )}
-
-        {esAdmin && (
-          <Link
-            href="/admin/conectados"
-            aria-current={pathname === "/admin/conectados" ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-              pathname === "/admin/conectados"
-                ? "bg-primary-soft text-primary"
-                : "text-fg-muted hover:bg-sunken",
-            )}
-          >
-            <Radio
-              className={cn("size-[18px]", pathname === "/admin/conectados" && "text-primary")}
-              strokeWidth={pathname === "/admin/conectados" ? 2.5 : 2}
-            />
-            Conectados
-          </Link>
-        )}
-
-        {esAdmin && (
-          <Link
-            href="/admin/auditoria"
-            aria-current={pathname.startsWith("/admin/auditoria") ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-              pathname.startsWith("/admin/auditoria")
-                ? "bg-primary-soft text-primary"
-                : "text-fg-muted hover:bg-sunken",
-            )}
-          >
-            <ScrollText
-              className={cn(
-                "size-[18px]",
-                pathname.startsWith("/admin/auditoria") && "text-primary",
-              )}
-              strokeWidth={pathname.startsWith("/admin/auditoria") ? 2.5 : 2}
-            />
-            Auditoría
+            Administración
           </Link>
         )}
       </nav>

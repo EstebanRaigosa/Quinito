@@ -183,6 +183,16 @@ export type FilaTablaPosiciones = {
   unicas_acertadas: number;
   /** Total de bonos por fase ganados (incluido ya en puntos_totales). */
   bonos_fase: number;
+  /** Diferencia de gol acertada (criterio fino de desempate 5.º). */
+  dif_gol_acertada: number;
+  /** Aciertos de ganador / sentido 1X2 (criterio fino de desempate 6.º). */
+  ganador_acertado: number;
+  /** Goles individuales acertados, 0-2 por partido (criterio fino 7.º). */
+  goles_individuales: number;
+  /** Instante de la última edición de predicción (UTC, ISO). El MENOR (guardó
+   *  primero) gana el desempate por tiempo (criterio fino 8.º). `null` si no
+   *  ha guardado ninguna predicción. */
+  ultima_edicion: string | null;
   /** True si es el usuario que está consultando. */
   es_actual: boolean;
 };

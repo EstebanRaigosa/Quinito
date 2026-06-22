@@ -135,6 +135,24 @@ export function usePushNotificaciones(): EstadoPush {
         if (!vivo) return;
         setDenegado(Notification.permission === "denied");
         setSuscrito(Boolean(sub));
+        // Re-sincroniza la suscripción de ESTE navegador con la BD en cada
+        // arranque (upsert idempotente por endpoint). Cubre el caso en que el
+        // push service rotó la suscripción o la BD la perdió (p. ej. la Edge
+        // Function la borró por un 410): sin esto, el navegador seguiría
+        // diciendo "suscrito" mientras el server ya no tiene a dónde enviar.
+        // Fire-and-forget y SIN toast: el usuario no pidió esta acción, así que
+        // un fallo (sesión expirada, sin red) debe ser invisible.
+        if (sub) {
+          const { p256dh, auth } = extraerClaves(sub);
+          if (p256dh && auth) {
+            void guardarSuscripcion({
+              endpoint: sub.endpoint,
+              p256dh,
+              auth,
+              userAgent: navigator.userAgent.slice(0, 200),
+            }).catch(() => {});
+          }
+        }
       })
       .catch(() => {
         if (vivo) setSuscrito(false);

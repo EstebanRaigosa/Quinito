@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, Info } from "lucide-react";
 import type {
   CriterioDesempate,
@@ -8,9 +8,12 @@ import type {
   Partido,
   ReglasGrupo,
 } from "@/lib/types/dominio";
+import type { TablaDesempate } from "@/lib/utils/desempate";
+import { construirTablaDesempate } from "@/lib/utils/desempate";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { BotonDesempate } from "@/components/grupos/BotonDesempate";
 import { DetalleParticipante } from "@/components/grupos/DetalleParticipante";
 
 /** Etiqueta corta para la leyenda del orden de desempate. */
@@ -155,101 +158,128 @@ function FilaTabla({
   fila,
   max,
   indice,
+  tablaDesempate,
   onSeleccionar,
 }: {
   fila: FilaTablaPosiciones;
   max: number;
   indice: number;
+  /** Tabla comparativa de desempate; `null` si la fila no empata en puntos. */
+  tablaDesempate: TablaDesempate | null;
   onSeleccionar: (fila: FilaTablaPosiciones) => void;
 }) {
+  // Patrón "stretched button": un botón en capa de fondo cubre toda la fila y
+  // abre el detalle; el contenido va encima sin interceptar clics. Así el botón
+  // de desempate (que SÍ intercepta) puede vivir dentro de la fila sin anidar
+  // dos <button> (HTML inválido).
   return (
-    <li style={{ animationDelay: `${indice * 35}ms` }} className="animate-fade-up">
+    <li
+      style={{ animationDelay: `${indice * 35}ms` }}
+      className="relative animate-fade-up"
+    >
+      {/* Capa de fondo clicable: abre el detalle del participante. */}
       <button
         type="button"
         onClick={() => onSeleccionar(fila)}
         aria-label={`Ver detalle de ${fila.nombre_completo}`}
         className={cn(
-          GRID,
-          "min-h-11 w-full px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          "absolute inset-0 z-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           fila.es_actual ? "bg-primary-soft" : "hover:bg-sunken",
+        )}
+      />
+
+      {/* Contenido visual: no intercepta clics (pasan al botón de fondo), salvo
+          el botón de desempate que reactiva sus propios eventos. */}
+      <div
+        className={cn(
+          GRID,
+          "pointer-events-none relative z-[1] min-h-11 px-3 py-2.5",
         )}
       >
         {/* # — top 3 con el color de su medalla; el resto en texto simple. */}
-      {fila.posicion <= 3 ? (
-        <span
-          aria-label={`Puesto ${fila.posicion}`}
-          className={cn(
-            "grid size-6 place-items-center rounded-full text-xs font-black tabular-nums sm:size-7 sm:text-sm",
-            MEDALLA_CHIP[fila.posicion as 1 | 2 | 3],
-          )}
-        >
-          {fila.posicion}
-        </span>
-      ) : (
-        <span
-          className={cn(
-            "text-sm font-extrabold tabular-nums",
-            fila.es_actual ? "text-primary" : "text-fg-subtle",
-          )}
-        >
-          #{fila.posicion}
-        </span>
-      )}
-
-      {/* Jugador (sin avatar: solo nombre) */}
-      <div className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-sm font-bold text-fg-strong">
-            {fila.nombre_completo}
-          </span>
-          {fila.es_actual && (
-            <Badge variant="primary" className="shrink-0">
-              Tú
-            </Badge>
-          )}
-        </span>
-      </div>
-
-      {/* Marcadores exactos */}
-      <span
-        aria-label={`${fila.marcadores_exactos} marcadores exactos`}
-        className="text-right text-sm font-bold tabular-nums text-fg-muted"
-      >
-        {fila.marcadores_exactos}
-      </span>
-
-      {/* Predicciones únicas acertadas */}
-      <span
-        aria-label={`${fila.unicas_acertadas} predicciones únicas`}
-        className="text-right text-sm font-bold tabular-nums text-fg-muted"
-      >
-        {fila.unicas_acertadas}
-      </span>
-
-      {/* Aciertos */}
-      <span
-        aria-label={`${fila.aciertos} aciertos`}
-        className="text-right text-sm font-bold tabular-nums text-fg-muted"
-      >
-        {fila.aciertos}
-      </span>
-
-      {/* Puntos + barra */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        <span className="w-8 shrink-0 text-right text-base font-black tabular-nums text-fg-strong sm:w-9">
-          {fila.puntos_totales}
-        </span>
-        <div className="hidden h-2 flex-1 overflow-hidden rounded-pill bg-sunken sm:block">
-          <div
+        {fila.posicion <= 3 ? (
+          <span
+            aria-label={`Puesto ${fila.posicion}`}
             className={cn(
-              "h-full origin-left animate-grow-x rounded-pill",
-              fila.es_actual ? "bg-primary" : "bg-clay-400",
+              "grid size-6 place-items-center rounded-full text-xs font-black tabular-nums sm:size-7 sm:text-sm",
+              MEDALLA_CHIP[fila.posicion as 1 | 2 | 3],
             )}
-            style={{ width: `${(fila.puntos_totales / max) * 100}%` }}
-          />
+          >
+            {fila.posicion}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "text-sm font-extrabold tabular-nums",
+              fila.es_actual ? "text-primary" : "text-fg-subtle",
+            )}
+          >
+            #{fila.posicion}
+          </span>
+        )}
+
+        {/* Jugador (sin avatar: solo nombre) + botón de desempate si aplica */}
+        <div className="flex min-w-0 flex-col">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-bold text-fg-strong">
+              {fila.nombre_completo}
+            </span>
+            {fila.es_actual && (
+              <Badge variant="primary" className="shrink-0">
+                Tú
+              </Badge>
+            )}
+            {tablaDesempate && (
+              <span className="pointer-events-auto">
+                <BotonDesempate
+                  tabla={tablaDesempate}
+                  esActual={fila.es_actual}
+                />
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Marcadores exactos */}
+        <span
+          aria-label={`${fila.marcadores_exactos} marcadores exactos`}
+          className="text-right text-sm font-bold tabular-nums text-fg-muted"
+        >
+          {fila.marcadores_exactos}
+        </span>
+
+        {/* Predicciones únicas acertadas */}
+        <span
+          aria-label={`${fila.unicas_acertadas} predicciones únicas`}
+          className="text-right text-sm font-bold tabular-nums text-fg-muted"
+        >
+          {fila.unicas_acertadas}
+        </span>
+
+        {/* Aciertos */}
+        <span
+          aria-label={`${fila.aciertos} aciertos`}
+          className="text-right text-sm font-bold tabular-nums text-fg-muted"
+        >
+          {fila.aciertos}
+        </span>
+
+        {/* Puntos + barra */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="w-8 shrink-0 text-right text-base font-black tabular-nums text-fg-strong sm:w-9">
+            {fila.puntos_totales}
+          </span>
+          <div className="hidden h-2 flex-1 overflow-hidden rounded-pill bg-sunken sm:block">
+            <div
+              className={cn(
+                "h-full origin-left animate-grow-x rounded-pill",
+                fila.es_actual ? "bg-primary" : "bg-clay-400",
+              )}
+              style={{ width: `${(fila.puntos_totales / max) * 100}%` }}
+            />
           </div>
         </div>
-      </button>
+      </div>
     </li>
   );
 }
@@ -260,6 +290,7 @@ export function TablaPosiciones({
   grupoId,
   partidos,
   reglas,
+  esAdmin = false,
 }: {
   filas: FilaTablaPosiciones[];
   /** Orden de criterios de desempate del grupo (para explicar el motivo). */
@@ -267,10 +298,26 @@ export function TablaPosiciones({
   grupoId: string;
   partidos: Partido[];
   reglas: ReglasGrupo;
+  /** Admin del grupo o superadmin: solo ellos ven el botón de desempate. */
+  esAdmin?: boolean;
 }) {
   const [seleccionada, setSeleccionada] = useState<FilaTablaPosiciones | null>(
     null,
   );
+
+  // Tabla de desempate por participante (solo para quienes empatan en puntos).
+  // Se calcula una vez sobre la tabla completa, ya ordenada.
+  // Debe ir ANTES de cualquier early return (regla de hooks).
+  // Solo el admin del grupo / superadmin ve el botón → si no, mapa vacío.
+  const desempates = useMemo(() => {
+    const m = new Map<string, TablaDesempate>();
+    if (!esAdmin) return m;
+    for (const f of filas) {
+      const t = construirTablaDesempate(f, filas, criterios);
+      if (t) m.set(f.participante_id, t);
+    }
+    return m;
+  }, [filas, criterios, esAdmin]);
 
   if (filas.length === 0) {
     return (
@@ -359,6 +406,7 @@ export function TablaPosiciones({
               fila={f}
               max={max}
               indice={i}
+              tablaDesempate={desempates.get(f.participante_id) ?? null}
               onSeleccionar={setSeleccionada}
             />
           ))}

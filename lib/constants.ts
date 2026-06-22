@@ -26,6 +26,16 @@ export const RUTAS_PUBLICAS = ["/", "/login", "/forgot-password", "/reset-passwo
 export const IDLE_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 
 /**
+ * Inactividad tras la cual, **al reactivar la app** (volver del segundo plano o
+ * a la pestaña), se recarga la página para traer datos frescos (posiciones,
+ * predicciones reveladas, partidos). 5 minutos. No recarga mientras la app está
+ * visible y quieta: solo se evalúa en la reactivación. Convive con el cierre por
+ * inactividad: la recarga solo actúa en la ventana `[5min, IDLE_TIMEOUT_MS)`;
+ * pasado ese umbral gana el cierre de sesión. Lo consume `useIdleTimeout`.
+ */
+export const RECARGA_POR_INACTIVIDAD_MS = 5 * 60 * 1000;
+
+/**
  * Pestañas válidas del detalle de grupo para el deep-link `?tab=` (ej. una
  * notificación que enlaza a la tabla: `/grupos/<id>?tab=tabla`). Vive aquí (no
  * en `TabsConRefresh`, que es `"use client"`) para que el server component de la

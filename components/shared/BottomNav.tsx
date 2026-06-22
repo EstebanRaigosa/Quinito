@@ -1,22 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  Search,
-  Plus,
-  User,
-  LogOut,
-  Loader2,
-  ShieldCheck,
-  ClipboardCheck,
-  ListOrdered,
-  Trophy,
-  Radio,
-  ScrollText,
-} from "lucide-react";
+import { Home, Search, Plus, User, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCerrarSesion } from "@/lib/auth/use-cerrar-sesion";
 
@@ -36,16 +22,14 @@ const CREAR = { href: "/grupos/crear", etiqueta: "Crear", Icono: Plus };
 
 /**
  * Navegación inferior (mobile-first) con safe-area inferior para iOS.
- * `esAdmin` añade el botón "Admin" que despliega Resultados y Clasificación.
+ * La administración (solo super-admin) vive en la top bar → /admin/panel.
  */
-export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
+export function BottomNav() {
   const pathname = usePathname();
   const { cerrarSesion, saliendo } = useCerrarSesion();
-  const [adminAbierto, setAdminAbierto] = useState(false);
 
   const esActivo = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
-  const adminActivo = esActivo("/admin");
 
   const renderItem = ({ href, etiqueta, Icono }: ItemNav) => {
     const activo = esActivo(href);
@@ -94,47 +78,6 @@ export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
         <div className="w-16 shrink-0" aria-hidden />
 
         <ul className="flex flex-1 items-stretch justify-around">
-          {/* Admin (solo superusuario): despliega Resultados y Clasificación */}
-          {esAdmin && (
-            <li className="flex flex-1">
-              <button
-                type="button"
-                onClick={() => setAdminAbierto((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={adminAbierto}
-                aria-label="Administración"
-                className={cn(
-                  "group relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 text-2xs font-medium transition-colors duration-200",
-                  adminActivo || adminAbierto
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-fg",
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex h-8 w-16 items-center justify-center rounded-pill transition-all duration-200 ease-out",
-                    adminActivo || adminAbierto
-                      ? "bg-primary-soft"
-                      : "bg-transparent group-hover:bg-muted",
-                  )}
-                >
-                  <ShieldCheck
-                    className={cn(
-                      "size-6 transition-transform duration-200 ease-out",
-                      (adminActivo || adminAbierto) && "scale-110",
-                    )}
-                    strokeWidth={adminActivo ? 2.5 : 2}
-                  />
-                </span>
-                <span
-                  className={cn((adminActivo || adminAbierto) && "font-semibold")}
-                >
-                  Admin
-                </span>
-              </button>
-            </li>
-          )}
-
           {DERECHA.map(renderItem)}
 
           <li className="flex flex-1">
@@ -170,102 +113,6 @@ export function BottomNav({ esAdmin = false }: { esAdmin?: boolean }) {
             {CREAR.etiqueta}
           </span>
         </Link>
-
-        {/* Menú desplegable de Administración (sobre la barra) */}
-        {esAdmin && adminAbierto && (
-          <>
-            {/* Backdrop para cerrar al tocar fuera */}
-            <button
-              type="button"
-              aria-hidden
-              tabIndex={-1}
-              onClick={() => setAdminAbierto(false)}
-              className="fixed inset-0 z-[210] cursor-default"
-            />
-            <div
-              role="menu"
-              aria-label="Administración"
-              className="absolute bottom-full left-1/2 z-[220] mb-3 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
-            >
-              <p className="border-b border-border px-3 py-2 text-2xs font-bold uppercase tracking-wide text-fg-subtle">
-                Administración
-              </p>
-              <Link
-                href="/admin"
-                role="menuitem"
-                onClick={() => setAdminAbierto(false)}
-                aria-current={pathname === "/admin" ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
-                  pathname === "/admin" ? "text-primary" : "text-fg",
-                )}
-              >
-                <ClipboardCheck className="size-[18px] text-primary" />
-                Resultados
-              </Link>
-              <Link
-                href="/admin/clasificacion"
-                role="menuitem"
-                onClick={() => setAdminAbierto(false)}
-                aria-current={
-                  pathname === "/admin/clasificacion" ? "page" : undefined
-                }
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
-                  pathname === "/admin/clasificacion"
-                    ? "text-primary"
-                    : "text-fg",
-                )}
-              >
-                <ListOrdered className="size-[18px] text-primary" />
-                Clasificación
-              </Link>
-              <Link
-                href="/admin/pollas"
-                role="menuitem"
-                onClick={() => setAdminAbierto(false)}
-                aria-current={pathname === "/admin/pollas" ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
-                  pathname === "/admin/pollas" ? "text-primary" : "text-fg",
-                )}
-              >
-                <Trophy className="size-[18px] text-primary" />
-                Pollas
-              </Link>
-              <Link
-                href="/admin/conectados"
-                role="menuitem"
-                onClick={() => setAdminAbierto(false)}
-                aria-current={
-                  pathname === "/admin/conectados" ? "page" : undefined
-                }
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
-                  pathname === "/admin/conectados" ? "text-primary" : "text-fg",
-                )}
-              >
-                <Radio className="size-[18px] text-primary" />
-                Conectados
-              </Link>
-              <Link
-                href="/admin/auditoria"
-                role="menuitem"
-                onClick={() => setAdminAbierto(false)}
-                aria-current={
-                  esActivo("/admin/auditoria") ? "page" : undefined
-                }
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 text-sm font-semibold transition-colors hover:bg-sunken",
-                  esActivo("/admin/auditoria") ? "text-primary" : "text-fg",
-                )}
-              >
-                <ScrollText className="size-[18px] text-primary" />
-                Auditoría
-              </Link>
-            </div>
-          </>
-        )}
       </div>
     </nav>
   );

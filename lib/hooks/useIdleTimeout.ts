@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { IDLE_TIMEOUT_MS } from "@/lib/constants";
+import { IDLE_TIMEOUT_MS, RECARGA_POR_INACTIVIDAD_MS } from "@/lib/constants";
 
 /**
- * Cierre de sesión por inactividad (idle timeout).
+ * Inactividad: cierre de sesión (idle timeout) + recarga al reactivar.
  *
  * Diseño pensado para PWA en iOS/Safari (COMPATIBILIDAD-MOVIL §3.3): NO se cuenta
  * el tiempo con `setTimeout` en segundo plano —WebKit congela el JS al suspender
@@ -25,6 +25,12 @@ import { IDLE_TIMEOUT_MS } from "@/lib/constants";
  * contador, con *throttle* para no escribir en `localStorage` en cada evento.
  * Como la clave es compartida, la actividad y el cierre se propagan entre
  * pestañas vía el evento `storage`.
+ *
+ * Además, **solo al reactivar la app** (no mientras está visible y quieta, para
+ * no recargar en la cara del usuario ni sobre un formulario a medio llenar), si
+ * pasó `RECARGA_POR_INACTIVIDAD_MS` (5 min) pero aún no se llegó al cierre, se
+ * recarga la página para mostrar datos frescos. La recarga solo actúa en la
+ * ventana `[5min, IDLE_TIMEOUT_MS)`: pasado ese umbral gana el cierre de sesión.
  */
 
 /** Clave de `localStorage` con el timestamp (ms UTC) de la última actividad. */
@@ -122,6 +128,35 @@ export function useIdleTimeout({ habilitado }: Opciones) {
     }
   }, [cerrarPorInactividad]);
 
+  /**
+   * Recarga la página al reactivar la app si la inactividad cae en la ventana
+   * `[RECARGA_POR_INACTIVIDAD_MS, IDLE_TIMEOUT_MS)`. Solo se invoca en eventos de
+   * reactivación (nunca en el chequeo periódico): no recarga la pantalla que el
+   * usuario está mirando. Antes de recargar refresca la marca de actividad para
+   * que, al volver a montar, no entre en bucle de recargas.
+   */
+  const verificarRecarga = useCallback(() => {
+    if (cerrandoRef.current) return;
+    let ultima: number;
+    try {
+      ultima = Number(window.localStorage.getItem(CLAVE_ULTIMA_ACTIVIDAD)) || 0;
+    } catch {
+      return;
+    }
+    // 0 = sin marca / cierre en curso: lo maneja `verificarInactividad`.
+    if (ultima === 0) return;
+    const inactivo = Date.now() - ultima;
+    // Pasado el umbral de cierre, NO recargar: que gane el cierre de sesión.
+    if (inactivo >= RECARGA_POR_INACTIVIDAD_MS && inactivo < IDLE_TIMEOUT_MS) {
+      try {
+        window.localStorage.setItem(CLAVE_ULTIMA_ACTIVIDAD, String(Date.now()));
+      } catch {
+        // se ignora
+      }
+      window.location.reload();
+    }
+  }, []);
+
   useEffect(() => {
     if (!habilitado || typeof window === "undefined") return;
 
@@ -143,11 +178,19 @@ export function useIdleTimeout({ habilitado }: Opciones) {
       window.addEventListener(evento, marcarActividad, { passive: true });
     }
 
-    // Reactivación (clave en iOS: el JS se congela en segundo plano).
+    // Reactivación (clave en iOS: el JS se congela en segundo plano). El orden
+    // importa: primero el cierre (gana si se pasó el umbral), luego la recarga
+    // (solo actúa por debajo de ese umbral y aborta si hay cierre en curso).
     const onVisible = () => {
-      if (document.visibilityState === "visible") verificarInactividad();
+      if (document.visibilityState !== "visible") return;
+      verificarInactividad();
+      verificarRecarga();
     };
-    window.addEventListener("pageshow", verificarInactividad);
+    const onPageShow = () => {
+      verificarInactividad();
+      verificarRecarga();
+    };
+    window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVisible);
 
     // Otra pestaña actualizó la actividad o cerró la sesión.
@@ -165,10 +208,10 @@ export function useIdleTimeout({ habilitado }: Opciones) {
       for (const evento of EVENTOS_ACTIVIDAD) {
         window.removeEventListener(evento, marcarActividad);
       }
-      window.removeEventListener("pageshow", verificarInactividad);
+      window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("storage", onStorage);
       window.clearInterval(intervalo);
     };
-  }, [habilitado, marcarActividad, verificarInactividad]);
+  }, [habilitado, marcarActividad, verificarInactividad, verificarRecarga]);
 }

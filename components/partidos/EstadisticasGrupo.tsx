@@ -206,9 +206,9 @@ export function EstadisticasGrupo({
                   key={`${g.clave}-${i}`}
                   className={cn(
                     "flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10",
-                    // La fila propia se resalta con un velo de marca para ubicarla
-                    // de un vistazo entre todas las predicciones del grupo.
-                    persona.esTu && "bg-primary-soft/60",
+                    // La fila propia se resalta con un velo azul (info) para que
+                    // contraste con el verde del marcador y se ubique de un vistazo.
+                    persona.esTu && "bg-[#1E3A8A]/10",
                   )}
                 >
                   <span
@@ -216,7 +216,7 @@ export function EstadisticasGrupo({
                     className={cn(
                       "size-1.5 shrink-0 rounded-full",
                       persona.esTu
-                        ? "bg-primary"
+                        ? "bg-[#1E3A8A]"
                         : acerto
                           ? "bg-mustard-500"
                           : "bg-mustard-400",
@@ -225,13 +225,15 @@ export function EstadisticasGrupo({
                   <span
                     className={cn(
                       "truncate text-sm font-semibold",
-                      persona.esTu ? "text-primary" : "text-fg-strong",
+                      persona.esTu
+                        ? "text-[#1E3A8A] dark:text-info"
+                        : "text-fg-strong",
                     )}
                   >
                     {persona.nombre}
                   </span>
                   {persona.esTu && (
-                    <span className="ml-auto shrink-0 rounded-full bg-primary px-2 py-0.5 text-2xs font-bold text-primary-foreground shadow-sm">
+                    <span className="ml-auto shrink-0 rounded-full bg-[#1E3A8A] px-2 py-0.5 text-2xs font-bold text-white shadow-sm">
                       Tú
                     </span>
                   )}

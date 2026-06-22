@@ -114,6 +114,23 @@ function PestanaTab({
 const PISTA_BONO =
   "Para obtener este bono debes acertar todos los equipos que ganan esta ronda.";
 
+/**
+ * Caso especial puntual: la "Polla ahorro seguro" muestra los premios como
+ * montos fijos en pesos (acordados con la organización) en lugar de los
+ * porcentajes configurados. Se identifica por id exacto para no afectar a otras
+ * pollas con nombre parecido. Si en el futuro hay más casos, mover a config/BD.
+ */
+const PREMIOS_FIJOS_POR_GRUPO: Record<
+  string,
+  { primero: number; segundo: number; tercero: number }
+> = {
+  "95fe36f5-3df4-4158-8db2-8c256c1996e4": {
+    primero: 770_000,
+    segundo: 380_000,
+    tercero: 140_000,
+  },
+};
+
 function FilaRegla({
   etiqueta,
   valor,
@@ -227,11 +244,16 @@ function GlosarioPuntaje({ reglas }: { reglas: ReglasGrupo }) {
 function ResumenReglas({
   reglas,
   misBonosFase,
+  grupoId,
 }: {
   reglas: ReglasGrupo;
   misBonosFase: BonoFase[];
+  grupoId: string;
 }) {
   const ganadas = new Set(misBonosFase.map((b) => b.fase));
+  // Premios fijos en pesos para pollas específicas (ver constante); el resto
+  // usa los porcentajes configurados.
+  const premiosFijos = PREMIOS_FIJOS_POR_GRUPO[grupoId];
   return (
     <div className="space-y-5">
       <GlosarioPuntaje reglas={reglas} />
@@ -276,9 +298,19 @@ function ResumenReglas({
               etiqueta="Valor de apuesta"
               valor={reglas.valor_apuesta > 0 ? formatearMonto(reglas.valor_apuesta) : "Gratis"}
             />
-            <FilaRegla etiqueta="1er lugar" valor={`${reglas.premio_primer_lugar}%`} />
-            <FilaRegla etiqueta="2do lugar" valor={`${reglas.premio_segundo_lugar}%`} />
-            <FilaRegla etiqueta="3er lugar" valor={`${reglas.premio_tercer_lugar}%`} />
+            {premiosFijos ? (
+              <>
+                <FilaRegla etiqueta="1er lugar" valor={formatearMonto(premiosFijos.primero)} />
+                <FilaRegla etiqueta="2do lugar" valor={formatearMonto(premiosFijos.segundo)} />
+                <FilaRegla etiqueta="3er lugar" valor={formatearMonto(premiosFijos.tercero)} />
+              </>
+            ) : (
+              <>
+                <FilaRegla etiqueta="1er lugar" valor={`${reglas.premio_primer_lugar}%`} />
+                <FilaRegla etiqueta="2do lugar" valor={`${reglas.premio_segundo_lugar}%`} />
+                <FilaRegla etiqueta="3er lugar" valor={`${reglas.premio_tercer_lugar}%`} />
+              </>
+            )}
             <FilaRegla
               etiqueta="Cierre antes del partido"
               valor={`${reglas.minutos_cierre_prediccion} min`}
@@ -855,12 +887,13 @@ export default async function GrupoDetallePage({
             grupoId={grupo.id}
             partidos={partidos}
             reglas={reglas}
+            esAdmin={esAdmin}
           />
         </TabsContent>
 
         {/* REGLAS */}
         <TabsContent value="reglas" className="space-y-6 md:max-w-xl">
-          <ResumenReglas reglas={reglas} misBonosFase={misBonosFase} />
+          <ResumenReglas reglas={reglas} misBonosFase={misBonosFase} grupoId={grupo.id} />
         </TabsContent>
 
         {/* PARTICIPANTES — solo visible para el administrador de la polla */}
