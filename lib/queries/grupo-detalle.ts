@@ -196,6 +196,8 @@ export async function getGrupoDetalle(id: string): Promise<GrupoDetalle | null> 
     premio_primer_lugar: Number(r.premio_primer_lugar),
     premio_segundo_lugar: Number(r.premio_segundo_lugar),
     premio_tercer_lugar: Number(r.premio_tercer_lugar),
+    // Columna nueva (migración 0073): pollas previas no la traen → 0 por defecto.
+    porcentaje_administracion: Number(r.porcentaje_administracion ?? 0),
     minutos_cierre_prediccion: Number(r.minutos_cierre_prediccion),
   };
 

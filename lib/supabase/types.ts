@@ -87,6 +87,58 @@ export type Database = {
           },
         ]
       }
+      tblComprobantes: {
+        Row: {
+          abono_id: string
+          codigo: string
+          creado_en: string
+          grupo_id: string
+          id: string
+          monto: number
+          participante_id: string
+        }
+        Insert: {
+          abono_id: string
+          codigo: string
+          creado_en?: string
+          grupo_id: string
+          id?: string
+          monto: number
+          participante_id: string
+        }
+        Update: {
+          abono_id?: string
+          codigo?: string
+          creado_en?: string
+          grupo_id?: string
+          id?: string
+          monto?: number
+          participante_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblComprobantes_abono_id_fkey"
+            columns: ["abono_id"]
+            isOneToOne: true
+            referencedRelation: "tblAbonos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "tblGrupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "tblParticipantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tblAsignacionTercerosSlot: {
         Row: {
           combinacion_grupos: string
@@ -944,6 +996,7 @@ export type Database = {
           criterios_desempate: string[]
           grupo_id: string
           minutos_cierre_prediccion: number
+          porcentaje_administracion: number
           premio_primer_lugar: number
           premio_segundo_lugar: number
           premio_tercer_lugar: number
@@ -964,6 +1017,7 @@ export type Database = {
           criterios_desempate?: string[]
           grupo_id: string
           minutos_cierre_prediccion?: number
+          porcentaje_administracion?: number
           premio_primer_lugar?: number
           premio_segundo_lugar?: number
           premio_tercer_lugar?: number
@@ -984,6 +1038,7 @@ export type Database = {
           criterios_desempate?: string[]
           grupo_id?: string
           minutos_cierre_prediccion?: number
+          porcentaje_administracion?: number
           premio_primer_lugar?: number
           premio_segundo_lugar?: number
           premio_tercer_lugar?: number
@@ -1417,9 +1472,29 @@ export type Database = {
       }
       grupo_detalle: { Args: { p_grupo_id: string }; Returns: Json }
       inicio_extras: { Args: { p_desde: string }; Returns: Json }
+      buscar_comprobante: {
+        Args: { p_codigo: string }
+        Returns: {
+          codigo: string
+          creado_en: string
+          grupo_id: string
+          grupo_nombre: string
+          metodo: string
+          monto: number
+          pagado: boolean
+          participante_nombre: string
+          total_abonado: number
+          valor_apuesta: number
+        }[]
+      }
+      gen_codigo_comprobante: {
+        Args: never
+        Returns: string
+      }
       listar_abonos: {
         Args: { p_participante_id: string }
         Returns: {
+          codigo: string
           creado_en: string
           id: string
           monto: number

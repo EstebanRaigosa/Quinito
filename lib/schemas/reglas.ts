@@ -31,6 +31,9 @@ export const reglasSchema = z
     premio_primer_lugar: porcentaje("Premio 1er lugar"),
     premio_segundo_lugar: porcentaje("Premio 2do lugar"),
     premio_tercer_lugar: porcentaje("Premio 3er lugar"),
+    // Parte del pozo reservada para gastos de administración (no entra al
+    // reparto de premios). Los premios se calculan sobre el pozo neto.
+    porcentaje_administracion: porcentaje("Administración"),
     minutos_cierre_prediccion: enteroNoNegativo("Minutos de cierre"),
     // Orden de desempate (a igualdad de puntos). Puede ir vacío → alfabético.
     criterios_desempate: z
@@ -62,6 +65,7 @@ export const reglasDefault: ReglasInput = {
   premio_primer_lugar: 60,
   premio_segundo_lugar: 30,
   premio_tercer_lugar: 10,
+  porcentaje_administracion: 0,
   minutos_cierre_prediccion: 5,
   criterios_desempate: ["exactos", "unicas", "aciertos"],
 };

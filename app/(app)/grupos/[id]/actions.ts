@@ -100,14 +100,15 @@ export async function registrarAbono(
   participanteId: string,
   monto: number,
   nota: string,
-): Promise<Resultado> {
+): Promise<{ ok: true; codigo: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Tu sesión expiró. Inicia de nuevo." };
 
-  const { error } = await supabase.rpc("registrar_abono", {
+  // El RPC devuelve el código del comprobante recién creado (ver 0072).
+  const { data: codigo, error } = await supabase.rpc("registrar_abono", {
     p_participante_id: participanteId,
     p_monto: monto,
     p_nota: nota,
@@ -120,7 +121,7 @@ export async function registrarAbono(
   }
 
   revalidatePath(`/grupos/${grupoId}`);
-  return { ok: true };
+  return { ok: true, codigo: codigo ?? "" };
 }
 
 /**

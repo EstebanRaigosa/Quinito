@@ -400,6 +400,13 @@ export function CamposReglas({ control }: { control: Control<ReglasInput> }) {
           ayuda="Monto en COP que paga cada participante. 0 = grupo gratis."
           sufijo="COP"
         />
+        <RuleField
+          control={control}
+          name="porcentaje_administracion"
+          etiqueta="Administración"
+          ayuda="% del pozo que se reserva para gastos. Se descuenta antes de repartir los premios. 0 = sin administración."
+          sufijo="%"
+        />
         <div className="mt-4 grid grid-cols-3 gap-2.5 rounded-xl bg-sunken p-3">
           {PREMIOS.map((p) => (
             <div

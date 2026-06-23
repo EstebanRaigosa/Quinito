@@ -6,6 +6,7 @@ import type { EstadoPago, Participante } from "@/lib/types/dominio";
 import { usePagosGrupo } from "@/lib/queries/pagos";
 import { useNotificacionesGrupo } from "@/lib/queries/notificaciones-grupo";
 import { formatearMonto } from "@/lib/utils/texto";
+import { cn } from "@/lib/utils";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,18 +32,31 @@ const BADGE_PAGO: Record<
   pendiente: { label: "Pendiente", variant: "neutral" },
 };
 
+/** Filtro del listado por estado de pago. */
+type FiltroEstado = "todos" | "pagado" | "parcial" | "pendiente";
+
+const FILTROS: { valor: FiltroEstado; label: string }[] = [
+  { valor: "todos", label: "Todos" },
+  { valor: "pagado", label: "Pagados" },
+  { valor: "parcial", label: "Parciales" },
+  { valor: "pendiente", label: "Pendientes" },
+];
+
 export function PanelParticipantes({
   grupoId,
+  grupoNombre,
   participantes,
   valorApuesta,
   esAdmin,
 }: {
   grupoId: string;
+  grupoNombre: string;
   participantes: Participante[];
   valorApuesta: number;
   esAdmin: boolean;
 }) {
   const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
   const sinCosto = valorApuesta <= 0;
 
   // Totales abonados por participante (solo admin; el RPC ya lo restringe).
@@ -66,13 +80,22 @@ export function PanelParticipantes({
 
   const filtrados = useMemo(() => {
     const q = norm(busqueda.trim());
-    if (!q) return ordenados;
-    return ordenados.filter(
-      (p) =>
-        norm(p.usuario.nombre_completo).includes(q) ||
-        (p.usuario.email ? norm(p.usuario.email).includes(q) : false),
-    );
-  }, [ordenados, busqueda]);
+    return ordenados.filter((p) => {
+      if (q) {
+        const coincide =
+          norm(p.usuario.nombre_completo).includes(q) ||
+          (p.usuario.email ? norm(p.usuario.email).includes(q) : false);
+        if (!coincide) return false;
+      }
+      if (sinCosto || filtroEstado === "todos") return true;
+      // Mismo criterio que `estadoDe`: total acotado al valor de la apuesta.
+      const total =
+        totales?.get(p.id) ?? (p.pago_realizado ? valorApuesta : 0);
+      const estado =
+        total >= valorApuesta ? "pagado" : total > 0 ? "parcial" : "pendiente";
+      return estado === filtroEstado;
+    });
+  }, [ordenados, busqueda, filtroEstado, sinCosto, totales, valorApuesta]);
 
   function estadoDe(p: Participante): {
     estado: EstadoPago;
@@ -108,11 +131,33 @@ export function PanelParticipantes({
         />
       </div>
 
+      {/* Filtro por estado de pago (oculto si la polla no tiene costo) */}
+      {!sinCosto && (
+        <div className="flex flex-wrap gap-1.5">
+          {FILTROS.map(({ valor, label }) => (
+            <button
+              key={valor}
+              type="button"
+              aria-pressed={filtroEstado === valor}
+              onClick={() => setFiltroEstado(valor)}
+              className={cn(
+                "rounded-pill border px-4 py-2.5 text-sm font-semibold transition-colors",
+                filtroEstado === valor
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-surface/60 text-fg-muted hover:border-strong hover:text-fg-strong",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtrados.length === 0 ? (
         <EmptyState
           icono={Users}
           titulo="Sin resultados"
-          descripcion="Nadie coincide con la búsqueda."
+          descripcion="Nadie coincide con la búsqueda o el filtro."
         />
       ) : (
         <div className="grid gap-2 md:grid-cols-2">
@@ -208,6 +253,7 @@ export function PanelParticipantes({
                         grupoId={grupoId}
                         participanteId={part.id}
                         nombre={part.usuario.nombre_completo}
+                        grupoNombre={grupoNombre}
                         valorApuesta={valorApuesta}
                         totalAbonado={total ?? 0}
                       />

@@ -11,10 +11,12 @@ import { abonoSchema } from "@/lib/schemas/abono";
 import { formatearMonto } from "@/lib/utils/texto";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
+import { ComprobantePago } from "@/components/grupos/ComprobantePago";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -25,8 +27,15 @@ type Props = {
   grupoId: string;
   participanteId: string;
   nombre: string;
+  grupoNombre: string;
   valorApuesta: number;
   totalAbonado: number;
+  /**
+   * Disparador personalizado (p. ej. una fila completa clickeable). Si se omite,
+   * se usa el botón "Pago" por defecto. Debe ser un único elemento enfocable:
+   * va dentro de `DialogTrigger asChild`.
+   */
+  trigger?: React.ReactNode;
 };
 
 /** Método de pago del abono. Se guarda como nota del abono. */
@@ -53,8 +62,10 @@ export function GestionPago({
   grupoId,
   participanteId,
   nombre,
+  grupoNombre,
   valorApuesta,
   totalAbonado,
+  trigger,
 }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -100,7 +111,9 @@ export function GestionPago({
         toast.error(res.error);
         return;
       }
-      toast.success(`Abono de ${formatearMonto(valor)} registrado`);
+      toast.success(`Abono de ${formatearMonto(valor)} registrado`, {
+        description: res.codigo ? `Comprobante ${res.codigo}` : undefined,
+      });
       setMonto("");
       setMetodo("Efectivo");
       invalidar();
@@ -122,15 +135,14 @@ export function GestionPago({
 
   return (
     <Dialog open={abierto} onOpenChange={setAbierto}>
-      <Button
-        variant="outline"
-        size="sm"
-        className="shrink-0"
-        onClick={() => setAbierto(true)}
-      >
-        <Wallet className="size-4" />
-        Pago
-      </Button>
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Button variant="outline" size="sm" className="shrink-0">
+            <Wallet className="size-4" />
+            Pago
+          </Button>
+        )}
+      </DialogTrigger>
 
       <DialogContent className="flex max-h-[80dvh] max-w-sm flex-col">
         <DialogHeader>
@@ -242,19 +254,38 @@ export function GestionPago({
                 {abonos.map((a) => (
                   <li
                     key={a.id}
-                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2"
+                    className="space-y-2 rounded-lg border border-border px-3 py-2"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold tabular-nums text-fg-strong">
-                        {formatearMonto(a.monto)}
-                      </p>
-                      <p className="t-caption truncate text-fg-muted">
-                        {formatearFechaHoraBogota(a.creado_en)}
-                        {a.nota ? ` · ${a.nota}` : ""}
-                      </p>
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold tabular-nums text-fg-strong">
+                          {formatearMonto(a.monto)}
+                        </p>
+                        <p className="t-caption truncate text-fg-muted">
+                          {formatearFechaHoraBogota(a.creado_en)}
+                          {a.nota ? ` · ${a.nota}` : ""}
+                        </p>
+                        {a.codigo && (
+                          <p className="t-caption font-mono tracking-wide text-fg-subtle">
+                            {a.codigo}
+                          </p>
+                        )}
+                      </div>
+                      {confirmandoId !== a.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Eliminar abono"
+                          className={cn("shrink-0 text-fg-muted")}
+                          onClick={() => setConfirmandoId(a.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
                     </div>
+
                     {confirmandoId === a.id ? (
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="destructive"
                           size="sm"
@@ -276,17 +307,17 @@ export function GestionPago({
                           Cancelar
                         </Button>
                       </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Eliminar abono"
-                        className={cn("shrink-0 text-fg-muted")}
-                        onClick={() => setConfirmandoId(a.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
+                    ) : a.codigo ? (
+                      <ComprobantePago
+                        nombre={nombre}
+                        grupoNombre={grupoNombre}
+                        monto={a.monto}
+                        valor={valorApuesta}
+                        metodo={a.nota}
+                        codigo={a.codigo}
+                        fechaISO={a.creado_en}
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ul>

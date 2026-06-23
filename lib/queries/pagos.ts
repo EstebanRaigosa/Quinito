@@ -52,6 +52,7 @@ export function useAbonosParticipante(
         nota: a.nota,
         creado_en: a.creado_en,
         registrado_por_nombre: a.registrado_por_nombre,
+        codigo: a.codigo,
       }));
     },
     staleTime: 60_000,

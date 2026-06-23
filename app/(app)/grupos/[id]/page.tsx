@@ -37,7 +37,6 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { AvatarGrupo } from "@/components/grupos/AvatarGrupo";
 import { PageContainer } from "@/components/shared/PageContainer";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { TablaPosiciones } from "@/components/grupos/TablaPosiciones";
 import { RevelarJornadas } from "@/components/grupos/RevelarJornadas";
 import { AutoRefrescoCierre } from "@/components/shared/AutoRefrescoCierre";
@@ -56,13 +55,10 @@ import type { BonoFase, Partido, Prediccion, ReglasGrupo } from "@/lib/types/dom
  * la polla los renderiza. Con `next/dynamic` los no-admin ya no los descargan;
  * el admin los recibe por SSR (ssr por defecto) sin cambio funcional.
  */
-const PanelParticipantes = dynamic(() =>
-  import("@/components/grupos/PanelParticipantes").then(
-    (m) => m.PanelParticipantes,
-  ),
-);
-const PanelBaneados = dynamic(() =>
-  import("@/components/grupos/PanelBaneados").then((m) => m.PanelBaneados),
+// Contenido de la pestaña "Gente" (listado + financiero en sub-pestañas). Carga
+// solo para el admin (next/dynamic), que es el único que la ve.
+const TabsGente = dynamic(() =>
+  import("@/components/grupos/TabsGente").then((m) => m.TabsGente),
 );
 const AvisoPartidosCerrados = dynamic(() =>
   import("@/components/grupos/AvisoPartidosCerrados").then(
@@ -896,20 +892,20 @@ export default async function GrupoDetallePage({
           <ResumenReglas reglas={reglas} misBonosFase={misBonosFase} grupoId={grupo.id} />
         </TabsContent>
 
-        {/* PARTICIPANTES — solo visible para el administrador de la polla */}
+        {/* GENTE — solo admin. Sub-pestañas: Participantes y Financiero. */}
         {esAdmin && (
-        <TabsContent value="gente" className="space-y-4">
-          <div className="flex items-end justify-between gap-3">
-            <SectionHeader
-              titulo="Participantes"
-              sub={`${participantes.length} en el grupo`}
-            />
-            <PanelBaneados grupoId={grupo.id} />
-          </div>
-          <PanelParticipantes
+        <TabsContent value="gente">
+          <TabsGente
             grupoId={grupo.id}
+            grupoNombre={grupo.nombre}
             participantes={participantes}
             valorApuesta={reglas.valor_apuesta}
+            premios={{
+              primero: reglas.premio_primer_lugar,
+              segundo: reglas.premio_segundo_lugar,
+              tercero: reglas.premio_tercer_lugar,
+            }}
+            porcentajeAdmin={reglas.porcentaje_administracion}
             esAdmin={esAdmin}
           />
         </TabsContent>

@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ListOrdered,
   Radio,
+  Receipt,
   ScrollText,
   ShieldCheck,
   Trophy,
@@ -47,6 +48,13 @@ const SECCIONES = [
     titulo: "Pollas",
     descripcion: "Explora todas las pollas creadas en la plataforma.",
     Icono: Trophy,
+  },
+  {
+    href: "/admin/comprobantes",
+    titulo: "Comprobantes",
+    descripcion:
+      "Verifica un comprobante de pago por su código: cuándo se pagó y por cuánto.",
+    Icono: Receipt,
   },
   {
     href: "/admin/conectados",

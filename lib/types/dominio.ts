@@ -107,6 +107,8 @@ export type ReglasGrupo = {
   premio_primer_lugar: number;
   premio_segundo_lugar: number;
   premio_tercer_lugar: number;
+  /** % del pozo reservado a administración (no se reparte como premio). */
+  porcentaje_administracion: number;
   minutos_cierre_prediccion: number;
 };
 
@@ -135,6 +137,22 @@ export type Abono = {
   creado_en: string;
   /** Nombre de quien registró el abono (admin/superadmin), si se conserva. */
   registrado_por_nombre: string | null;
+  /** Código del comprobante 1-1 del abono (ej. "CMP-7F3K9Q2M"). */
+  codigo: string | null;
+};
+
+/** Resultado de buscar un comprobante por su código (admin/superadmin). */
+export type ComprobanteBusqueda = {
+  codigo: string;
+  monto: number;
+  creado_en: string;
+  metodo: string | null;
+  participante_nombre: string | null;
+  grupo_id: string;
+  grupo_nombre: string;
+  valor_apuesta: number;
+  total_abonado: number;
+  pagado: boolean;
 };
 
 /** Estado de pago de un participante frente al valor de la apuesta. */
