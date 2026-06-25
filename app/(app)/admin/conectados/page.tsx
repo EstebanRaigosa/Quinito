@@ -4,9 +4,14 @@ import { Radio } from "lucide-react";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import { PageContainer } from "@/components/shared/PageContainer";
-import { obtenerConectados, obtenerResumenPwa } from "./actions";
+import {
+  obtenerConectados,
+  obtenerHistorialActividad,
+  obtenerResumenPwa,
+} from "./actions";
 import { PanelConectados } from "./PanelConectados";
 import { PanelInstaladosPwa } from "./PanelInstaladosPwa";
+import { HistorialActividad } from "./HistorialActividad";
 
 export const metadata: Metadata = {
   title: "Admin · Conectados",
@@ -22,9 +27,10 @@ export default async function AdminConectadosPage() {
   // Solo super-admin de plataforma.
   if (!esSuperAdmin(user.email)) redirect("/dashboard");
 
-  const [inicial, resumenPwa] = await Promise.all([
+  const [inicial, resumenPwa, historial] = await Promise.all([
     obtenerConectados(),
     obtenerResumenPwa(),
+    obtenerHistorialActividad(),
   ]);
 
   return (
@@ -45,6 +51,10 @@ export default async function AdminConectadosPage() {
       <hr className="border-border" />
 
       <PanelInstaladosPwa resumen={resumenPwa} />
+
+      <hr className="border-border" />
+
+      <HistorialActividad datos={historial} />
     </PageContainer>
   );
 }

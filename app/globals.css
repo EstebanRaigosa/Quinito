@@ -441,9 +441,13 @@
     overscroll-behavior-y: contain;
   }
 
-  /* §8 — backdrop-filter es caro y parpadea en iOS. Los fondos translúcidos
-     del proyecto ya usan opacidad alta (bg-app/95, bg-surface/95), así que
-     basta con anular el blur. */
+  /* §8 — backdrop-filter es caro y parpadea en iOS, así que lo anulamos. Las
+     barras sticky/fijas (top bar, headers de sección, footers del wizard) no
+     pueden depender de modificadores de opacidad tipo `bg-app/95`: como los
+     colores del DS se definen `var(--token)` con hex plano (sin canales
+     `<alpha-value>`), Tailwind v3 DESCARTA esas clases y no emite background →
+     fondo transparente y el contenido se ve al hacer scroll. Por eso esas
+     barras usan fondo SÓLIDO (`bg-app`/`bg-surface`), no `/95`. */
   .backdrop-blur,
   .backdrop-blur-sm,
   .backdrop-blur-md,

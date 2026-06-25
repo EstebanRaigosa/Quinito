@@ -10,8 +10,9 @@ import { limpiarUltimaActividad, useIdleTimeout } from "@/lib/hooks/useIdleTimeo
  * No existe AuthProvider global, así que aquí escuchamos el estado de auth de
  * Supabase: el contador de inactividad solo corre con sesión (no tiene sentido
  * en `/login`). Al cerrarla se limpia el contador para no arrastrar un timestamp
- * viejo que provoque un relogin fantasma; el hook lo siembra de nuevo cuando
- * detecta sesión y la clave no existe.
+ * viejo que provoque un relogin fantasma; y como ese borrado depende de una
+ * carrera con `SIGNED_OUT`, el hook además trata el centinela "0" como "sin
+ * marca" y siembra de nuevo al detectar sesión (ver `useIdleTimeout`).
  *
  * Se monta una sola vez dentro de `Providers`. No renderiza UI.
  */

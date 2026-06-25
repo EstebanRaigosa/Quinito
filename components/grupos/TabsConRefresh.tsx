@@ -131,10 +131,17 @@ export function TabsConRefresh({
           // Supabase justo tras login), la página vuelve a la MISMA pestaña en
           // vez de saltar a "Predicciones". `replaceState` no dispara navegación
           // ni middleware y es seguro en iOS Safari (no toca el scroll).
+          //
+          // IMPORTANTE: preservar `window.history.state` (NO pasar `null`). Ese
+          // state guarda los marcadores internos del App Router de Next; si se
+          // nulifican, al volver "atrás" desde una modal abierta en esta pestaña
+          // (p. ej. el detalle de la tabla de posiciones) Next no reconoce la
+          // entrada y la trata como navegación real → te SACA de la vista en vez
+          // de solo cerrar la modal. Ver `lib/utils/modal-historial.ts`.
           const url = new URL(window.location.href);
           if (valor === "jugar") url.searchParams.delete("tab");
           else url.searchParams.set("tab", valor);
-          window.history.replaceState(null, "", url);
+          window.history.replaceState(window.history.state, "", url);
           desplazarAlTope();
           // Cambiar de pestaña a mano cancela el recorrido guiado en curso.
           if (tourArranque) setTourArranque(false);

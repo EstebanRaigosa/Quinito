@@ -199,45 +199,61 @@ function construirSvg({
 }
 
 export function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  try {
+    const { searchParams } = new URL(request.url);
 
-  const grupo = (searchParams.get("g") ?? "").trim() || "Polla";
-  const participante = (searchParams.get("p") ?? "").trim() || "Participante";
-  const abono = entero(searchParams.get("a"));
-  const valor = entero(searchParams.get("v"));
-  const metodo = (searchParams.get("m") ?? "").trim();
-  const codigo = (searchParams.get("c") ?? "").trim() || "—";
-  const fechaParam = searchParams.get("f");
-  const fechaISO =
-    fechaParam && !Number.isNaN(new Date(fechaParam).getTime())
-      ? fechaParam
-      : new Date().toISOString();
+    const grupo = (searchParams.get("g") ?? "").trim() || "Polla";
+    const participante = (searchParams.get("p") ?? "").trim() || "Participante";
+    const abono = entero(searchParams.get("a"));
+    const valor = entero(searchParams.get("v"));
+    const metodo = (searchParams.get("m") ?? "").trim();
+    const codigo = (searchParams.get("c") ?? "").trim() || "—";
+    const fechaParam = searchParams.get("f");
+    const fechaISO =
+      fechaParam && !Number.isNaN(new Date(fechaParam).getTime())
+        ? fechaParam
+        : new Date().toISOString();
 
-  const svg = construirSvg({
-    grupo,
-    participante,
-    abono,
-    valor,
-    metodo,
-    codigo,
-    fechaISO,
-  });
+    const svg = construirSvg({
+      grupo,
+      participante,
+      abono,
+      valor,
+      metodo,
+      codigo,
+      fechaISO,
+    });
 
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: 1080 },
-    font: {
-      loadSystemFonts: false,
-      fontFiles: [RUTA_FUENTE],
-      defaultFontFamily: "Geist",
-    },
-  });
-  const png = resvg.render().asPng();
+    const resvg = new Resvg(svg, {
+      fitTo: { mode: "width", value: 1080 },
+      font: {
+        loadSystemFonts: false,
+        fontFiles: [RUTA_FUENTE],
+        defaultFontFamily: "Geist",
+      },
+    });
+    const png = resvg.render().asPng();
 
-  return new Response(new Uint8Array(png), {
-    headers: {
-      "Content-Type": "image/png",
-      // Comprobante personal: que no lo cachee ninguna capa intermedia.
-      "Cache-Control": "private, no-store",
-    },
-  });
+    return new Response(new Uint8Array(png), {
+      headers: {
+        "Content-Type": "image/png",
+        // Comprobante personal: que no lo cachee ninguna capa intermedia.
+        "Cache-Control": "private, no-store",
+      },
+    });
+  } catch (error) {
+    // Sin esto, cualquier fallo al rasterizar (fuente ausente, binario nativo de
+    // resvg que no carga, SVG inválido…) devolvía un 500 mudo y el cliente solo
+    // mostraba "No se pudo generar el comprobante". Logueamos el error real en el
+    // servidor para poder diagnosticarlo; en dev lo exponemos en el cuerpo.
+    console.error("[comprobante-pago] Fallo al generar el PNG:", error);
+    const detalle =
+      error instanceof Error ? error.message : "Error desconocido";
+    return new Response(
+      process.env.NODE_ENV === "development"
+        ? `No se pudo generar el comprobante: ${detalle}`
+        : "No se pudo generar el comprobante",
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
 }

@@ -291,6 +291,7 @@ export function TablaPosiciones({
   partidos,
   reglas,
   esAdmin = false,
+  esSuperadmin = false,
 }: {
   filas: FilaTablaPosiciones[];
   /** Orden de criterios de desempate del grupo (para explicar el motivo). */
@@ -300,6 +301,8 @@ export function TablaPosiciones({
   reglas: ReglasGrupo;
   /** Admin del grupo o superadmin: solo ellos ven el botón de desempate. */
   esAdmin?: boolean;
+  /** Super-admin de plataforma: único que ve el botón de exportar a Excel. */
+  esSuperadmin?: boolean;
 }) {
   const [seleccionada, setSeleccionada] = useState<FilaTablaPosiciones | null>(
     null,
@@ -421,6 +424,7 @@ export function TablaPosiciones({
         grupoId={grupoId}
         partidos={partidos}
         reglas={reglas}
+        esSuperadmin={esSuperadmin}
       />
     </div>
   );

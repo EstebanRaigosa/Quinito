@@ -48,6 +48,33 @@ export function etiquetaDiaListado(iso: string | Date): string {
 }
 
 /**
+ * Etiqueta de día RELATIVA para el listado de partidos: "Hoy", "Ayer" y
+ * "Mañana" para los días cercanos; el resto como "22 Junio" (día + mes
+ * capitalizado, sin año, ya que un torneo no cruza años). `ahora` se inyecta
+ * para que el cálculo sea determinista y siempre en zona Bogotá (no depende de
+ * la zona del navegador, regla dura §3.5).
+ */
+export function etiquetaDiaRelativa(iso: string | Date, ahora: Date): string {
+  if (new Date(iso).getTime() < SIN_FECHA_LIMITE) return "Sin fecha";
+  // Diferencia en días de calendario (Bogotá): comparamos medianoche-UTC de
+  // cada clave "yyyy-MM-dd" para evitar errores por horas/desfaces de zona.
+  const dia = Date.parse(`${claveDiaBogota(iso)}T00:00:00Z`);
+  const hoy = Date.parse(`${claveDiaBogota(ahora)}T00:00:00Z`);
+  const diff = Math.round((dia - hoy) / 86_400_000);
+  switch (diff) {
+    case 0:
+      return "Hoy";
+    case -1:
+      return "Ayer";
+    case 1:
+      return "Mañana";
+  }
+  // Ej. "22 junio" → "22 Junio" (capitalizamos la inicial del mes).
+  const etiqueta = formatInTimeZone(iso, ZONA_BOGOTA, "d MMMM", { locale: es });
+  return etiqueta.replace(/\s(\p{Ll})/u, (_m, c: string) => ` ${c.toUpperCase()}`);
+}
+
+/**
  * Agrupa una lista (partidos, predicciones con fecha) por día calendario en zona
  * Bogotá, conservando el orden de entrada. Devuelve pares [claveDía, items].
  * Genérico para no acoplar este módulo a tipos del dominio.

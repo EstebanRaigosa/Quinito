@@ -127,9 +127,25 @@ export function useIdleTimeout({ habilitado }: Opciones) {
 
     cerrandoRef.current = false;
 
-    // Sembrar timestamp inicial si no existe (sesión recién detectada).
+    // Sembrar timestamp inicial cuando NO hay una marca de actividad válida.
+    // Cuenta como inválida tanto la ausencia de clave como el centinela "0"
+    // (el valor que deja `cerrarPorInactividad` al cerrar por inactividad).
+    //
+    // Por qué "0" se siembra acá: al cerrar por inactividad se escribe "0" y se
+    // hace signOut; el borrado de la clave depende del `SIGNED_OUT` de IdleGuard,
+    // que es una carrera y a veces no alcanza a limpiar antes del próximo login.
+    // Si "0" sobrevive, al volver a entrar (habilitado pasa a true) este efecto
+    // re-corre: el usuario ACABA de iniciar sesión → está activo → sembramos en
+    // vez de cerrar. Sin esto, `verificarInactividad` leería "0" y dispararía un
+    // relogin fantasma (mensaje de inactividad apenas se inicia sesión).
+    //
+    // No rompe: (a) el cierre cross-tab va por el evento `storage` en pestañas YA
+    // activas, no por este sembrado; (b) la suspensión real >6h deja un timestamp
+    // viejo (no "0"), que sí se detecta y cierra; (c) el token-refresh no cambia
+    // `habilitado`, así que el efecto no re-corre y no resetea el contador.
     try {
-      if (!window.localStorage.getItem(CLAVE_ULTIMA_ACTIVIDAD)) {
+      const marca = window.localStorage.getItem(CLAVE_ULTIMA_ACTIVIDAD);
+      if (!marca || marca === "0") {
         window.localStorage.setItem(CLAVE_ULTIMA_ACTIVIDAD, String(Date.now()));
       }
     } catch {

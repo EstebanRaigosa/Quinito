@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { Award, ListChecks, Target } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Award, Download, ListChecks, Loader2, Target } from "lucide-react";
+import { toast } from "sonner";
 import type {
   FaseTorneo,
   FilaTablaPosiciones,
@@ -15,8 +16,10 @@ import {
   usePrediccionesParticipante,
 } from "@/lib/queries/predicciones-participante";
 import { agruparPorDia, formatearFechaLarga } from "@/lib/utils/fechas";
+import { exportarDetalleParticipante } from "@/lib/utils/exportar-puntos";
 import { cn } from "@/lib/utils";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Flag } from "@/components/shared/Flag";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -201,6 +204,7 @@ export function DetalleParticipante({
   grupoId,
   partidos,
   reglas,
+  esSuperadmin = false,
 }: {
   abierto: boolean;
   onOpenChange: (v: boolean) => void;
@@ -208,6 +212,8 @@ export function DetalleParticipante({
   grupoId: string;
   partidos: Partido[];
   reglas: ReglasGrupo;
+  /** Super-admin de plataforma: único que ve el botón de exportar a Excel. */
+  esSuperadmin?: boolean;
 }) {
   const { data, isLoading, isError } = usePrediccionesParticipante(
     grupoId,
@@ -279,6 +285,28 @@ export function DetalleParticipante({
   const posicion = fila?.posicion ?? 0;
   const esTop3 = posicion >= 1 && posicion <= 3;
 
+  // Exportar el detalle a Excel para validar la suma de puntos. Solo cuando ya
+  // hay datos cargados que exportar (partidos o bonos).
+  const [exportando, setExportando] = useState(false);
+  // Solo el super-admin de plataforma puede exportar (herramienta de validación,
+  // no de cara al participante). Además requiere que ya haya datos cargados.
+  const puedeExportar =
+    esSuperadmin &&
+    !isLoading &&
+    !isError &&
+    (items.length > 0 || bonos.length > 0);
+  const exportar = async () => {
+    if (!fila || exportando) return;
+    setExportando(true);
+    try {
+      await exportarDetalleParticipante({ fila, items, bonos, reglas });
+    } catch {
+      toast.error("No se pudo generar el Excel. Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
   return (
     <Sheet open={abierto} onOpenChange={onOpenChange}>
       <SheetContent
@@ -338,6 +366,27 @@ export function DetalleParticipante({
                   Arranque {fila.puntos_iniciales} · Ganados en la app{" "}
                   {fila.puntos_totales - fila.puntos_iniciales}
                 </p>
+              )}
+              {/* Exportar a Excel (.xlsx): herramienta del super-admin para
+                  validar la suma de puntos. Estilo de "acción de admin":
+                  pastilla con borde y tinte de marca (tokens primarios → se
+                  adaptan solos al tema oscuro). */}
+              {puedeExportar && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={exportar}
+                  disabled={exportando}
+                  className="h-8 self-center gap-1.5 rounded-pill border-primary/30 bg-primary-soft px-3.5 text-xs font-bold text-primary shadow-sm hover:border-primary/40 hover:bg-primary-soft hover:brightness-95"
+                >
+                  {exportando ? (
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Download className="size-3.5" aria-hidden />
+                  )}
+                  {exportando ? "Generando…" : "Exportar a Excel"}
+                </Button>
               )}
             </SheetHeader>
 

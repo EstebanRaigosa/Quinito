@@ -53,6 +53,20 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {}
 
+/**
+ * Registra el cierre-con-"atrás" SOLO mientras el sheet está abierto. Va DENTRO
+ * de `SheetPrimitive.Content`, que Radix monta/desmonta con su estado `open`
+ * (vía `Presence`), de modo que el alta/baja del historial coincide con
+ * abrir/cerrar. Si el hook se llamara en el wrapper `SheetContent` (que SÍ está
+ * siempre en el árbol cuando el sheet es controlado), empujaría una entrada de
+ * historial al montar la página/pestaña —no al abrir— y el "atrás" dejaría de
+ * cerrar la modal. Ver `useModalBackClose`.
+ */
+function CierreConAtras({ cerrar }: { cerrar: () => void }) {
+  useModalBackClose(cerrar);
+  return null;
+}
+
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
@@ -60,7 +74,7 @@ const SheetContent = React.forwardRef<
   // "Atrás" (Android/swipe iOS) cierra el sheet en vez de navegar. Cerramos
   // haciendo click en el botón X de ESTE sheet (sirve controlado o no).
   const cerrarRef = React.useRef<HTMLButtonElement>(null);
-  useModalBackClose(React.useCallback(() => cerrarRef.current?.click(), []));
+  const cerrar = React.useCallback(() => cerrarRef.current?.click(), []);
   return (
   <SheetPortal>
     <SheetOverlay />
@@ -69,6 +83,7 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
+      <CierreConAtras cerrar={cerrar} />
       {children}
       <SheetPrimitive.Close
         ref={cerrarRef}

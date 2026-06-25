@@ -62,6 +62,106 @@ export async function obtenerConectados(): Promise<Conectado[]> {
   });
 }
 
+export type ActividadUsuario = {
+  usuarioId: string;
+  nombre: string;
+  email: string;
+  avatarUrl: string | null;
+  /** Inicio de la sesión más reciente; null si nunca abrió la app. */
+  ultimaConexion: string | null;
+  /** Último latido recibido; null si nunca abrió la app. */
+  ultimaActividad: string | null;
+  /** Dispositivo de la última sesión; null si nunca abrió la app. */
+  dispositivo: "movil" | "escritorio" | null;
+  /** Pollas (activas) a las que pertenece el usuario; base del filtro. */
+  grupoIds: string[];
+};
+
+/** Opción del selector de pollas del histórico de actividad. */
+export type PollaFiltro = { id: string; nombre: string };
+
+export type HistorialActividad = {
+  usuarios: ActividadUsuario[];
+  /** Catálogo de pollas con al menos un participante activo, para filtrar. */
+  pollas: PollaFiltro[];
+};
+
+/**
+ * Histórico de actividad de TODOS los usuarios registrados: su última conexión
+ * (`conectado_en`) y su última actividad (`ultima_actividad`), ordenado de más
+ * reciente a más antiguo. Quienes nunca abrieron la app (sin fila en
+ * `tblSesionesActivas`) van al final con valores `null`. Cada usuario trae las
+ * pollas activas a las que pertenece para poder filtrar el listado en cliente.
+ *
+ * A diferencia de `obtenerConectados`, NO aplica la ventana de 15 min: muestra a
+ * todo el padrón. Se cruza en memoria (perfiles ⟕ sesiones ⟕ participantes)
+ * porque el universo de usuarios es pequeño y así evitamos las ambigüedades de
+ * orden por relación embebida en PostgREST. Se lee con `service_role` tras
+ * validar super-admin; devuelve listas vacías si quien consulta no lo es.
+ */
+export async function obtenerHistorialActividad(): Promise<HistorialActividad> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !esSuperAdmin(user.email)) return { usuarios: [], pollas: [] };
+
+  const admin = createAdminClient();
+  const [{ data: perfiles }, { data: sesiones }, { data: participantes }, { data: grupos }] =
+    await Promise.all([
+      admin.from("tblProfiles").select("id, nombre_completo, avatar_url, email"),
+      admin
+        .from("tblSesionesActivas")
+        .select("usuario_id, conectado_en, ultima_actividad, dispositivo"),
+      // Solo membresías vigentes (sin baja lógica).
+      admin
+        .from("tblParticipantes")
+        .select("usuario_id, grupo_id")
+        .is("eliminado_en", null),
+      admin.from("tblGrupos").select("id, nombre"),
+    ]);
+
+  const porUsuario = new Map((sesiones ?? []).map((s) => [s.usuario_id, s]));
+
+  // Pollas por usuario + catálogo de pollas que sí tienen miembros activos.
+  const gruposPorUsuario = new Map<string, string[]>();
+  const grupoConMiembros = new Set<string>();
+  for (const p of participantes ?? []) {
+    const arr = gruposPorUsuario.get(p.usuario_id) ?? [];
+    arr.push(p.grupo_id);
+    gruposPorUsuario.set(p.usuario_id, arr);
+    grupoConMiembros.add(p.grupo_id);
+  }
+
+  const usuarios: ActividadUsuario[] = (perfiles ?? []).map((p) => {
+    const s = porUsuario.get(p.id);
+    return {
+      usuarioId: p.id,
+      nombre: p.nombre_completo ?? p.email ?? "Usuario",
+      email: p.email ?? "",
+      avatarUrl: p.avatar_url ?? null,
+      ultimaConexion: s?.conectado_en ?? null,
+      ultimaActividad: s?.ultima_actividad ?? null,
+      dispositivo: s ? (s.dispositivo === "movil" ? "movil" : "escritorio") : null,
+      grupoIds: gruposPorUsuario.get(p.id) ?? [],
+    };
+  });
+
+  // Más reciente primero; los que nunca abrieron la app (null) al final.
+  usuarios.sort((a, b) => {
+    const ta = a.ultimaActividad ? new Date(a.ultimaActividad).getTime() : -Infinity;
+    const tb = b.ultimaActividad ? new Date(b.ultimaActividad).getTime() : -Infinity;
+    return tb - ta;
+  });
+
+  const pollas: PollaFiltro[] = (grupos ?? [])
+    .filter((g) => grupoConMiembros.has(g.id))
+    .map((g) => ({ id: g.id, nombre: g.nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+  return { usuarios, pollas };
+}
+
 export type UsuarioPwa = {
   usuarioId: string;
   nombre: string;

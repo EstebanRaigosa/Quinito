@@ -9,7 +9,7 @@ import { registrarAbono, eliminarAbono } from "@/app/(app)/grupos/[id]/actions";
 import { useAbonosParticipante } from "@/lib/queries/pagos";
 import { abonoSchema } from "@/lib/schemas/abono";
 import { formatearMonto } from "@/lib/utils/texto";
-import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
+import { formatearFechaHoraBogota, claveDiaBogota } from "@/lib/utils/fechas";
 import { cn } from "@/lib/utils";
 import { ComprobantePago } from "@/components/grupos/ComprobantePago";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,9 @@ export function GestionPago({
   const [abierto, setAbierto] = useState(false);
   const [monto, setMonto] = useState("");
   const [metodo, setMetodo] = useState<MetodoPago>("Efectivo");
+  // Fecha del pago (YYYY-MM-DD en zona Bogotá). Por defecto, hoy.
+  const hoyBogota = claveDiaBogota(new Date());
+  const [fechaPago, setFechaPago] = useState(hoyBogota);
   const [errorCampo, setErrorCampo] = useState<string | null>(null);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
@@ -105,8 +108,20 @@ export function GestionPago({
       setErrorCampo(`El abono supera el saldo pendiente (${formatearMonto(saldo)})`);
       return;
     }
+    // Hoy → sin fecha explícita (el RPC usa `now()`, con la hora real). Una fecha
+    // pasada se ancla a mediodía Bogotá (UTC-5) para no cruzar el borde del día.
+    const fechaISO =
+      fechaPago && fechaPago !== hoyBogota
+        ? new Date(`${fechaPago}T12:00:00-05:00`).toISOString()
+        : undefined;
     startGuardar(async () => {
-      const res = await registrarAbono(grupoId, participanteId, valor, metodo);
+      const res = await registrarAbono(
+        grupoId,
+        participanteId,
+        valor,
+        metodo,
+        fechaISO,
+      );
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -116,6 +131,7 @@ export function GestionPago({
       });
       setMonto("");
       setMetodo("Efectivo");
+      setFechaPago(hoyBogota);
       invalidar();
     });
   }
@@ -218,6 +234,22 @@ export function GestionPago({
                     );
                   })}
                 </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="fecha-abono"
+                  className="t-caption font-semibold text-fg-muted"
+                >
+                  Fecha del pago
+                </label>
+                <Input
+                  id="fecha-abono"
+                  type="date"
+                  className="mt-1"
+                  value={fechaPago}
+                  max={hoyBogota}
+                  onChange={(e) => setFechaPago(e.target.value)}
+                />
               </div>
               {errorCampo && (
                 <p className="t-caption text-destructive">{errorCampo}</p>

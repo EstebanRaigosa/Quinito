@@ -28,18 +28,31 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * Registra el cierre-con-"atrás" SOLO mientras el diálogo está abierto. Va DENTRO
+ * de `DialogPrimitive.Content`, que Radix monta/desmonta con su estado `open`
+ * (vía `Presence`), de modo que el alta/baja del historial coincide con
+ * abrir/cerrar. Si el hook se llamara en el wrapper `DialogContent` (que SÍ está
+ * siempre en el árbol cuando el diálogo es controlado), empujaría una entrada de
+ * historial al montar la página —no al abrir— y el "atrás" dejaría de cerrar la
+ * modal. Ver `useModalBackClose`.
+ */
+function CierreConAtras({ cerrar }: { cerrar: () => void }) {
+  useModalBackClose(cerrar);
+  return null;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, style, ...props }, ref) => {
   // Reposiciona el modal sobre el área visible cuando el teclado virtual está
-  // abierto (el contenido solo se monta mientras el diálogo está abierto, así
-  // que activamos siempre). Ver useViewportModal / COMPATIBILIDAD-MOVIL §4.1.
+  // abierto. Ver useViewportModal / COMPATIBILIDAD-MOVIL §4.1.
   const estiloViewport = useViewportModal();
   // "Atrás" (Android/swipe iOS) cierra el diálogo en vez de navegar. Cerramos
   // haciendo click en el botón X de ESTE diálogo (sirve controlado o no).
   const cerrarRef = React.useRef<HTMLButtonElement>(null);
-  useModalBackClose(React.useCallback(() => cerrarRef.current?.click(), []));
+  const cerrar = React.useCallback(() => cerrarRef.current?.click(), []);
   return (
   <DialogPortal>
     <DialogOverlay />
@@ -53,6 +66,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      <CierreConAtras cerrar={cerrar} />
       {children}
       <DialogPrimitive.Close
         ref={cerrarRef}

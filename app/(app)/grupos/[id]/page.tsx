@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { esSuperAdmin } from "@/lib/auth/superadmin";
 import {
   cerradoAlCrear,
   compararPartidos,
@@ -27,6 +29,7 @@ import {
   agruparPorDia,
   claveDiaBogota,
   etiquetaDiaListado,
+  etiquetaDiaRelativa,
 } from "@/lib/utils/fechas";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabsConRefresh } from "@/components/grupos/TabsConRefresh";
@@ -43,6 +46,7 @@ import { AutoRefrescoCierre } from "@/components/shared/AutoRefrescoCierre";
 import { RealtimePartidos } from "@/components/shared/RealtimePartidos";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
 import { DestelloPartido } from "@/components/partidos/DestelloPartido";
+import { ExploradorPartidos } from "@/components/partidos/ExploradorPartidos";
 import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
 import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
@@ -483,6 +487,7 @@ function SeccionHoyPartidos({
               grupoId={grupoId}
               participanteActualId={participanteActualId}
               totalParticipantes={totalParticipantes}
+              esHoy
             />
           </DestelloPartido>
         ))}
@@ -517,7 +522,7 @@ function DiaDePartidos({
   return (
     <section className="border-t border-strong pt-6 first:border-t-0 first:pt-0">
       <EncabezadoFecha
-        fecha={etiquetaDiaListado(partidos[0]!.fecha_hora)}
+        fecha={etiquetaDiaRelativa(partidos[0]!.fecha_hora, ahora)}
         count={partidos.length}
       />
       <div className="grid gap-2.5 md:grid-cols-2">
@@ -555,6 +560,11 @@ export default async function GrupoDetallePage({
   const pestanaInicial =
     tab && PESTANAS_GRUPO_VALIDAS.has(tab) ? tab : "jugar";
   const detalle = await getGrupoDetalle(id);
+  // Super-admin de PLATAFORMA (no el admin del grupo): único que ve el botón de
+  // exportar a Excel en el detalle del participante. `getUsuarioActual` está
+  // cacheado por request, así que esta lectura no agrega round-trip.
+  const user = await getUsuarioActual();
+  const esSuperadminPlataforma = esSuperAdmin(user?.email);
 
   if (!detalle) {
     return (
@@ -603,11 +613,21 @@ export default async function GrupoDetallePage({
 
   const ordenados = [...abiertos].sort(compararPartidos);
   const diasPrediccion = agruparPorDia(ordenados);
+
+  // ── Agrupación de "Partidos" ──────────────────────────────────────────────
+  // Listado cronológico ascendente; las claves de día son "yyyy-MM-dd", así que
+  // comparar los strings equivale a comparar fechas.
   const diasPartidos = agruparPorDia([...partidos].sort(compararPartidos));
   // Partidos de hoy: se anclan en su propia sección destacada al inicio de la
-  // pestaña "Partidos"; el resto de jornadas sigue en orden cronológico debajo.
+  // vista "Recientes".
   const partidosHoy = diasPartidos.find(([dia]) => dia === claveHoy)?.[1] ?? [];
-  const diasPartidosResto = diasPartidos.filter(([dia]) => dia !== claveHoy);
+  // "Recientes": jornadas pasadas en orden DESCENDENTE (Ayer, Antiayer, 22 Jun…).
+  const diasPasados = diasPartidos.filter(([dia]) => dia < claveHoy).reverse();
+  // "Pendientes": jornadas futuras en orden ASCENDENTE (Mañana, Pasado mañana…).
+  const diasPendientes = diasPartidos.filter(([dia]) => dia > claveHoy);
+  const countRecientes =
+    partidosHoy.length + diasPasados.reduce((n, [, l]) => n + l.length, 0);
+  const countPendientes = diasPendientes.reduce((n, [, l]) => n + l.length, 0);
 
   // Próximo instante de cierre (epoch ms) entre los partidos aún programados:
   // permite refrescar la página sola cuando una apuesta se cierre en vivo, sin
@@ -791,7 +811,7 @@ export default async function GrupoDetallePage({
             partidos={partidosCerradosAlCrear}
           />
         )}
-        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 mb-5 bg-app/95 px-4 py-2 backdrop-blur md:static md:top-0 md:mx-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none">
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 mb-5 bg-app px-4 py-2 md:static md:top-0 md:mx-0 md:bg-transparent md:px-0 md:py-0">
           <TabsList
             className={cn(
               "grid h-auto w-full gap-1 rounded-2xl border border-border/60 bg-muted p-1.5 shadow-sm md:flex md:h-auto md:items-stretch md:justify-start md:gap-1 md:rounded-none md:border-0 md:border-b md:border-border md:bg-transparent md:p-0 md:shadow-none",
@@ -843,36 +863,86 @@ export default async function GrupoDetallePage({
           )}
         </TabsContent>
 
-        {/* PARTIDOS */}
-        <TabsContent value="partidos" className="space-y-6">
-          {/* Sección destacada con los partidos de hoy (si los hay). */}
-          {partidosHoy.length > 0 && (
-            <SeccionHoyPartidos
-              partidos={partidosHoy}
-              grupoId={grupo.id}
-              participanteActualId={miParticipanteId}
-              reglas={reglas}
-              prediccionPorPartido={prediccionPorPartido}
-              ahora={ahora}
-              totalParticipantes={grupo.total_participantes}
-            />
-          )}
-          {diasPartidosResto.length > 0 && (
-            <RevelarJornadas inicial={3}>
-              {diasPartidosResto.map(([dia, lista]) => (
-                <DiaDePartidos
-                  key={dia}
-                  partidos={lista}
-                  grupoId={grupo.id}
-                  participanteActualId={miParticipanteId}
-                  reglas={reglas}
-                  prediccionPorPartido={prediccionPorPartido}
-                  ahora={ahora}
-                  totalParticipantes={grupo.total_participantes}
+        {/* PARTIDOS — toggle entre "Recientes" (hoy + pasados, descendente) y
+            "Pendientes" (futuros, ascendente). */}
+        <TabsContent value="partidos">
+          <ExploradorPartidos
+            partidos={partidos}
+            misPredicciones={misPredicciones}
+            reglas={reglas}
+            ahora={ahora}
+            grupoId={grupo.id}
+            participanteActualId={miParticipanteId}
+            totalParticipantes={grupo.total_participantes}
+            countRecientes={countRecientes}
+            countPendientes={countPendientes}
+            recientes={
+              partidosHoy.length === 0 && diasPasados.length === 0 ? (
+                <EmptyState
+                  icono={CalendarDays}
+                  titulo="Todavía no hay partidos"
+                  descripcion="Cuando empiecen los partidos del torneo aparecerán aquí, del más reciente al más antiguo."
                 />
-              ))}
-            </RevelarJornadas>
-          )}
+              ) : (
+                <div className="space-y-6">
+                  {/* Sección destacada con los partidos de hoy (si los hay). */}
+                  {partidosHoy.length > 0 && (
+                    <SeccionHoyPartidos
+                      partidos={partidosHoy}
+                      grupoId={grupo.id}
+                      participanteActualId={miParticipanteId}
+                      reglas={reglas}
+                      prediccionPorPartido={prediccionPorPartido}
+                      ahora={ahora}
+                      totalParticipantes={grupo.total_participantes}
+                    />
+                  )}
+                  {diasPasados.length > 0 && (
+                    <RevelarJornadas inicial={3}>
+                      {diasPasados.map(([dia, lista]) => (
+                        <DiaDePartidos
+                          key={dia}
+                          partidos={lista}
+                          grupoId={grupo.id}
+                          participanteActualId={miParticipanteId}
+                          reglas={reglas}
+                          prediccionPorPartido={prediccionPorPartido}
+                          ahora={ahora}
+                          totalParticipantes={grupo.total_participantes}
+                        />
+                      ))}
+                    </RevelarJornadas>
+                  )}
+                </div>
+              )
+            }
+            pendientes={
+              diasPendientes.length === 0 ? (
+                <EmptyState
+                  icono={CalendarDays}
+                  titulo="No hay partidos pendientes"
+                  descripcion="Ya no quedan partidos por jugarse más adelante."
+                />
+              ) : (
+                <div className="space-y-6">
+                  <RevelarJornadas inicial={3}>
+                    {diasPendientes.map(([dia, lista]) => (
+                      <DiaDePartidos
+                        key={dia}
+                        partidos={lista}
+                        grupoId={grupo.id}
+                        participanteActualId={miParticipanteId}
+                        reglas={reglas}
+                        prediccionPorPartido={prediccionPorPartido}
+                        ahora={ahora}
+                        totalParticipantes={grupo.total_participantes}
+                      />
+                    ))}
+                  </RevelarJornadas>
+                </div>
+              )
+            }
+          />
         </TabsContent>
 
         {/* TABLA */}
@@ -884,6 +954,7 @@ export default async function GrupoDetallePage({
             partidos={partidos}
             reglas={reglas}
             esAdmin={esAdmin}
+            esSuperadmin={esSuperadminPlataforma}
           />
         </TabsContent>
 

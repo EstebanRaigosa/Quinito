@@ -15,7 +15,7 @@
  * arriba. La pila asume cierre LIFO (lo normal en modales).
  */
 
-type Entrada = { cerrar: () => void };
+type Entrada = { cerrar: () => void; url: string };
 
 const pila: Entrada[] = [];
 let escuchando = false;
@@ -23,8 +23,27 @@ let escuchando = false;
 let cerradaPorBack: Entrada | null = null;
 /** El próximo popstate lo provocamos nosotros (history.back de limpieza). */
 let popPropio = false;
+/**
+ * `history.back()` de limpieza diferido (ver `quitarModal`). Clave para sobrevivir
+ * a React StrictMode (dev): StrictMode monta → desmonta → vuelve a montar el efecto
+ * en el MISMO tick. Sin diferir, el desmontaje falso dispara un `history.back()`
+ * que se entrelaza con el re-`pushState` y descoloca la pila → "atrás" termina
+ * navegando en vez de cerrar la modal. Al diferirlo, el re-montaje lo cancela y
+ * reutiliza la entrada de historial existente (sin volver a empujar).
+ */
+let backProgramado: ReturnType<typeof setTimeout> | null = null;
+
+/** URL "lógica" actual (sin el hash): ruta + query. */
+function urlActual(): string {
+  return window.location.pathname + window.location.search;
+}
 
 function alPopState() {
+  // Un "atrás" real cancela cualquier limpieza pendiente (evita un back extra).
+  if (backProgramado !== null) {
+    clearTimeout(backProgramado);
+    backProgramado = null;
+  }
   if (popPropio) {
     popPropio = false;
     return;
@@ -37,12 +56,23 @@ function alPopState() {
 
 /** Registra una modal recién abierta. Devuelve su entrada para `quitarModal`. */
 export function empujarModal(cerrar: () => void): Entrada {
-  const entrada: Entrada = { cerrar };
-  if (typeof window === "undefined") return entrada;
+  if (typeof window === "undefined") return { cerrar, url: "" };
+  const entrada: Entrada = { cerrar, url: urlActual() };
   if (!escuchando) {
     window.addEventListener("popstate", alPopState);
     escuchando = true;
   }
+
+  // Re-montaje de StrictMode: el `quitarModal` que acaba de correr dejó un back de
+  // limpieza programado. Lo cancelamos y REUTILIZAMOS la entrada de historial que
+  // sigue en el tope — NO hacemos otro `pushState` (si no, acumularíamos entradas).
+  if (backProgramado !== null) {
+    clearTimeout(backProgramado);
+    backProgramado = null;
+    pila.push(entrada);
+    return entrada;
+  }
+
   pila.push(entrada);
   // Conservamos el state de Next (sus marcadores internos) y sumamos el nuestro.
   window.history.pushState(
@@ -66,11 +96,21 @@ export function quitarModal(entrada: Entrada) {
   }
 
   // Cerrada por otra vía (X, overlay, Escape): quitamos la entrada que añadimos.
-  // Guarda: solo si la entrada superior del historial sigue siendo de una modal;
-  // si el usuario navegó desde dentro de la modal (un Link), `history.state` ya
-  // no es nuestro y un back() desharía esa navegación.
-  if (window.history.state?.__modalAtras != null) {
+  // Guarda: solo hacemos back() si seguimos en la MISMA URL en la que se abrió la
+  // modal. Así sabemos que el tope del historial sigue siendo nuestra entrada y no
+  // una navegación real hecha desde dentro de la modal (un Link). Comparamos por
+  // URL — NO por `history.state` — porque el App Router de Next reescribe
+  // `history.state` en cada cambio de estado del router (p. ej. un `router.refresh`
+  // de la tabla en vivo) y borraría cualquier marcador nuestro.
+  if (urlActual() !== entrada.url) return;
+
+  // DIFERIDO (no inmediato): si es un re-montaje de StrictMode, `empujarModal`
+  // correrá en este mismo tick y cancelará este back antes de que se ejecute. En
+  // un cierre real no hay re-montaje, así que el back se dispara y limpia la
+  // entrada. El `setTimeout(0)` es el punto de sincronización con StrictMode.
+  backProgramado = setTimeout(() => {
+    backProgramado = null;
     popPropio = true;
     window.history.back();
-  }
+  }, 0);
 }

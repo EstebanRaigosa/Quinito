@@ -66,9 +66,16 @@ export function TarjetaPartido({
   grupoId,
   participanteActualId,
   totalParticipantes,
+  esHoy = false,
 }: {
   partido: Partido;
   miPrediccion?: Prediccion;
+  /**
+   * La tarjeta pertenece a la jornada de HOY: en ese caso un partido pendiente
+   * conserva el acento/borde verde de marca (en el resto del listado el
+   * pendiente va en naranja).
+   */
+  esHoy?: boolean;
   /** Reglas del grupo: habilitan el desglose de puntos al hacer clic. */
   reglas?: ReglasGrupo;
   /** Momento actual (servidor) para calcular si la polla ya cerró. */
@@ -111,10 +118,30 @@ export function TarjetaPartido({
     <div
       className={cn(
         "surface-card hover-lift relative overflow-hidden rounded-xl p-3.5 pl-4",
-        // Acento verde a la izquierda (estilo "Spring Turf").
-        "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary",
-        enJuego && "before:bg-warning",
-        finalizado && "before:bg-border",
+        // Acento lateral izquierdo, del mismo color que el borde según el estado.
+        "before:absolute before:inset-y-0 before:left-0 before:w-1",
+        finalizado
+          ? "before:bg-info"
+          : cancelado
+            ? "before:bg-border"
+            : enJuego
+              ? "before:bg-warning"
+              : esHoy
+                ? "before:bg-primary"
+                : "before:bg-orange-400",
+        // Borde distintivo por estado: verde = pendiente de HOY, naranja =
+        // pendiente de otra fecha, ámbar = en juego, azul = finalizado ("ya
+        // jugado"), neutro = cancelado. Una sola clase de color a la vez (el
+        // orden de las utilidades en el CSS no es fiable).
+        finalizado
+          ? "border-info/60"
+          : cancelado
+            ? "border-border"
+            : enJuego
+              ? "border-warning/50"
+              : esHoy
+                ? "border-primary/40"
+                : "border-orange-400/60",
       )}
     >
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -122,7 +149,7 @@ export function TarjetaPartido({
           {etiquetaFase}
         </span>
         {finalizado ? (
-          <Badge variant="success" dot>
+          <Badge variant="info" dot>
             Finalizado
           </Badge>
         ) : cancelado ? (

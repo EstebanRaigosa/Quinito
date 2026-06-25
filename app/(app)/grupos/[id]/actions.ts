@@ -100,6 +100,9 @@ export async function registrarAbono(
   participanteId: string,
   monto: number,
   nota: string,
+  // Fecha del pago (ISO). Si se omite, el RPC usa `now()` (ver 0074). El cliente
+  // solo la envía cuando el admin elige una fecha distinta a hoy.
+  fechaISO?: string,
 ): Promise<{ ok: true; codigo: string } | { ok: false; error: string }> {
   const supabase = await createClient();
   const {
@@ -112,6 +115,7 @@ export async function registrarAbono(
     p_participante_id: participanteId,
     p_monto: monto,
     p_nota: nota,
+    ...(fechaISO ? { p_fecha: fechaISO } : {}),
   });
   if (error) {
     const msg = /excede/i.test(error.message)

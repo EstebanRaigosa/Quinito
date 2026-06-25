@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { LatidoPresencia } from "@/components/shared/LatidoPresencia";
 import { BannerConexion } from "@/components/shared/BannerConexion";
+import { BotonVolverArriba } from "@/components/shared/BotonVolverArriba";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
 import { BotonInstalarPWA } from "@/components/shared/BotonInstalarPWA";
 import { CampanaNotificaciones } from "@/components/notificaciones/CampanaNotificaciones";
@@ -30,8 +31,14 @@ export default async function AppLayout({
   const user = await getUsuarioActual();
   if (!user) redirect("/login");
 
-  // Cacheado por request: lo comparten layout y página (una sola consulta).
-  const perfil = await getPerfilActual();
+  // Perfil y grupos son independientes entre sí (ambos solo dependen de `user`,
+  // ya cacheado): se piden en paralelo para no encadenar dos round-trips a
+  // Supabase en serie en CADA navegación. Ambos van envueltos en `cache()`, así
+  // que layout y página comparten el resultado sin re-consultar.
+  const [perfil, grupos] = await Promise.all([
+    getPerfilActual(),
+    getMisGrupos(),
+  ]);
 
   const usuario: Perfil = {
     id: user.id,
@@ -39,7 +46,6 @@ export default async function AppLayout({
     email: perfil?.email ?? user.email ?? "",
     avatar_url: perfil?.avatar_url ?? null,
   };
-  const grupos = await getMisGrupos();
   const superAdmin = esSuperAdmin(user.email);
 
   return (
@@ -54,7 +60,7 @@ export default async function AppLayout({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar móvil */}
-        <header className="sticky top-0 z-[200] border-b border-border bg-surface/95 pt-safe backdrop-blur md:hidden">
+        <header className="sticky top-0 z-[200] border-b border-border bg-surface pt-safe md:hidden">
           <div className="flex h-14 items-center justify-between px-4">
             <Link href="/dashboard" aria-label="Inicio">
               <Logo size={18} />
@@ -93,6 +99,10 @@ export default async function AppLayout({
           <BottomNav />
         </div>
       </div>
+
+      {/* Botón flotante "volver arriba" (global): aparece al bajar en cualquier
+          listado largo y regresa al tope. */}
+      <BotonVolverArriba />
 
       {/* Onboarding: pide configurar el nombre visible en el primer ingreso
           (tras registrarse o entrar con Google) hasta que se confirme. */}

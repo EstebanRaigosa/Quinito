@@ -1624,7 +1624,12 @@ export type Database = {
         }[]
       }
       registrar_abono: {
-        Args: { p_monto: number; p_nota: string; p_participante_id: string }
+        Args: {
+          p_monto: number
+          p_nota: string
+          p_participante_id: string
+          p_fecha?: string
+        }
         Returns: string
       }
       resolver_cruces: { Args: { p_torneo_id: string }; Returns: undefined }
