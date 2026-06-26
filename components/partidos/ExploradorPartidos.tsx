@@ -17,6 +17,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TarjetaPartido } from "@/components/partidos/TarjetaPartido";
 import { DestelloPartido } from "@/components/partidos/DestelloPartido";
@@ -357,15 +364,26 @@ function FiltroPais({
     setBusqueda("");
   }
 
+  // Tecla "Ir"/"Buscar" del teclado móvil (submit del form): aplica el primer
+  // país que coincide. Sin texto escrito no hace nada (evita elegir al azar).
+  function buscarPrimera() {
+    if (!busqueda.trim()) return;
+    if (filtradas.length > 0) elegir(filtradas[0].id);
+  }
+
   return (
-    <Popover
+    // Dialog (no Popover): el Popover queda anclado al botón y el teclado lo
+    // tapa. DialogContent se reposiciona sobre el área visible con el teclado
+    // abierto (useViewportModal, COMPATIBILIDAD-MOVIL §4.1), así la lista queda
+    // siempre por encima del teclado y se puede seleccionar.
+    <Dialog
       open={abierto}
       onOpenChange={(o) => {
         setAbierto(o);
         if (!o) setBusqueda("");
       }}
     >
-      <PopoverTrigger asChild>
+      <DialogTrigger asChild>
         <DisparadorFiltro
           activo={seleccion !== null}
           etiqueta={seleccion ? seleccion.nombre : "País"}
@@ -377,23 +395,36 @@ function FiltroPais({
             )
           }
         />
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-72 p-0"
-        // No enfocar el input de búsqueda al abrir: en móvil eso abriría el
-        // teclado de golpe. El usuario toca el campo si quiere escribir.
+      </DialogTrigger>
+      <DialogContent
+        className="flex max-w-sm flex-col gap-0 overflow-hidden p-0"
+        // No enfocar el input al abrir: en móvil eso abriría el teclado de
+        // golpe. El usuario toca el campo si quiere escribir.
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="border-b border-border p-2">
+        <DialogTitle className="px-4 pb-2 pr-12 pt-4 text-base">
+          Filtrar por país
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          Escribe para buscar una selección y tócala para filtrar los partidos.
+        </DialogDescription>
+        <form
+          className="border-b border-border px-3 pb-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            buscarPrimera();
+          }}
+        >
           <Input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar selección…"
             aria-label="Buscar selección"
+            type="search"
+            enterKeyHint="search"
           />
-        </div>
-        <div className="max-h-72 overflow-y-auto p-1">
+        </form>
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-touch p-1">
           <OpcionLista activo={seleccion === null} onClick={() => elegir(null)}>
             <Globe2 className="size-5 shrink-0 text-fg-muted" aria-hidden />
             Todos los países
@@ -414,8 +445,8 @@ function FiltroPais({
             </p>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
 

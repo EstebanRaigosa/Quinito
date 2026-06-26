@@ -1,17 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, Loader2, Medal, Trophy } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  GitFork,
+  Loader2,
+  Medal,
+  Trophy,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Partido } from "@/lib/types/dominio";
-import { BracketTorneo } from "./BracketTorneo";
+import { BracketTorneo, etiquetaPlaceholder } from "./BracketTorneo";
 import {
+  guardarAsignacionTerceros,
   guardarClasificacion,
   guardarMejoresTerceros,
+  limpiarAsignacionTerceros,
   limpiarClasificacion,
   limpiarMejoresTerceros,
 } from "../actions";
@@ -55,6 +64,30 @@ export type TerceroFila = {
   manualClasifica: boolean;
 };
 
+/** Cruce del bracket que recibe a un mejor tercero (slot 74, 77, … en el Mundial). */
+export type SlotTercero = {
+  numeroPartido: number;
+  fase: Partido["fase"];
+  /** Rival ya resuelto (1° de grupo); null si todavía es placeholder. */
+  rivalNombre: string | null;
+  rivalCodigoIso: string | null;
+  /** Placeholder del rival si aún no hay equipo (ej. '1A'); null si ya hay equipo. */
+  rivalPlaceholder: string | null;
+};
+
+/**
+ * Asignación efectiva de un tercero candidato a su cruce. `numeroPartido` es
+ * null cuando el tercero está sin cruce asignado ("Ninguno"). El origen es FIFA
+ * Annex C o, si existe, el override manual.
+ */
+export type AsignacionTercero = {
+  grupo: string;
+  numeroPartido: number | null;
+  esManual: boolean;
+  /** El conjunto de 8 aún no está firme (top provisional): puede cambiar. */
+  esProvisional: boolean;
+};
+
 export type TorneoClasificacion = {
   id: string;
   nombre: string;
@@ -66,6 +99,10 @@ export type TorneoClasificacion = {
   cupos: number;
   /** Partidos de la llave eliminatoria (sin fase de grupos). */
   bracket: Partido[];
+  /** Cruces del bracket que reciben a un mejor tercero. */
+  slotsTercero: SlotTercero[];
+  /** Asignación efectiva de cada tercero clasificado a su cruce. */
+  asignacionTerceros: AsignacionTercero[];
 };
 
 export function ClasificacionGrupos({
@@ -128,6 +165,8 @@ export function ClasificacionGrupos({
       </div>
 
       <MejoresTerceros torneo={torneoActivo} />
+
+      <AsignacionCruces torneo={torneoActivo} />
 
       <BracketTorneo partidos={torneoActivo.bracket} />
     </div>
@@ -632,4 +671,251 @@ function EstadoTercero({ fila, cupos }: { fila: TerceroFila; cupos: number }) {
     return <Badge variant="info">En zona</Badge>;
   }
   return <Badge variant="neutral">Fuera</Badge>;
+}
+
+/** Etiqueta del cruce de un slot: "#74 · vs 1° E" o "#74 · vs Brasil". */
+function etiquetaCruce(slot: SlotTercero): string {
+  const rival = slot.rivalNombre ?? etiquetaPlaceholder(slot.rivalPlaceholder);
+  return `#${slot.numeroPartido} · vs ${rival}`;
+}
+
+/**
+ * Asignación del cruce de cada mejor tercero. Por defecto muestra el cruce que
+ * dicta FIFA (Annex C); el admin puede cambiarlo a mano. Al elegir un cruce ya
+ * ocupado por otro tercero, ambos se intercambian (la asignación es una
+ * biyección entre los terceros clasificados y los slots del bracket).
+ */
+function AsignacionCruces({ torneo }: { torneo: TorneoClasificacion }) {
+  const { slotsTercero, asignacionTerceros, terceros, cupos } = torneo;
+
+  // País (nombre + bandera) por grupo, tomado de la tabla de terceros.
+  const infoGrupo = useMemo(() => {
+    const m = new Map<string, { nombre: string | null; codigoIso: string | null }>();
+    for (const t of terceros)
+      m.set(t.grupo, { nombre: t.nombre, codigoIso: t.codigoIso });
+    return m;
+  }, [terceros]);
+
+  // Asignación efectiva guardada (grupo → cruce; null = "Ninguno", sin cruce).
+  const baseAsignacion = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const a of asignacionTerceros) m.set(a.grupo, a.numeroPartido);
+    return m;
+  }, [asignacionTerceros]);
+
+  const esManualGuardado = asignacionTerceros.some((a) => a.esManual);
+  const esProvisional = asignacionTerceros.some((a) => a.esProvisional);
+
+  // `draft` = edición en curso (null = sigue lo guardado/automático).
+  const [draft, setDraft] = useState<Map<string, number | null> | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [limpiando, setLimpiando] = useState(false);
+  const ocupado = guardando || limpiando;
+
+  const asignacion = draft ?? baseAsignacion;
+  const editando = draft !== null;
+
+  // Terceros candidatos en su orden de ranking (terceros ya viene por posición).
+  const grupos = useMemo(() => {
+    const orden = new Map(terceros.map((t, i) => [t.grupo, i] as const));
+    return [...baseAsignacion.keys()].sort(
+      (a, b) => (orden.get(a) ?? 0) - (orden.get(b) ?? 0),
+    );
+  }, [baseAsignacion, terceros]);
+
+  function cambiarCruce(grupo: string, nuevoNumero: number | null) {
+    if (ocupado) return;
+    setDraft(() => {
+      const base = new Map(draft ?? baseAsignacion);
+      const anterior = base.get(grupo) ?? null;
+      if (anterior === nuevoNumero) return base;
+      // Si se elige un cruce ya ocupado por otro tercero, ese otro recibe el
+      // cruce anterior (que puede ser "Ninguno"): un cruce nunca queda doble.
+      if (nuevoNumero !== null) {
+        for (const [g, n] of base) {
+          if (g !== grupo && n === nuevoNumero) {
+            base.set(g, anterior);
+            break;
+          }
+        }
+      }
+      base.set(grupo, nuevoNumero);
+      return base;
+    });
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    // Solo se guardan los terceros con cruce asignado; los "Ninguno" se omiten
+    // (sus slots quedan sin equipo en el bracket).
+    const asignaciones = [...asignacion]
+      .filter((e): e is [string, number] => e[1] !== null)
+      .map(([grupo, numeroPartido]) => ({ grupo, numeroPartido }));
+    const r = await guardarAsignacionTerceros({
+      torneoId: torneo.id,
+      asignaciones,
+    });
+    setGuardando(false);
+    if (!r.ok) {
+      toast.error(r.error ?? "No se pudo guardar");
+      return;
+    }
+    setDraft(null);
+    toast.success(
+      asignaciones.length === 0
+        ? "Sin cruces manuales: vuelve al automático (FIFA)"
+        : "Cruces de terceros guardados",
+    );
+  }
+
+  async function limpiar() {
+    setLimpiando(true);
+    const r = await limpiarAsignacionTerceros({ torneoId: torneo.id });
+    setLimpiando(false);
+    if (!r.ok) {
+      toast.error(r.error ?? "No se pudo quitar");
+      return;
+    }
+    setDraft(null);
+    toast.success("Cruces: vuelve al automático (FIFA)");
+  }
+
+  // El torneo no usa mejores terceros (no hay slots): no se muestra la sección.
+  if (slotsTercero.length === 0) return null;
+
+  return (
+    <section className="surface-card space-y-4 rounded-2xl p-4">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="t-h3 flex items-center gap-2 text-fg-strong">
+          <GitFork className="size-5 text-primary" /> Cruces de los mejores
+          terceros
+        </h2>
+        {esManualGuardado ? (
+          <Badge variant="secondary">Asignación manual</Badge>
+        ) : esProvisional ? (
+          <Badge variant="info">Provisional</Badge>
+        ) : (
+          <Badge variant="success">
+            <Check className="size-3" /> Automático (FIFA)
+          </Badge>
+        )}
+      </header>
+
+      {asignacionTerceros.length === 0 ? (
+        <p className="t-body-sm text-fg-muted">
+          Todavía no hay un ranking de terceros para mostrar. Cuando los grupos
+          tengan posiciones, aquí verás a qué cruce manda el reglamento FIFA a
+          cada uno de los <strong>{cupos}</strong> mejores terceros y podrás
+          ajustarlo a mano.
+        </p>
+      ) : (
+        <>
+          <p className="t-body-sm text-fg-muted">
+            El cruce de cada tercero se calcula con el reglamento{" "}
+            <strong>FIFA (Annex C)</strong> según qué grupos clasifican.
+            Cámbialo si necesitas otra distribución: al elegir un cruce ya
+            ocupado, los dos terceros se <strong>intercambian</strong>. Déjalo
+            en <strong>Ninguno</strong> para no asignarlo: al guardar, solo se
+            arman los partidos de los terceros con cruce (los demás quedan sin
+            equipo). Apenas un cruce tiene equipo, habilita las predicciones.
+          </p>
+
+          {esProvisional && (
+            <p className="t-caption flex items-start gap-1.5 rounded-lg bg-info-soft px-3 py-2 text-info-foreground">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                Corte <strong>provisional</strong>: estos son los terceros que
+                hoy van en zona. La lista puede cambiar hasta que terminen los
+                grupos; el bracket real se llena cuando el corte quede firme.
+              </span>
+            </p>
+          )}
+
+          <ul className="space-y-2">
+            {grupos.map((grupo) => {
+              const info = infoGrupo.get(grupo);
+              const numero = asignacion.get(grupo);
+              return (
+                <li
+                  key={grupo}
+                  className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:gap-3"
+                >
+                  <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold text-fg-strong">
+                    <Flag code={info?.codigoIso ?? null} size={18} round />
+                    <span className="truncate">
+                      {info?.nombre ?? "3° sin definir"}
+                    </span>
+                    <span className="t-caption shrink-0 rounded bg-sunken px-1.5 py-0.5 font-bold text-fg-muted">
+                      3° {grupo}
+                    </span>
+                  </span>
+                  <label className="flex items-center gap-2 sm:w-auto">
+                    <span className="t-caption shrink-0 font-semibold text-fg-muted">
+                      Cruce
+                    </span>
+                    <select
+                      value={numero ?? ""}
+                      onChange={(e) =>
+                        cambiarCruce(
+                          grupo,
+                          e.target.value === "" ? null : Number(e.target.value),
+                        )
+                      }
+                      disabled={ocupado}
+                      aria-label={`Cruce del tercero del grupo ${grupo}`}
+                      className="h-11 w-full min-w-0 rounded-lg border-2 border-border bg-surface px-2.5 text-base font-semibold text-fg-strong focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted sm:w-64"
+                    >
+                      <option value="">Ninguno (sin cruce)</option>
+                      {slotsTercero.map((s) => (
+                        <option key={s.numeroPartido} value={s.numeroPartido}>
+                          {etiquetaCruce(s)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {editando ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDraft(null)}
+                  disabled={ocupado}
+                >
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={guardar} disabled={ocupado}>
+                  {guardando ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Guardar cruces"
+                  )}
+                </Button>
+              </>
+            ) : (
+              esManualGuardado && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={limpiar}
+                  disabled={ocupado}
+                >
+                  {limpiando ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Usar automático (FIFA)"
+                  )}
+                </Button>
+              )
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
 }

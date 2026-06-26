@@ -168,6 +168,38 @@ export type Database = {
           },
         ]
       }
+      tblAsignacionTercerosSlotManual: {
+        Row: {
+          asignado_por: string | null
+          creado_en: string
+          grupo: string
+          numero_partido: number
+          torneo_id: string
+        }
+        Insert: {
+          asignado_por?: string | null
+          creado_en?: string
+          grupo: string
+          numero_partido: number
+          torneo_id: string
+        }
+        Update: {
+          asignado_por?: string | null
+          creado_en?: string
+          grupo?: string
+          numero_partido?: number
+          torneo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblAsignacionTercerosSlotManual_torneo_id_fkey"
+            columns: ["torneo_id"]
+            isOneToOne: false
+            referencedRelation: "tblTorneos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tblBonosFase: {
         Row: {
           fase: Database["public"]["Enums"]["fase_torneo"]
@@ -1413,6 +1445,15 @@ export type Database = {
           grupo: string
           posicion: number
           pts: number
+        }[]
+      }
+      asignacion_terceros_actual: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          grupo: string
+          numero_partido: number | null
+          es_manual: boolean
+          es_provisional: boolean
         }[]
       }
       clasificacion_terceros_provisional: {

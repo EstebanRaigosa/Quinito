@@ -1113,6 +1113,8 @@ La asignación específica se hace mediante una **tabla oficial FIFA** que mapea
 >
 > Cuando termine la fase de grupos, se calcula la combinación, se busca en la tabla y se asignan los 8 equipos terceros a los 8 slots del bracket.
 
+> **Override manual de la asignación (admin):** por defecto manda esta tabla FIFA. Adicionalmente, el panel de admin (`/admin/clasificacion` → "Cruces de los mejores terceros") permite **reasignar a mano** a qué slot va cada tercero, e incluso dejar terceros **sin cruce ("Ninguno")**. Se guarda en `"tblAsignacionTercerosSlotManual"(torneo_id, numero_partido, grupo)`. Semántica (migración `0080`): si existe **al menos una** fila manual para el torneo, `equipo_tercero_slot` usa SOLO el manual — resuelve los slots con fila y deja el resto sin equipo (placeholder); si **no** hay ninguna fila manual, cae a la tabla FIFA completa. La vista/edición usa el **top-`cupos` provisional** (`asignacion_terceros_actual`, migración `0079`), así el admin puede ver y preparar los cruces aunque el corte no esté cerrado; el bracket real solo se puebla cuando el tercero queda determinado. Esto se desvía del reglamento real (en el Mundial la permutación no es libre) y es una herramienta de corrección/operación, no el comportamiento por defecto. Migraciones `0077`–`0080`.
+
 #### 6.4.4 Cruces fijos (no dependen de terceros)
 
 Estos 8 cruces de Dieciseisavos están completamente determinados por la posición en el grupo, no involucran terceros:

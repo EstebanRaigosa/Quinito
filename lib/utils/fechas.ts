@@ -49,8 +49,9 @@ export function etiquetaDiaListado(iso: string | Date): string {
 
 /**
  * Etiqueta de día RELATIVA para el listado de partidos: "Hoy", "Ayer" y
- * "Mañana" para los días cercanos; el resto como "22 Junio" (día + mes
- * capitalizado, sin año, ya que un torneo no cruza años). `ahora` se inyecta
+ * "Mañana" para los días cercanos; el resto como "Lunes 29 de Junio" (día de
+ * la semana + día + mes, capitalizados, sin año, ya que un torneo no cruza
+ * años). `ahora` se inyecta
  * para que el cálculo sea determinista y siempre en zona Bogotá (no depende de
  * la zona del navegador, regla dura §3.5).
  */
@@ -69,9 +70,15 @@ export function etiquetaDiaRelativa(iso: string | Date, ahora: Date): string {
     case 1:
       return "Mañana";
   }
-  // Ej. "22 junio" → "22 Junio" (capitalizamos la inicial del mes).
-  const etiqueta = formatInTimeZone(iso, ZONA_BOGOTA, "d MMMM", { locale: es });
-  return etiqueta.replace(/\s(\p{Ll})/u, (_m, c: string) => ` ${c.toUpperCase()}`);
+  // Ej. "lunes 29 de junio" → "Lunes 29 de Junio" (capitalizamos la inicial
+  // del día de la semana y del mes).
+  const etiqueta = formatInTimeZone(iso, ZONA_BOGOTA, "EEEE d 'de' MMMM", {
+    locale: es,
+  });
+  return etiqueta.replace(
+    /(^|\sde\s)(\p{Ll})/gu,
+    (_m, pre: string, c: string) => `${pre}${c.toUpperCase()}`,
+  );
 }
 
 /**

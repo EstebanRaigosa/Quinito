@@ -12,6 +12,20 @@ const nextConfig: NextConfig = {
   // marcarlo como paquete externo del servidor, Next lo deja fuera del bundle y
   // lo carga con `require` nativo en runtime. Lo usa `app/api/notif-vs/route.ts`.
   serverExternalPackages: ["@resvg/resvg-js"],
+  // Las rutas que rasterizan PNG con resvg leen assets del disco con rutas
+  // construidas en runtime (`process.cwd()` + string). El file-tracing de Next
+  // NO detecta esas lecturas dinámicas, así que en producción (Netlify Functions)
+  // esos archivos NO se empaquetan en la función y resvg falla por fuente ausente
+  // ("No se pudo generar el comprobante"). Los incluimos explícitamente:
+  //   - vs-font.ttf: fuente embebida del texto (ambas rutas).
+  //   - public/flags/**: banderas que inlinea el ícono "vs".
+  outputFileTracingIncludes: {
+    "/api/comprobante-pago": ["./app/api/notif-vs/_assets/vs-font.ttf"],
+    "/api/notif-vs": [
+      "./app/api/notif-vs/_assets/vs-font.ttf",
+      "./public/flags/**",
+    ],
+  },
   // Tree-shaking explícito de barrels grandes: Next reescribe los imports
   // nombrados a imports directos por símbolo. Solo `lucide-react` (~80 sitios):
   // NO incluir `date-fns`/`date-fns-tz` — rompen bajo Turbopack en dev con

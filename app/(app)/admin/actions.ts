@@ -282,6 +282,147 @@ export async function limpiarMejoresTerceros(
   return { ok: true };
 }
 
+const schemaAsignarTerceros = z.object({
+  torneoId: z.string().uuid(),
+  // Asignación PARCIAL: una entrada por cada tercero con cruce (slot). Los
+  // terceros en "Ninguno" simplemente no se envían. Vacío = sin override (FIFA).
+  asignaciones: z
+    .array(
+      z.object({
+        numeroPartido: z.coerce.number().int().positive(),
+        grupo: z.string().regex(/^[A-L]$/),
+      }),
+    )
+    .max(12),
+});
+
+export type AsignarTercerosInput = z.infer<typeof schemaAsignarTerceros>;
+
+/**
+ * Override manual del cruce de los mejores terceros (a qué partido del bracket
+ * va el 3° de cada grupo). Por defecto manda FIFA Annex C; esto lo sobre-escribe.
+ * Admite asignación PARCIAL: solo los terceros con cruce se guardan; los demás
+ * quedan sin equipo. Vacío = se quita el override (vuelve a FIFA). Valida que
+ * cada grupo enviado sea un tercero candidato vigente (`asignacion_terceros_actual`)
+ * y que no se repitan slots ni grupos. Tras guardar, recalcula los cruces.
+ * Defensa en profundidad: la sesión debe ser super-admin.
+ */
+export async function guardarAsignacionTerceros(
+  input: AsignarTercerosInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = schemaAsignarTerceros.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Datos inválidos" };
+  const { torneoId, asignaciones } = parsed.data;
+
+  // Ni slots ni grupos repetidos (un cruce no puede quedar doble).
+  const slots = asignaciones.map((a) => a.numeroPartido);
+  const grupos = asignaciones.map((a) => a.grupo);
+  if (new Set(slots).size !== slots.length) {
+    return { ok: false, error: "Hay un cruce repetido" };
+  }
+  if (new Set(grupos).size !== grupos.length) {
+    return { ok: false, error: "Un grupo no puede ocupar dos cruces" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !esSuperAdmin(user.email)) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const admin = createAdminClient();
+
+  // Si se envía al menos un cruce, validar contra los terceros candidatos
+  // vigentes. (Vacío = quitar override, no requiere validación.)
+  if (asignaciones.length > 0) {
+    const { data: actual, error: errActual } = await admin.rpc(
+      "asignacion_terceros_actual",
+      { p_torneo_id: torneoId },
+    );
+    if (errActual) return { ok: false, error: errActual.message };
+    if (!actual || actual.length === 0) {
+      return { ok: false, error: "Aún no hay terceros para asignar" };
+    }
+    const gruposValidos = new Set(actual.map((a) => a.grupo));
+    if (grupos.some((g) => !gruposValidos.has(g))) {
+      return {
+        ok: false,
+        error: "Un tercero no está entre los candidatos vigentes",
+      };
+    }
+  }
+
+  // Reemplazo total del override manual del torneo.
+  const { error: errDel } = await admin
+    .from("tblAsignacionTercerosSlotManual")
+    .delete()
+    .eq("torneo_id", torneoId);
+  if (errDel) return { ok: false, error: errDel.message };
+
+  if (asignaciones.length > 0) {
+    const { error: errIns } = await admin
+      .from("tblAsignacionTercerosSlotManual")
+      .insert(
+        asignaciones.map((a) => ({
+          torneo_id: torneoId,
+          numero_partido: a.numeroPartido,
+          grupo: a.grupo,
+          asignado_por: user.id,
+        })),
+      );
+    if (errIns) return { ok: false, error: errIns.message };
+  }
+
+  const { error: errRes } = await admin.rpc("resolver_cruces", {
+    p_torneo_id: torneoId,
+  });
+  if (errRes) return { ok: false, error: errRes.message };
+
+  revalidatePath("/admin/clasificacion");
+  revalidatePath("/admin");
+  revalidatePath("/partidos");
+  return { ok: true };
+}
+
+/**
+ * Quita el override manual de cruces de terceros: vuelve a FIFA Annex C. Tras
+ * quitarlo, recalcula los cruces.
+ */
+export async function limpiarAsignacionTerceros(
+  input: LimpiarTercerosInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = schemaLimpiarTerceros.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Datos inválidos" };
+  const { torneoId } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !esSuperAdmin(user.email)) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const admin = createAdminClient();
+  const { error: errDel } = await admin
+    .from("tblAsignacionTercerosSlotManual")
+    .delete()
+    .eq("torneo_id", torneoId);
+  if (errDel) return { ok: false, error: errDel.message };
+
+  const { error: errRes } = await admin.rpc("resolver_cruces", {
+    p_torneo_id: torneoId,
+  });
+  if (errRes) return { ok: false, error: errRes.message };
+
+  revalidatePath("/admin/clasificacion");
+  revalidatePath("/admin");
+  revalidatePath("/partidos");
+  return { ok: true };
+}
+
 const schemaLimpiarClas = z.object({
   torneoId: z.string().uuid(),
   grupo: z.string().min(1).max(4),

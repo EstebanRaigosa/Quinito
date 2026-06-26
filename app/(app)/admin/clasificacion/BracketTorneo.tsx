@@ -26,7 +26,7 @@ function feedersDe(p: Partido): number[] {
 }
 
 /** Etiqueta legible para un lado que aún no tiene equipo (placeholder). */
-function etiquetaPlaceholder(ph: string | null): string {
+export function etiquetaPlaceholder(ph: string | null): string {
   if (!ph) return "Por definir";
   const pos = ph.match(/^([1-3])([A-L])$/);
   if (pos) return `${pos[1]}° ${pos[2]}`;

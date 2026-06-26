@@ -12,6 +12,8 @@ import {
   type TorneoClasificacion,
   type EquipoFila,
   type TerceroFila,
+  type SlotTercero,
+  type AsignacionTercero,
 } from "./ClasificacionGrupos";
 
 export const metadata: Metadata = {
@@ -34,14 +36,19 @@ export default async function AdminClasificacionPage() {
   // latencia encadenadas; ahora son 2 olas (torneos → todos los RPCs a la vez).
   const resultados = await Promise.all(
     (torneos ?? []).map(async (t): Promise<TorneoClasificacion | null> => {
-      const [{ data: filas }, { data: filasTerceros }, partidos] =
-        await Promise.all([
-          supabase.rpc("posiciones_admin", { p_torneo_id: t.id }),
-          supabase.rpc("clasificacion_terceros_provisional", {
-            p_torneo_id: t.id,
-          }),
-          getPartidosTorneo(t.id),
-        ]);
+      const [
+        { data: filas },
+        { data: filasTerceros },
+        { data: filasAsignacion },
+        partidos,
+      ] = await Promise.all([
+        supabase.rpc("posiciones_admin", { p_torneo_id: t.id }),
+        supabase.rpc("clasificacion_terceros_provisional", {
+          p_torneo_id: t.id,
+        }),
+        supabase.rpc("asignacion_terceros_actual", { p_torneo_id: t.id }),
+        getPartidosTorneo(t.id),
+      ]);
 
       // Agrupar las filas por grupo conservando el orden devuelto por la RPC
       // (ya viene ordenado por posición efectiva: manual si existe, si no auto).
@@ -98,6 +105,44 @@ export default async function AdminClasificacionPage() {
       // Partidos de la llave eliminatoria (sin fase de grupos).
       const bracket = partidos.filter((p) => p.fase !== "fase_grupos");
 
+      // Slots de tercero: partidos del bracket cuyo placeholder es de tercero
+      // (3 + 2 o más letras de grupo). Cada uno es un cruce al que se asigna un
+      // mejor tercero; el rival es el otro lado (equipo real o placeholder).
+      const esPlaceholderTercero = (ph: string | null) =>
+        ph !== null && /^3[A-L]{2,}$/.test(ph);
+      const slotsTercero: SlotTercero[] = bracket
+        .filter(
+          (p) =>
+            esPlaceholderTercero(p.placeholder_local) ||
+            esPlaceholderTercero(p.placeholder_visitante),
+        )
+        .map((p) => {
+          const terceroEsLocal = esPlaceholderTercero(p.placeholder_local);
+          const rival = terceroEsLocal ? p.equipo_visitante : p.equipo_local;
+          const rivalPh = terceroEsLocal
+            ? p.placeholder_visitante
+            : p.placeholder_local;
+          return {
+            numeroPartido: p.numero_partido,
+            fase: p.fase,
+            rivalNombre: rival?.nombre ?? null,
+            rivalCodigoIso: rival?.codigo_iso ?? null,
+            rivalPlaceholder: rival ? null : rivalPh,
+          };
+        })
+        .sort((a, b) => a.numeroPartido - b.numeroPartido);
+
+      // Mapeo efectivo slot→grupo (manual si existe, si no FIFA Annex C). Vacío
+      // hasta que el conjunto de terceros clasificados esté determinado.
+      const asignacionTerceros: AsignacionTercero[] = (
+        filasAsignacion ?? []
+      ).map((a) => ({
+        grupo: a.grupo,
+        numeroPartido: a.numero_partido,
+        esManual: a.es_manual,
+        esProvisional: a.es_provisional,
+      }));
+
       if (grupos.length === 0) return null;
       return {
         id: t.id,
@@ -108,6 +153,8 @@ export default async function AdminClasificacionPage() {
         ambiguoTerceros,
         cupos,
         bracket,
+        slotsTercero,
+        asignacionTerceros,
       };
     }),
   );
