@@ -3,6 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
+import type { Database } from "@/lib/supabase/types";
+
+/** Razón del último cierre de sesión (enum de la BD). */
+export type RazonCierre = Database["public"]["Enums"]["razon_cierre_sesion"];
 
 export type Conectado = {
   usuarioId: string;
@@ -73,6 +77,12 @@ export type ActividadUsuario = {
   ultimaActividad: string | null;
   /** Dispositivo de la última sesión; null si nunca abrió la app. */
   dispositivo: "movil" | "escritorio" | null;
+  /** Última vez que INICIÓ sesión (auth.users.last_sign_in_at); null si nunca. */
+  ultimoLogin: string | null;
+  /** Última vez que CERRÓ sesión; null si no hay cierre registrado. */
+  ultimoCierre: string | null;
+  /** Razón del último cierre; null si no hay cierre registrado. */
+  razonCierre: RazonCierre | null;
   /** Pollas (activas) a las que pertenece el usuario; base del filtro. */
   grupoIds: string[];
 };
@@ -107,21 +117,36 @@ export async function obtenerHistorialActividad(): Promise<HistorialActividad> {
   if (!user || !esSuperAdmin(user.email)) return { usuarios: [], pollas: [] };
 
   const admin = createAdminClient();
-  const [{ data: perfiles }, { data: sesiones }, { data: participantes }, { data: grupos }] =
-    await Promise.all([
-      admin.from("tblProfiles").select("id, nombre_completo, avatar_url, email"),
-      admin
-        .from("tblSesionesActivas")
-        .select("usuario_id, conectado_en, ultima_actividad, dispositivo"),
-      // Solo membresías vigentes (sin baja lógica).
-      admin
-        .from("tblParticipantes")
-        .select("usuario_id, grupo_id")
-        .is("eliminado_en", null),
-      admin.from("tblGrupos").select("id, nombre"),
-    ]);
+  const [
+    { data: perfiles },
+    { data: sesiones },
+    { data: participantes },
+    { data: grupos },
+    { data: authUsers },
+  ] = await Promise.all([
+    admin
+      .from("tblProfiles")
+      .select(
+        "id, nombre_completo, avatar_url, email, ultimo_cierre_en, razon_ultimo_cierre",
+      ),
+    admin
+      .from("tblSesionesActivas")
+      .select("usuario_id, conectado_en, ultima_actividad, dispositivo"),
+    // Solo membresías vigentes (sin baja lógica).
+    admin
+      .from("tblParticipantes")
+      .select("usuario_id, grupo_id")
+      .is("eliminado_en", null),
+    admin.from("tblGrupos").select("id, nombre"),
+    // `last_sign_in_at` vive en auth.users (Supabase lo mantiene). Una página de
+    // 1000 cubre el padrón actual; si crece habría que paginar.
+    admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+  ]);
 
   const porUsuario = new Map((sesiones ?? []).map((s) => [s.usuario_id, s]));
+  const loginPorUsuario = new Map(
+    (authUsers?.users ?? []).map((u) => [u.id, u.last_sign_in_at ?? null]),
+  );
 
   // Pollas por usuario + catálogo de pollas que sí tienen miembros activos.
   const gruposPorUsuario = new Map<string, string[]>();
@@ -143,6 +168,9 @@ export async function obtenerHistorialActividad(): Promise<HistorialActividad> {
       ultimaConexion: s?.conectado_en ?? null,
       ultimaActividad: s?.ultima_actividad ?? null,
       dispositivo: s ? (s.dispositivo === "movil" ? "movil" : "escritorio") : null,
+      ultimoLogin: loginPorUsuario.get(p.id) ?? null,
+      ultimoCierre: p.ultimo_cierre_en ?? null,
+      razonCierre: p.razon_ultimo_cierre ?? null,
       grupoIds: gruposPorUsuario.get(p.id) ?? [],
     };
   });

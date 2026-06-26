@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ListOrdered, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getPartidosTorneo } from "@/lib/queries/partidos-torneo";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import { PageContainer } from "@/components/shared/PageContainer";
@@ -33,10 +34,14 @@ export default async function AdminClasificacionPage() {
   // latencia encadenadas; ahora son 2 olas (torneos → todos los RPCs a la vez).
   const resultados = await Promise.all(
     (torneos ?? []).map(async (t): Promise<TorneoClasificacion | null> => {
-      const [{ data: filas }, { data: filasTerceros }] = await Promise.all([
-        supabase.rpc("posiciones_admin", { p_torneo_id: t.id }),
-        supabase.rpc("terceros_admin", { p_torneo_id: t.id }),
-      ]);
+      const [{ data: filas }, { data: filasTerceros }, partidos] =
+        await Promise.all([
+          supabase.rpc("posiciones_admin", { p_torneo_id: t.id }),
+          supabase.rpc("clasificacion_terceros_provisional", {
+            p_torneo_id: t.id,
+          }),
+          getPartidosTorneo(t.id),
+        ]);
 
       // Agrupar las filas por grupo conservando el orden devuelto por la RPC
       // (ya viene ordenado por posición efectiva: manual si existe, si no auto).
@@ -67,24 +72,31 @@ export default async function AdminClasificacionPage() {
         hayAmbiguo: equipos.some((e) => e.ambiguo),
       }));
 
-      // Mejores terceros: una fila por grupo con el 3° y su clasificación.
+      // Terceros EN VIVO: una fila por grupo con su 3° provisional, ya ordenada
+      // por posición (la RPC ordena por puntos -> dif -> a favor).
       const terceros: TerceroFila[] = (filasTerceros ?? []).map((f) => ({
         grupo: f.grupo,
         equipoId: f.equipo_id,
         nombre: f.nombre,
         codigoIso: f.codigo_iso,
+        pj: f.pj,
         pts: f.pts,
         dif: f.dif,
         aFavor: f.a_favor,
         determinado: f.determinado,
-        posicionAuto: f.posicion_auto,
+        grupoCerrado: f.grupo_cerrado,
+        posicion: f.posicion,
+        asegurado: f.asegurado,
+        eliminado: f.eliminado,
         clasificaAuto: f.clasifica_auto,
         manualClasifica: f.manual_clasifica,
       }));
       const hayManualTerceros = (filasTerceros ?? []).some((f) => f.hay_manual);
       const ambiguoTerceros = (filasTerceros ?? []).some((f) => f.ambiguo_corte);
-      const tercerosCompletos =
-        terceros.length > 0 && terceros.every((f) => f.determinado);
+      const cupos = (filasTerceros ?? [])[0]?.cupos ?? 0;
+
+      // Partidos de la llave eliminatoria (sin fase de grupos).
+      const bracket = partidos.filter((p) => p.fase !== "fase_grupos");
 
       if (grupos.length === 0) return null;
       return {
@@ -94,7 +106,8 @@ export default async function AdminClasificacionPage() {
         terceros,
         hayManualTerceros,
         ambiguoTerceros,
-        tercerosCompletos,
+        cupos,
+        bracket,
       };
     }),
   );

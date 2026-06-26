@@ -1,6 +1,5 @@
 import { Ban, BarChart3, Clock } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
-import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { prediccionCerrada } from "@/lib/utils/prediccion";
 import { cn } from "@/lib/utils";
@@ -15,6 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EtiquetaFase } from "@/components/partidos/EtiquetaFase";
 import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
 import { DefinicionPartido } from "@/components/partidos/DefinicionPartido";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
@@ -109,10 +109,6 @@ export function TarjetaPartido({
   // El marcador real solo se muestra cuando ya hay resultado.
   const tieneResultado =
     partido.goles_local != null && partido.goles_visitante != null;
-  const etiquetaFase =
-    partido.fase === "fase_grupos" && partido.grupo
-      ? `Grupo ${partido.grupo}`
-      : ETIQUETA_FASE[partido.fase];
 
   return (
     <div
@@ -145,9 +141,10 @@ export function TarjetaPartido({
       )}
     >
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <span className="text-2xs font-bold uppercase tracking-wide text-fg-subtle">
-          {etiquetaFase}
-        </span>
+        <EtiquetaFase
+          partido={partido}
+          className="text-2xs font-bold uppercase tracking-wide text-fg-subtle"
+        />
         {finalizado ? (
           <Badge variant="info" dot>
             Finalizado

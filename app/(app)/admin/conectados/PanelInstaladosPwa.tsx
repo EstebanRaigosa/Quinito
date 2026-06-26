@@ -30,7 +30,7 @@ export function PanelInstaladosPwa({ resumen }: { resumen: ResumenPwa }) {
   return (
     <section className="space-y-4">
       <header>
-        <h2 className="t-title flex items-center gap-2">
+        <h2 className="t-h2 flex items-center gap-2">
           <Smartphone className="size-5 text-violet-600" /> App instalada
         </h2>
         <p className="t-body-sm mt-1 text-fg-muted">

@@ -378,7 +378,13 @@ function FiltroPais({
           }
         />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-0">
+      <PopoverContent
+        align="start"
+        className="w-72 p-0"
+        // No enfocar el input de búsqueda al abrir: en móvil eso abriría el
+        // teclado de golpe. El usuario toca el campo si quiere escribir.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="border-b border-border p-2">
           <Input
             value={busqueda}

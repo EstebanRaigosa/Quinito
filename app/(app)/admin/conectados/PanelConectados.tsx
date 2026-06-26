@@ -102,6 +102,16 @@ export function PanelConectados({ inicial }: { inicial: Conectado[] }) {
 
   return (
     <section className="space-y-4">
+      <header>
+        <h2 className="t-h2 flex items-center gap-2">
+          <Wifi className="size-5 text-emerald-600" /> Conectados ahora
+        </h2>
+        <p className="t-body-sm mt-1 text-fg-muted">
+          Quién está en la app ahora mismo, en qué sección y desde qué
+          dispositivo. Se actualiza solo cada pocos segundos.
+        </p>
+      </header>
+
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-2 rounded-pill bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
           <Wifi className="size-4" /> {activos} {activos === 1 ? "activo" : "activos"}

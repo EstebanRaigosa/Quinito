@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { registrarCierreSesion } from "@/lib/auth/eventos-sesion";
 
 /**
  * Hook de cierre de sesión reutilizable (Sidebar, BottomNav, perfil…).
@@ -17,6 +18,8 @@ export function useCerrarSesion() {
     if (saliendo) return;
     setSaliendo(true);
     const supabase = createClient();
+    // Registra el cierre (razón "manual") ANTES de signOut, mientras hay sesión.
+    await registrarCierreSesion("manual");
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("No se pudo cerrar la sesión. Intenta de nuevo.");

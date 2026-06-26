@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { BarChart3, Clock, Check, Lock } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
-import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import {
   esSinCierre,
   prediccionCerrada,
@@ -17,6 +16,7 @@ import { Flag } from "@/components/shared/Flag";
 import { CuentaRegresiva } from "@/components/shared/CuentaRegresiva";
 import { FormularioPrediccion } from "@/components/partidos/FormularioPrediccion";
 import { DefinicionPartido } from "@/components/partidos/DefinicionPartido";
+import { EtiquetaFase } from "@/components/partidos/EtiquetaFase";
 import { EstadisticasGrupoResumen } from "@/components/partidos/EstadisticasGrupoResumen";
 import { EstadisticasGrupo } from "@/components/partidos/EstadisticasGrupo";
 import { Badge } from "@/components/ui/badge";
@@ -92,11 +92,6 @@ export function TarjetaPrediccion({
       ? "Apuesta cerrada"
       : undefined;
 
-  const etiquetaFase =
-    partido.fase === "fase_grupos" && partido.grupo
-      ? `Grupo ${partido.grupo}`
-      : ETIQUETA_FASE[partido.fase];
-
   const lugar = partido.estadio ?? "";
 
   return (
@@ -113,9 +108,10 @@ export function TarjetaPrediccion({
       <div className="flex flex-wrap items-center justify-between gap-2 bg-sunken px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <Badge variant="secondary">Partido #{partido.numero_partido}</Badge>
-          <span className="t-caption truncate font-semibold text-fg-muted">
-            {etiquetaFase}
-          </span>
+          <EtiquetaFase
+            partido={partido}
+            className="t-caption truncate font-semibold text-fg-muted"
+          />
           {lugar && (
             <>
               <span aria-hidden className="text-fg-subtle">·</span>

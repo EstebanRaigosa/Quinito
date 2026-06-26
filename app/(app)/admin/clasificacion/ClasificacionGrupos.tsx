@@ -7,6 +7,8 @@ import { Flag } from "@/components/shared/Flag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { Partido } from "@/lib/types/dominio";
+import { BracketTorneo } from "./BracketTorneo";
 import {
   guardarClasificacion,
   guardarMejoresTerceros,
@@ -40,11 +42,15 @@ export type TerceroFila = {
   equipoId: string | null;
   nombre: string | null;
   codigoIso: string | null;
+  pj: number | null;
   pts: number | null;
   dif: number | null;
   aFavor: number | null;
   determinado: boolean;
-  posicionAuto: number | null;
+  grupoCerrado: boolean;
+  posicion: number | null;
+  asegurado: boolean;
+  eliminado: boolean;
   clasificaAuto: boolean;
   manualClasifica: boolean;
 };
@@ -56,7 +62,10 @@ export type TorneoClasificacion = {
   terceros: TerceroFila[];
   hayManualTerceros: boolean;
   ambiguoTerceros: boolean;
-  tercerosCompletos: boolean;
+  /** Nº de terceros que clasifican al bracket (8 en el Mundial). */
+  cupos: number;
+  /** Partidos de la llave eliminatoria (sin fase de grupos). */
+  bracket: Partido[];
 };
 
 export function ClasificacionGrupos({
@@ -119,6 +128,8 @@ export function ClasificacionGrupos({
       </div>
 
       <MejoresTerceros torneo={torneoActivo} />
+
+      <BracketTorneo partidos={torneoActivo.bracket} />
     </div>
   );
 }
@@ -345,47 +356,43 @@ function SelectEquipo({
   );
 }
 
-const TOTAL_TERCEROS = 8;
-
 function MejoresTerceros({ torneo }: { torneo: TorneoClasificacion }) {
-  const { terceros, hayManualTerceros, ambiguoTerceros, tercerosCompletos } =
-    torneo;
+  const { terceros, hayManualTerceros, ambiguoTerceros, cupos } = torneo;
 
-  // Mapa grupo -> datos del tercero, para pintar bandera/stats junto al cupo.
-  const porGrupo = useMemo(() => {
-    const m = new Map<string, TerceroFila>();
-    for (const t of terceros) m.set(t.grupo, t);
-    return m;
-  }, [terceros]);
+  // Selección automática actual: la manual si existe; si no, los que clasifican
+  // por cálculo (asegurados / dentro del corte).
+  const autoSel = useMemo(
+    () =>
+      new Set(
+        terceros
+          .filter((t) =>
+            hayManualTerceros ? t.manualClasifica : t.clasificaAuto,
+          )
+          .map((t) => t.grupo),
+      ),
+    [terceros, hayManualTerceros],
+  );
 
-  // Estado: 8 cupos. Cada cupo guarda la LETRA del grupo cuyo 3° clasifica, o
-  // "" = Ninguno. El bracket solo depende del CONJUNTO de grupos elegidos, no
-  // del orden de los cupos. Inicial: la selección manual si existe; si no, la
-  // que clasifica automático.
-  const inicial = useMemo(() => {
-    const base = hayManualTerceros
-      ? terceros.filter((t) => t.manualClasifica)
-      : terceros.filter((t) => t.clasificaAuto);
-    const arr = base.map((t) => t.grupo).slice(0, TOTAL_TERCEROS);
-    while (arr.length < TOTAL_TERCEROS) arr.push("");
-    return arr;
-  }, [terceros, hayManualTerceros]);
-
-  const [cupos, setCupos] = useState<string[]>(inicial);
+  // `draft` = edición manual en curso (null = sigue lo automático/guardado).
+  const [draft, setDraft] = useState<Set<string> | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
-
   const ocupado = guardando || limpiando;
-  const elegidos = cupos.filter(Boolean);
-  const cuenta = elegidos.length;
-  const completo = cuenta === TOTAL_TERCEROS;
 
-  function cambiarCupo(indice: number, grupo: string) {
-    if (ocupado) return;
-    setCupos((prev) => {
-      const next = [...prev];
-      next[indice] = grupo;
-      return next;
+  const seleccion = draft ?? autoSel;
+  const cuenta = seleccion.size;
+  const editando = draft !== null;
+  const aseguradosCount = terceros.filter((t) => t.asegurado).length;
+  const automaticoListo =
+    !hayManualTerceros && cupos > 0 && aseguradosCount === cupos;
+
+  function alternar(grupo: string, determinado: boolean) {
+    if (!determinado || ocupado) return;
+    setDraft(() => {
+      const base = new Set(draft ?? autoSel);
+      if (base.has(grupo)) base.delete(grupo);
+      else base.add(grupo);
+      return base;
     });
   }
 
@@ -393,16 +400,17 @@ function MejoresTerceros({ torneo }: { torneo: TorneoClasificacion }) {
     setGuardando(true);
     const r = await guardarMejoresTerceros({
       torneoId: torneo.id,
-      grupos: elegidos,
+      grupos: [...seleccion],
     });
     setGuardando(false);
     if (!r.ok) {
       toast.error(r.error ?? "No se pudo guardar");
       return;
     }
+    setDraft(null);
     toast.success(
-      completo
-        ? "Mejores terceros guardados"
+      cuenta === cupos
+        ? "Terceros clasificados guardados"
         : "Terceros guardados; faltan cupos, los cruces con 3° quedan por definir",
     );
   }
@@ -415,134 +423,213 @@ function MejoresTerceros({ torneo }: { torneo: TorneoClasificacion }) {
       toast.error(r.error ?? "No se pudo quitar");
       return;
     }
-    toast.success("Mejores terceros: vuelve al cálculo automático");
+    setDraft(null);
+    toast.success("Terceros: vuelve al cálculo automático");
   }
 
   return (
     <section className="surface-card space-y-4 rounded-2xl p-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="t-h3 flex items-center gap-2 text-fg-strong">
-          <Medal className="size-5 text-primary" /> Mejores terceros
+          <Medal className="size-5 text-primary" /> Clasificación de terceros
         </h2>
         {hayManualTerceros ? (
           <Badge variant="secondary">Selección manual</Badge>
-        ) : !tercerosCompletos ? (
-          <Badge variant="warning">
-            <AlertTriangle className="size-3" /> Faltan 3° por definir
-          </Badge>
         ) : ambiguoTerceros ? (
           <Badge variant="warning">
             <AlertTriangle className="size-3" /> Empate en el corte
           </Badge>
-        ) : (
+        ) : automaticoListo ? (
           <Badge variant="success">
-            <Check className="size-3" /> Automático
+            <Check className="size-3" /> Clasificados
           </Badge>
+        ) : (
+          <Badge variant="info">En vivo</Badge>
         )}
       </header>
 
       <p className="t-body-sm text-fg-muted">
-        Solo <strong>8 de los 12</strong> terceros pasan al bracket; los otros 4
-        grupos quedan sin tercero clasificado. Asigna cada cupo a un grupo (o
-        déjalo en <em>Ninguno</em>). Un grupo no se puede repetir: para cambiar
-        uno, primero libera su cupo. El bracket recién asigna los terceros cuando
-        los <strong>8 cupos</strong> tienen grupo; si falta alguno, los cruces
-        con 3° quedan por definir. Normalmente se calcula solo; ajústalo a mano
-        si el corte entre el 8° y 9° queda empatado.
+        Los terceros de todos los grupos se ordenan entre sí por{" "}
+        <strong>puntos → diferencia de gol → goles a favor</strong>. Los{" "}
+        <strong>{cupos} primeros</strong> clasifican al bracket. La tabla se
+        actualiza en vivo aunque falten partidos: un tercero queda{" "}
+        <strong>asegurado</strong> cuando ningún otro grupo lo puede sacar del
+        corte, y entra al bracket apenas los {cupos} cupos están asegurados. Usa
+        el check de <strong>Clasifica</strong> para forzar a mano qué terceros
+        pasan al bracket (y, con eso, a partidos y predicciones).
       </p>
 
-      {!tercerosCompletos && (
-        <p className="t-caption rounded-lg bg-warning/10 px-3 py-2 text-warning-foreground">
-          Algunos grupos aún no tienen su 3° definido; solo puedes asignar a los
-          que ya están determinados.
+      {/* Tabla de clasificación de terceros (ya viene ordenada por posición) */}
+      <div className="overflow-x-auto scroll-touch rounded-xl border border-border">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="bg-sunken text-fg-muted">
+              <th className="px-2 py-1.5 text-left font-semibold">#</th>
+              <th className="px-2 py-1.5 text-left font-semibold">Tercero</th>
+              <th className="px-2 py-1.5 text-center font-semibold">PJ</th>
+              <th className="px-2 py-1.5 text-center font-semibold">DG</th>
+              <th className="px-2 py-1.5 text-center font-semibold">Pts</th>
+              <th className="px-2 py-1.5 text-right font-semibold">Estado</th>
+              <th className="px-2 py-1.5 text-center font-semibold">Clasifica</th>
+            </tr>
+          </thead>
+          <tbody>
+            {terceros.map((t, i) => {
+              const marcado = seleccion.has(t.grupo);
+              const esCorte = !editando && !hayManualTerceros && i + 1 === cupos;
+              return (
+                <tr
+                  key={t.grupo}
+                  className={cn(
+                    "border-t border-border",
+                    marcado && "bg-primary-soft/40",
+                    !marcado && t.eliminado && "opacity-60",
+                    esCorte && "border-b-2 border-b-primary/60",
+                  )}
+                >
+                  <td className="px-2 py-1.5 font-bold tabular-nums text-fg-muted">
+                    {t.posicion ?? "—"}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <span className="flex items-center gap-2 font-semibold text-fg-strong">
+                      <Flag code={t.codigoIso} size={18} round />
+                      <span className="truncate">
+                        {t.nombre ?? "3° sin definir"}
+                      </span>
+                      <span className="t-caption shrink-0 rounded bg-sunken px-1.5 py-0.5 font-bold text-fg-muted">
+                        {t.grupo}
+                      </span>
+                      {!t.grupoCerrado && (
+                        <span className="t-caption shrink-0 text-fg-muted">
+                          en juego
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1.5 text-center tabular-nums text-fg-muted">
+                    {t.pj ?? "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-center tabular-nums text-fg-muted">
+                    {t.dif === null ? "—" : t.dif > 0 ? `+${t.dif}` : t.dif}
+                  </td>
+                  <td className="px-2 py-1.5 text-center font-bold tabular-nums text-fg-strong">
+                    {t.pts ?? "—"}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <EstadoTercero fila={t} cupos={cupos} />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={marcado}
+                        aria-label={`Marcar el 3° del grupo ${t.grupo} como clasificado`}
+                        disabled={!t.determinado || ocupado}
+                        onClick={() => alternar(t.grupo, t.determinado)}
+                        className={cn(
+                          "grid size-9 place-items-center rounded-lg border-2 transition-colors active:scale-95",
+                          marcado
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-surface text-transparent hover:border-primary/60",
+                          "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border",
+                        )}
+                      >
+                        <Check className="size-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {cupos > 0 && !editando && !hayManualTerceros && (
+        <p className="t-caption text-fg-muted">
+          La línea marca el corte automático: los {cupos} de arriba clasifican.
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {cupos.map((grupoSel, i) => {
-          const sel = grupoSel ? porGrupo.get(grupoSel) : undefined;
-          return (
-            <div
-              key={i}
+      {(editando || hayManualTerceros) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-sunken/40 p-3">
+          <div className="flex flex-col">
+            <span
               className={cn(
-                "flex min-h-12 items-center gap-2 rounded-xl border-2 px-3 py-2 transition-colors",
-                grupoSel ? "border-primary bg-primary-soft/50" : "border-border",
+                "t-caption font-semibold tabular-nums",
+                cuenta === cupos ? "text-primary" : "text-fg-muted",
               )}
             >
-              <span className="t-caption w-12 shrink-0 font-bold text-fg-muted">
-                Cupo {i + 1}
-              </span>
-              {sel?.determinado && (
-                <Flag code={sel.codigoIso} size={18} round />
-              )}
-              <select
-                value={grupoSel}
-                onChange={(e) => cambiarCupo(i, e.target.value)}
-                disabled={ocupado}
-                aria-label={`Cupo ${i + 1} de mejores terceros`}
-                className="h-11 min-w-0 flex-1 rounded-lg border-2 border-border bg-surface px-2.5 text-base font-semibold text-fg-strong focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted"
-              >
-                <option value="">Ninguno</option>
-                {terceros.map((t) => {
-                  const usadoEnOtro = cupos.some(
-                    (g, j) => j !== i && g === t.grupo,
-                  );
-                  return (
-                    <option
-                      key={t.grupo}
-                      value={t.grupo}
-                      disabled={!t.determinado || usadoEnOtro}
-                    >
-                      {t.grupo} ·{" "}
-                      {t.determinado ? t.nombre : "3° sin definir"}
-                      {t.posicionAuto ? ` (${t.posicionAuto}°)` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-              {sel?.determinado && (
-                <span className="t-caption shrink-0 tabular-nums text-fg-muted">
-                  {sel.pts} pts
+              {cuenta}/{cupos} clasificados
+              {editando && (
+                <span className="ml-2 font-normal text-warning">
+                  · sin guardar
                 </span>
               )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "t-caption font-semibold tabular-nums",
-            completo ? "text-primary" : "text-fg-muted",
-          )}
-        >
-          {cuenta}/{TOTAL_TERCEROS} cupos
-        </span>
-        <div className="flex items-center gap-2">
-          {hayManualTerceros && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={limpiar}
-              disabled={ocupado}
-            >
-              {limpiando ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "Usar automático"
-              )}
-            </Button>
-          )}
-          <Button size="sm" onClick={guardar} disabled={ocupado}>
-            {guardando ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              "Guardar terceros"
+            </span>
+            {cuenta !== cupos && (
+              <span className="t-caption text-fg-muted">
+                Faltan {Math.max(cupos - cuenta, 0)}; los cruces con 3° quedan
+                por definir hasta completar {cupos}.
+              </span>
             )}
-          </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {editando ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDraft(null)}
+                  disabled={ocupado}
+                >
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={guardar} disabled={ocupado}>
+                  {guardando ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Guardar terceros"
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={limpiar}
+                disabled={ocupado}
+              >
+                {limpiando ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Usar automático"
+                )}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
+}
+
+function EstadoTercero({ fila, cupos }: { fila: TerceroFila; cupos: number }) {
+  // Señal del CÁLCULO automático (independiente del marcado manual, que se ve
+  // en el check de la fila).
+  if (fila.asegurado) {
+    return (
+      <Badge variant="success">
+        <Check className="size-3" /> Asegurado
+      </Badge>
+    );
+  }
+  if (fila.eliminado) {
+    return <Badge variant="outline">Eliminado</Badge>;
+  }
+  if (cupos > 0 && fila.clasificaAuto) {
+    return <Badge variant="info">En zona</Badge>;
+  }
+  return <Badge variant="neutral">Fuera</Badge>;
 }

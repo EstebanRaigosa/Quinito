@@ -456,3 +456,130 @@
     backdrop-filter: none !important;
   }
 }
+
+/* ============================================================================
+   Llave de eliminatorias (panel admin de clasificación).
+   Bracket puro en flexbox: cada ronda es una columna; cada celda usa flex:1 +
+   space-around, así un nodo queda centrado entre sus dos alimentadores SIN
+   medir coordenadas (robusto en Safari/iOS: nada de transforms ni JS de layout).
+   Los conectores son pseudo-elementos: una vertical por par (mitad inferior del
+   de arriba + mitad superior del de abajo) y una horizontal desde el punto medio
+   hacia el nodo de la siguiente ronda. Requiere que cada columna esté ordenada
+   por recorrido del árbol (lo hace BracketTorneo) para que los pares sean
+   adyacentes.
+   ============================================================================ */
+.bracket {
+  display: flex;
+  align-items: stretch;
+  min-width: max-content;
+}
+.bracket-col {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  width: 10.5rem;
+}
+.bracket-col--feeds-right {
+  margin-right: 1.5rem;
+}
+.bracket-col--feeds-left {
+  margin-left: 1.5rem;
+}
+.bracket-col--center {
+  margin: 0 1.5rem;
+}
+.bracket-col-title {
+  margin-bottom: 0.5rem;
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+.bracket-col-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: space-around;
+  min-height: 0;
+}
+.bracket-cell {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+}
+/* --- Lado izquierdo (los pares alimentan hacia la DERECHA / el centro) --- */
+/* Vertical del par, sobre el borde derecho del nodo (que llena la columna). */
+.bracket-col--feeds-right .bracket-cell::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 2px;
+  background: var(--border-strong);
+}
+.bracket-col--feeds-right .bracket-cell--top::after {
+  top: 50%;
+  bottom: 0;
+}
+.bracket-col--feeds-right .bracket-cell--bottom::after {
+  top: 0;
+  bottom: 50%;
+}
+/* Horizontal desde el punto medio del par hacia el nodo de la ronda siguiente. */
+.bracket-col--feeds-right .bracket-cell--bottom::before {
+  content: "";
+  position: absolute;
+  right: -1.5rem;
+  top: 0;
+  width: 1.5rem;
+  height: 2px;
+  background: var(--border-strong);
+}
+
+/* --- Lado derecho (espejo: los pares alimentan hacia la IZQUIERDA) --- */
+.bracket-col--feeds-left .bracket-cell::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 2px;
+  background: var(--border-strong);
+}
+.bracket-col--feeds-left .bracket-cell--top::after {
+  top: 50%;
+  bottom: 0;
+}
+.bracket-col--feeds-left .bracket-cell--bottom::after {
+  top: 0;
+  bottom: 50%;
+}
+.bracket-col--feeds-left .bracket-cell--bottom::before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 0;
+  width: 1.5rem;
+  height: 2px;
+  background: var(--border-strong);
+}
+
+/* --- Centro (la final): conecta horizontalmente con ambas semifinales --- */
+.bracket-col--center .bracket-cell::before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 50%;
+  width: 1.5rem;
+  height: 2px;
+  background: var(--border-strong);
+}
+.bracket-col--center .bracket-cell::after {
+  content: "";
+  position: absolute;
+  right: -1.5rem;
+  top: 50%;
+  width: 1.5rem;
+  height: 2px;
+  background: var(--border-strong);
+}

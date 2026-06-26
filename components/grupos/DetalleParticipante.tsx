@@ -165,12 +165,21 @@ function FilaPartido({
   const exacto =
     prediccion.goles_local === partido.goles_local &&
     prediccion.goles_visitante === partido.goles_visitante;
+  // Partido eliminatorio (16vos en adelante): acento lateral de color de acento
+  // para diferenciarlo de los de fase de grupos, sin romper las columnas fijas.
+  const esEliminatoria = partido.fase !== "fase_grupos";
 
   return (
     // Columnas fijas (equipo · marcador · equipo · puntos): los marcadores y los
     // badges quedan SIEMPRE en la misma X entre filas, sin importar el largo del
     // nombre. Las dos celdas de equipo son 1fr iguales → marcador centrado.
-    <li className="grid min-h-12 grid-cols-[1fr_auto_1fr_auto] items-center gap-2 px-3 py-2">
+    <li
+      className={cn(
+        "grid min-h-12 grid-cols-[1fr_auto_1fr_auto] items-center gap-2 px-3 py-2",
+        esEliminatoria &&
+          "relative overflow-hidden pl-4 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-accent",
+      )}
+    >
       <LadoCompacto equipo={partido.equipo_local} alineacion="izq" />
       <div className="flex items-stretch gap-1">
         <Marcador

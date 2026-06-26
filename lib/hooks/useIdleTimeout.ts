@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
 import { IDLE_TIMEOUT_MS } from "@/lib/constants";
 
 /**
- * Inactividad: cierre de sesión (idle timeout).
+ * Inactividad: recarga de la página (idle timeout). **NO cierra la sesión** —
+ * tras el umbral de inactividad simplemente recarga la página para refrescar los
+ * datos; la sesión de Supabase se mantiene intacta.
  *
  * Diseño pensado para PWA en iOS/Safari (COMPATIBILIDAD-MOVIL §3.3): NO se cuenta
  * el tiempo con `setTimeout` en segundo plano —WebKit congela el JS al suspender
@@ -17,14 +16,14 @@ import { IDLE_TIMEOUT_MS } from "@/lib/constants";
  *
  *   1. Al reactivarse la app (`pageshow` + `visibilitychange`→visible). Cubre el
  *      caso real más importante: el usuario cerró/minimizó la app y vuelve.
- *   2. Periódicamente mientras está en primer plano (`setInterval`). Cierra
+ *   2. Periódicamente mientras está en primer plano (`setInterval`). Recarga
  *      aunque deje la app abierta y quieta.
  *   3. Al montar (la app pudo estar suspendida más del umbral antes de cargar).
  *
  * La actividad (`pointerdown`, `keydown`, `touchstart`, `scroll`) reinicia el
  * contador, con *throttle* para no escribir en `localStorage` en cada evento.
- * Como la clave es compartida, la actividad y el cierre se propagan entre
- * pestañas vía el evento `storage`.
+ * Como la clave es compartida, la actividad se propaga entre pestañas vía el
+ * evento `storage`.
  */
 
 /** Clave de `localStorage` con el timestamp (ms UTC) de la última actividad. */
@@ -44,7 +43,7 @@ const EVENTOS_ACTIVIDAD = [
   "scroll",
 ] as const;
 
-/** Borra el contador. Llamar al cerrar sesión (evita relogins fantasma). */
+/** Borra el contador. Se llama al cerrar sesión para no arrastrar marcas viejas. */
 export function limpiarUltimaActividad(): void {
   try {
     window.localStorage.removeItem(CLAVE_ULTIMA_ACTIVIDAD);
@@ -59,44 +58,27 @@ type Opciones = {
 };
 
 export function useIdleTimeout({ habilitado }: Opciones) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Evita disparar dos cierres simultáneos.
-  const cerrandoRef = useRef(false);
+  // Evita disparar dos recargas simultáneas.
+  const recargandoRef = useRef(false);
   // Última escritura en localStorage (para el throttle de actividad).
   const ultimaEscrituraRef = useRef(0);
-  // pathname más reciente sin re-suscribir los listeners en cada navegación.
-  const pathnameRef = useRef(pathname);
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
 
-  const cerrarPorInactividad = useCallback(async () => {
-    if (cerrandoRef.current) return;
-    cerrandoRef.current = true;
+  const recargarPorInactividad = useCallback(() => {
+    if (recargandoRef.current) return;
+    recargandoRef.current = true;
 
-    // Señaliza a otras pestañas que la sesión expiró (verán el `storage` event).
+    // Reinicia el contador ANTES de recargar: si no, la página recargada volvería
+    // a leer el timestamp viejo al montar, detectaría inactividad otra vez y
+    // entraría en bucle de recargas. Sembrar `now` le da una ventana nueva.
     try {
-      window.localStorage.setItem(CLAVE_ULTIMA_ACTIVIDAD, "0");
+      window.localStorage.setItem(CLAVE_ULTIMA_ACTIVIDAD, String(Date.now()));
     } catch {
       // se ignora
     }
 
-    const supabase = createClient();
-    await supabase.auth.signOut();
-
-    const destino = pathnameRef.current;
-    const next =
-      destino && destino !== "/login"
-        ? `?next=${encodeURIComponent(destino)}`
-        : "";
-
-    // El Toaster vive en el layout raíz, sobrevive a la navegación cliente.
-    toast.error("Tu sesión se cerró por inactividad. Vuelve a ingresar.");
-    router.replace(`/login${next}`);
-    router.refresh();
-  }, [router]);
+    // Recarga dura: refresca datos y RSC manteniendo la sesión (no signOut).
+    window.location.reload();
+  }, []);
 
   const marcarActividad = useCallback(() => {
     const ahora = Date.now();
@@ -116,33 +98,20 @@ export function useIdleTimeout({ habilitado }: Opciones) {
     } catch {
       return;
     }
-    // 0 = sin marca o señal de cierre de otra pestaña → cerrar también aquí.
-    if (ultima === 0 || Date.now() - ultima >= IDLE_TIMEOUT_MS) {
-      void cerrarPorInactividad();
+    // 0 = sin marca todavía (el efecto la siembra); no recargamos en ese caso.
+    if (ultima !== 0 && Date.now() - ultima >= IDLE_TIMEOUT_MS) {
+      recargarPorInactividad();
     }
-  }, [cerrarPorInactividad]);
+  }, [recargarPorInactividad]);
 
   useEffect(() => {
     if (!habilitado || typeof window === "undefined") return;
 
-    cerrandoRef.current = false;
+    recargandoRef.current = false;
 
-    // Sembrar timestamp inicial cuando NO hay una marca de actividad válida.
-    // Cuenta como inválida tanto la ausencia de clave como el centinela "0"
-    // (el valor que deja `cerrarPorInactividad` al cerrar por inactividad).
-    //
-    // Por qué "0" se siembra acá: al cerrar por inactividad se escribe "0" y se
-    // hace signOut; el borrado de la clave depende del `SIGNED_OUT` de IdleGuard,
-    // que es una carrera y a veces no alcanza a limpiar antes del próximo login.
-    // Si "0" sobrevive, al volver a entrar (habilitado pasa a true) este efecto
-    // re-corre: el usuario ACABA de iniciar sesión → está activo → sembramos en
-    // vez de cerrar. Sin esto, `verificarInactividad` leería "0" y dispararía un
-    // relogin fantasma (mensaje de inactividad apenas se inicia sesión).
-    //
-    // No rompe: (a) el cierre cross-tab va por el evento `storage` en pestañas YA
-    // activas, no por este sembrado; (b) la suspensión real >6h deja un timestamp
-    // viejo (no "0"), que sí se detecta y cierra; (c) el token-refresh no cambia
-    // `habilitado`, así que el efecto no re-corre y no resetea el contador.
+    // Sembrar el timestamp inicial cuando no hay una marca de actividad válida
+    // (ausencia de clave, o un "0" heredado de versiones previas). Así el primer
+    // chequeo arranca desde "ahora" y no dispara una recarga inmediata.
     try {
       const marca = window.localStorage.getItem(CLAVE_ULTIMA_ACTIVIDAD);
       if (!marca || marca === "0") {
@@ -170,7 +139,7 @@ export function useIdleTimeout({ habilitado }: Opciones) {
     window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVisible);
 
-    // Otra pestaña actualizó la actividad o cerró la sesión.
+    // Otra pestaña actualizó la actividad: re-evaluamos por si acá ya venció.
     const onStorage = (e: StorageEvent) => {
       if (e.key === CLAVE_ULTIMA_ACTIVIDAD) verificarInactividad();
     };

@@ -873,6 +873,8 @@ export type Database = {
           nombre_completo: string | null
           nombre_confirmado: boolean
           pwa_instalada_en: string | null
+          razon_ultimo_cierre: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          ultimo_cierre_en: string | null
         }
         Insert: {
           actualizado_en?: string
@@ -883,6 +885,8 @@ export type Database = {
           nombre_completo?: string | null
           nombre_confirmado?: boolean
           pwa_instalada_en?: string | null
+          razon_ultimo_cierre?: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          ultimo_cierre_en?: string | null
         }
         Update: {
           actualizado_en?: string
@@ -893,6 +897,8 @@ export type Database = {
           nombre_completo?: string | null
           nombre_confirmado?: boolean
           pwa_instalada_en?: string | null
+          razon_ultimo_cierre?: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          ultimo_cierre_en?: string | null
         }
         Relationships: []
       }
@@ -1409,6 +1415,29 @@ export type Database = {
           pts: number
         }[]
       }
+      clasificacion_terceros_provisional: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          a_favor: number | null
+          ambiguo_corte: boolean
+          asegurado: boolean
+          clasifica_auto: boolean
+          codigo_iso: string | null
+          cupos: number
+          determinado: boolean
+          dif: number | null
+          eliminado: boolean
+          equipo_id: string | null
+          grupo: string
+          grupo_cerrado: boolean
+          hay_manual: boolean
+          manual_clasifica: boolean
+          nombre: string | null
+          pj: number | null
+          posicion: number
+          pts: number | null
+        }[]
+      }
       crear_grupo: {
         Args: {
           p_descripcion: string
@@ -1693,6 +1722,11 @@ export type Database = {
         | "semifinales"
         | "tercer_lugar"
         | "final"
+      razon_cierre_sesion:
+        | "manual"
+        | "inactividad"
+        | "otro_dispositivo"
+        | "desconocida"
       rol_participante: "admin" | "jugador"
       tipo_definicion: "regular" | "prorroga" | "penales"
     }
@@ -1830,6 +1864,12 @@ export const Constants = {
         "semifinales",
         "tercer_lugar",
         "final",
+      ],
+      razon_cierre_sesion: [
+        "manual",
+        "inactividad",
+        "otro_dispositivo",
+        "desconocida",
       ],
       rol_participante: ["admin", "jugador"],
       tipo_definicion: ["regular", "prorroga", "penales"],

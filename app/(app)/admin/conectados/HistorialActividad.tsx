@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import { History, Monitor, Search, Smartphone, Users, X } from "lucide-react";
 import { AvatarNotion, tintePorNombre } from "@/components/shared/AvatarNotion";
-import type { HistorialActividad as Datos } from "./actions";
+import { cn } from "@/lib/utils";
+import type {
+  HistorialActividad as Datos,
+  RazonCierre,
+} from "./actions";
 
 /** Normaliza para buscar sin distinguir mayúsculas ni acentos (nombres es-CO). */
 function normalizar(s: string): string {
@@ -30,11 +34,34 @@ function formatear(iso: string | null): string {
   return fmtFecha.format(new Date(iso));
 }
 
+/** Etiqueta + color de cada razón de cierre de sesión. */
+const RAZON_UI: Record<RazonCierre, { etiqueta: string; clase: string }> = {
+  manual: { etiqueta: "Manual", clase: "bg-sunken text-fg-muted" },
+  inactividad: { etiqueta: "Inactividad", clase: "bg-amber-50 text-amber-700" },
+  otro_dispositivo: {
+    etiqueta: "Otro dispositivo",
+    clase: "bg-violet-50 text-violet-700",
+  },
+  desconocida: { etiqueta: "Desconocida", clase: "bg-sunken text-fg-subtle" },
+};
+
+/** Un dato etiquetado dentro de la tarjeta de usuario. */
+function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-2xs uppercase tracking-wide text-fg-subtle">
+        {etiqueta}
+      </dt>
+      <dd className="truncate text-xs font-semibold text-fg">{valor}</dd>
+    </div>
+  );
+}
+
 /**
- * Histórico de actividad de todos los usuarios (última conexión y última
- * actividad), ordenado de más reciente a más antiguo. Permite buscar por nombre
- * o correo y filtrar por polla en cliente sobre los datos ya cargados (el
- * universo de usuarios es pequeño).
+ * Histórico de actividad de todos los usuarios: última conexión y actividad
+ * (presencia), y último inicio/cierre de sesión con su razón. Ordenado de más
+ * reciente a más antiguo. Permite buscar por nombre o correo y filtrar por polla
+ * en cliente sobre los datos ya cargados (el universo de usuarios es pequeño).
  */
 export function HistorialActividad({ datos }: { datos: Datos }) {
   const [pollaId, setPollaId] = useState<string>("todas");
@@ -53,12 +80,12 @@ export function HistorialActividad({ datos }: { datos: Datos }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="t-h3 flex items-center gap-2">
+        <h2 className="t-h2 flex items-center gap-2">
           <History className="size-5 text-primary" /> Actividad por usuario
         </h2>
         <p className="t-body-sm mt-1 text-fg-muted">
-          Última conexión y última actividad de cada usuario, de más reciente a
-          más antiguo. Busca por nombre o correo, o filtra por polla.
+          Conexión, actividad e inicio/cierre de sesión de cada usuario, de más
+          reciente a más antiguo. Busca por nombre o correo, o filtra por polla.
         </p>
       </div>
 
@@ -132,43 +159,59 @@ export function HistorialActividad({ datos }: { datos: Datos }) {
         <ul className="grid grid-cols-1 gap-2.5">
           {usuarios.map((u) => {
             const Dispositivo = u.dispositivo === "movil" ? Smartphone : Monitor;
+            const razon = u.razonCierre ? RAZON_UI[u.razonCierre] : null;
             return (
               <li
                 key={u.usuarioId}
-                className="flex items-center gap-3 overflow-hidden rounded-2xl border border-border bg-surface p-3"
+                className="space-y-3 overflow-hidden rounded-2xl border border-border bg-surface p-3.5"
               >
-                <AvatarNotion
-                  nombre={u.nombre}
-                  size="md"
-                  tint={tintePorNombre(u.nombre)}
-                />
-
-                <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-sm font-bold text-fg-strong">
-                      {u.nombre}
-                    </span>
-                    {u.dispositivo && (
-                      <Dispositivo
-                        className="size-3.5 shrink-0 text-fg-subtle"
-                        aria-hidden
-                      />
-                    )}
-                  </p>
-                  <p className="truncate text-xs text-fg-muted">{u.email}</p>
+                <div className="flex items-center gap-3">
+                  <AvatarNotion
+                    nombre={u.nombre}
+                    size="md"
+                    tint={tintePorNombre(u.nombre)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-sm font-bold text-fg-strong">
+                        {u.nombre}
+                      </span>
+                      {u.dispositivo && (
+                        <Dispositivo
+                          className="size-3.5 shrink-0 text-fg-subtle"
+                          aria-hidden
+                        />
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-fg-muted">{u.email}</p>
+                  </div>
                 </div>
 
-                <div className="shrink-0 text-right">
-                  <p className="text-2xs uppercase tracking-wide text-fg-subtle">
-                    Última actividad
-                  </p>
-                  <p className="text-xs font-semibold text-fg">
-                    {formatear(u.ultimaActividad)}
-                  </p>
-                  <p className="mt-0.5 text-2xs text-fg-subtle">
-                    Conexión {formatear(u.ultimaConexion)}
-                  </p>
-                </div>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-3">
+                  <Dato etiqueta="Última actividad" valor={formatear(u.ultimaActividad)} />
+                  <Dato etiqueta="Última conexión" valor={formatear(u.ultimaConexion)} />
+                  <Dato etiqueta="Inició sesión" valor={formatear(u.ultimoLogin)} />
+                  <div className="min-w-0">
+                    <dt className="text-2xs uppercase tracking-wide text-fg-subtle">
+                      Cerró sesión
+                    </dt>
+                    <dd className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-xs font-semibold text-fg">
+                        {formatear(u.ultimoCierre)}
+                      </span>
+                      {razon && (
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-pill px-1.5 py-0.5 text-2xs font-semibold",
+                            razon.clase,
+                          )}
+                        >
+                          {razon.etiqueta}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
               </li>
             );
           })}

@@ -15,6 +15,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { registrarCierreSesion } from "@/lib/auth/eventos-sesion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
@@ -60,6 +61,8 @@ export function AccionesPerfil({
   async function cerrarSesion() {
     setSaliendo(true);
     const supabase = createClient();
+    // Registra el cierre (razón "manual") ANTES de signOut, mientras hay sesión.
+    await registrarCierreSesion("manual");
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("No se pudo cerrar la sesión. Intenta de nuevo.");

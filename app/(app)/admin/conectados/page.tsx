@@ -41,8 +41,8 @@ export default async function AdminConectadosPage() {
         </p>
         <h1 className="t-display mt-1.5">Usuarios conectados</h1>
         <p className="t-body-sm mt-1.5 text-fg-muted">
-          Quién está en la app ahora mismo, en qué sección y desde qué
-          dispositivo. Se actualiza solo cada pocos segundos.
+          Presencia en vivo, instalaciones de la app y actividad de cada
+          usuario, todo en un solo lugar.
         </p>
       </header>
 
