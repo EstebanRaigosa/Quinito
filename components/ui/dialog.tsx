@@ -44,8 +44,15 @@ function CierreConAtras({ cerrar }: { cerrar: () => void }) {
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, style, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /**
+     * Oculta visualmente la X de cerrar (la modal se cierra con sus propios
+     * botones, el overlay o Escape). El botón sigue en el DOM —solo `sr-only`—
+     * para no romper el cierre con "atrás", que lo clickea de forma programática.
+     */
+    hideClose?: boolean;
+  }
+>(({ className, children, style, hideClose, ...props }, ref) => {
   // Reposiciona el modal sobre el área visible cuando el teclado virtual está
   // abierto. Ver useViewportModal / COMPATIBILIDAD-MOVIL §4.1.
   const estiloViewport = useViewportModal();
@@ -60,7 +67,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       style={{ ...estiloViewport, ...style }}
       className={cn(
-        "fixed left-1/2 top-1/2 z-[400] grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto scroll-touch rounded-2xl border border-border bg-card p-5 shadow-xl",
+        "fixed left-1/2 top-1/2 z-[400] grid max-h-[var(--modal-max-h)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto scroll-touch rounded-2xl border border-border bg-card p-5 shadow-xl",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
@@ -70,7 +77,11 @@ const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close
         ref={cerrarRef}
-        className="absolute right-2 top-2 grid size-11 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          hideClose
+            ? "sr-only"
+            : "absolute right-2 top-2 grid size-11 place-items-center rounded-md text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        )}
       >
         <X className="size-5" />
         <span className="sr-only">Cerrar</span>

@@ -24,6 +24,15 @@ export type MovimientoAuditoria = {
   goles_visitante_anterior: number | null;
   goles_local_nuevo: number | null;
   goles_visitante_nuevo: number | null;
+  /**
+   * Equipo que el usuario marcó como "el que avanza" en un empate de fase
+   * eliminatoria (nombre + ISO para la bandera). Anterior → nuevo, en paralelo al
+   * marcador. Null cuando no aplica (no es empate eliminatorio o no se eligió).
+   */
+  equipo_avanza_anterior_nombre: string | null;
+  equipo_avanza_anterior_iso: string | null;
+  equipo_avanza_nuevo_nombre: string | null;
+  equipo_avanza_nuevo_iso: string | null;
   actor_id: string | null;
   actor_nombre: string | null;
   actor_es_admin: boolean;

@@ -416,6 +416,18 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
 }
 
+/* Alto máximo de un modal centrado. Se usa como `max-h-[var(--modal-max-h)]`
+   (arbitrary → tailwind-merge lo dedupea bien si un modal lo sobreescribe).
+   Default `vh` (iOS < 15.4 sin soporte de dvh); con dvh disponible, lo prefiere. */
+:root {
+  --modal-max-h: calc(100vh - 2rem);
+}
+@supports (height: 100dvh) {
+  :root {
+    --modal-max-h: calc(100dvh - 2rem);
+  }
+}
+
 /* ============================================================
    AJUSTES ESPECÍFICOS DE iOS / SAFARI (WebKit)
    `-webkit-touch-callout: none` es un proxy fiable de "es Safari/iOS"

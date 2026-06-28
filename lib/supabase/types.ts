@@ -87,58 +87,6 @@ export type Database = {
           },
         ]
       }
-      tblComprobantes: {
-        Row: {
-          abono_id: string
-          codigo: string
-          creado_en: string
-          grupo_id: string
-          id: string
-          monto: number
-          participante_id: string
-        }
-        Insert: {
-          abono_id: string
-          codigo: string
-          creado_en?: string
-          grupo_id: string
-          id?: string
-          monto: number
-          participante_id: string
-        }
-        Update: {
-          abono_id?: string
-          codigo?: string
-          creado_en?: string
-          grupo_id?: string
-          id?: string
-          monto?: number
-          participante_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tblComprobantes_abono_id_fkey"
-            columns: ["abono_id"]
-            isOneToOne: true
-            referencedRelation: "tblAbonos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tblComprobantes_grupo_id_fkey"
-            columns: ["grupo_id"]
-            isOneToOne: false
-            referencedRelation: "tblGrupos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tblComprobantes_participante_id_fkey"
-            columns: ["participante_id"]
-            isOneToOne: false
-            referencedRelation: "tblParticipantes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tblAsignacionTercerosSlot: {
         Row: {
           combinacion_grupos: string
@@ -282,6 +230,72 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tblTorneos"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      tblComprobantes: {
+        Row: {
+          abono_id: string
+          codigo: string
+          creado_en: string
+          grupo_id: string
+          id: string
+          monto: number
+          participante_id: string
+        }
+        Insert: {
+          abono_id: string
+          codigo: string
+          creado_en?: string
+          grupo_id: string
+          id?: string
+          monto: number
+          participante_id: string
+        }
+        Update: {
+          abono_id?: string
+          codigo?: string
+          creado_en?: string
+          grupo_id?: string
+          id?: string
+          monto?: number
+          participante_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tblComprobantes_abono_id_fkey"
+            columns: ["abono_id"]
+            isOneToOne: true
+            referencedRelation: "tblAbonos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "tblGrupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "tblParticipantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwPrediccionesGrupoPartido"
+            referencedColumns: ["participante_id"]
+          },
+          {
+            foreignKeyName: "tblComprobantes_participante_id_fkey"
+            columns: ["participante_id"]
+            isOneToOne: false
+            referencedRelation: "vwTablaPosiciones"
+            referencedColumns: ["participante_id"]
           },
         ]
       }
@@ -848,6 +862,8 @@ export type Database = {
           actor_id: string | null
           actor_nombre: string | null
           creado_en: string
+          equipo_avanza_anterior: string | null
+          equipo_avanza_nuevo: string | null
           goles_local_anterior: number | null
           goles_local_nuevo: number | null
           goles_visitante_anterior: number | null
@@ -865,6 +881,8 @@ export type Database = {
           actor_id?: string | null
           actor_nombre?: string | null
           creado_en?: string
+          equipo_avanza_anterior?: string | null
+          equipo_avanza_nuevo?: string | null
           goles_local_anterior?: number | null
           goles_local_nuevo?: number | null
           goles_visitante_anterior?: number | null
@@ -882,6 +900,8 @@ export type Database = {
           actor_id?: string | null
           actor_nombre?: string | null
           creado_en?: string
+          equipo_avanza_anterior?: string | null
+          equipo_avanza_nuevo?: string | null
           goles_local_anterior?: number | null
           goles_local_nuevo?: number | null
           goles_visitante_anterior?: number | null
@@ -905,7 +925,9 @@ export type Database = {
           nombre_completo: string | null
           nombre_confirmado: boolean
           pwa_instalada_en: string | null
-          razon_ultimo_cierre: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          razon_ultimo_cierre:
+            | Database["public"]["Enums"]["razon_cierre_sesion"]
+            | null
           ultimo_cierre_en: string | null
         }
         Insert: {
@@ -917,7 +939,9 @@ export type Database = {
           nombre_completo?: string | null
           nombre_confirmado?: boolean
           pwa_instalada_en?: string | null
-          razon_ultimo_cierre?: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          razon_ultimo_cierre?:
+            | Database["public"]["Enums"]["razon_cierre_sesion"]
+            | null
           ultimo_cierre_en?: string | null
         }
         Update: {
@@ -929,7 +953,9 @@ export type Database = {
           nombre_completo?: string | null
           nombre_confirmado?: boolean
           pwa_instalada_en?: string | null
-          razon_ultimo_cierre?: Database["public"]["Enums"]["razon_cierre_sesion"] | null
+          razon_ultimo_cierre?:
+            | Database["public"]["Enums"]["razon_cierre_sesion"]
+            | null
           ultimo_cierre_en?: string | null
         }
         Relationships: []
@@ -1424,6 +1450,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      asignacion_terceros_actual: {
+        Args: { p_torneo_id: string }
+        Returns: {
+          es_manual: boolean
+          es_provisional: boolean
+          grupo: string
+          numero_partido: number
+        }[]
+      }
+      buscar_comprobante: {
+        Args: { p_codigo: string }
+        Returns: {
+          codigo: string
+          creado_en: string
+          grupo_id: string
+          grupo_nombre: string
+          metodo: string
+          monto: number
+          pagado: boolean
+          participante_nombre: string
+          total_abonado: number
+          valor_apuesta: number
+        }[]
+      }
       buscar_grupo: {
         Args: { p_codigo: string }
         Returns: {
@@ -1447,36 +1497,27 @@ export type Database = {
           pts: number
         }[]
       }
-      asignacion_terceros_actual: {
-        Args: { p_torneo_id: string }
-        Returns: {
-          grupo: string
-          numero_partido: number | null
-          es_manual: boolean
-          es_provisional: boolean
-        }[]
-      }
       clasificacion_terceros_provisional: {
         Args: { p_torneo_id: string }
         Returns: {
-          a_favor: number | null
+          a_favor: number
           ambiguo_corte: boolean
           asegurado: boolean
           clasifica_auto: boolean
-          codigo_iso: string | null
+          codigo_iso: string
           cupos: number
           determinado: boolean
-          dif: number | null
+          dif: number
           eliminado: boolean
-          equipo_id: string | null
+          equipo_id: string
           grupo: string
           grupo_cerrado: boolean
           hay_manual: boolean
           manual_clasifica: boolean
-          nombre: string | null
-          pj: number | null
+          nombre: string
+          pj: number
           posicion: number
-          pts: number | null
+          pts: number
         }[]
       }
       crear_grupo: {
@@ -1535,6 +1576,7 @@ export type Database = {
         Args: { p_ganador: boolean; p_numero: number; p_torneo_id: string }
         Returns: string
       }
+      gen_codigo_comprobante: { Args: never; Returns: string }
       generar_codigo_invitacion: { Args: never; Returns: string }
       gestionar_participante: {
         Args: { p_banear: boolean; p_participante_id: string }
@@ -1542,25 +1584,6 @@ export type Database = {
       }
       grupo_detalle: { Args: { p_grupo_id: string }; Returns: Json }
       inicio_extras: { Args: { p_desde: string }; Returns: Json }
-      buscar_comprobante: {
-        Args: { p_codigo: string }
-        Returns: {
-          codigo: string
-          creado_en: string
-          grupo_id: string
-          grupo_nombre: string
-          metodo: string
-          monto: number
-          pagado: boolean
-          participante_nombre: string
-          total_abonado: number
-          valor_apuesta: number
-        }[]
-      }
-      gen_codigo_comprobante: {
-        Args: never
-        Returns: string
-      }
       listar_abonos: {
         Args: { p_participante_id: string }
         Returns: {
@@ -1695,10 +1718,10 @@ export type Database = {
       }
       registrar_abono: {
         Args: {
+          p_fecha?: string
           p_monto: number
           p_nota: string
           p_participante_id: string
-          p_fecha?: string
         }
         Returns: string
       }

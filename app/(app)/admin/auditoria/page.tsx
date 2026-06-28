@@ -44,7 +44,7 @@ export default async function AdminAuditoriaPage() {
           {pollas.map((p) => (
             <Link
               key={p.id}
-              href={`/admin/auditoria/${p.id}`}
+              href={`/admin/auditoria/${p.id}?nombre=${encodeURIComponent(p.nombre)}`}
               className="surface-card hover-lift flex items-center gap-3 rounded-2xl p-4"
             >
               <AvatarGrupo nombre={p.nombre} size="lg" className="ring-2 ring-app" />

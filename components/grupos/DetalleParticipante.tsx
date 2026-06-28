@@ -1,7 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Award, Download, ListChecks, Loader2, Target } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowDownUp,
+  Award,
+  Download,
+  ListChecks,
+  Loader2,
+  Target,
+} from "lucide-react";
 import { toast } from "sonner";
 import type {
   FaseTorneo,
@@ -16,6 +23,7 @@ import {
   usePrediccionesParticipante,
 } from "@/lib/queries/predicciones-participante";
 import { agruparPorDia, formatearFechaLarga } from "@/lib/utils/fechas";
+import { dentroVentanaAnuncio } from "@/lib/utils/ventana-anuncios";
 import { exportarDetalleParticipante } from "@/lib/utils/exportar-puntos";
 import { cn } from "@/lib/utils";
 import { AvatarNotion } from "@/components/shared/AvatarNotion";
@@ -206,6 +214,87 @@ function FilaPartido({
   );
 }
 
+/**
+ * Avisito (máx 2 veces POR POLLA, y solo dentro de la ventana de anuncios —mismo
+ * rango que la modal de eliminatorias—) que informa el nuevo orden del detalle:
+ * los partidos más recientes primero. Es un overlay DENTRO del Sheet —no un Dialog
+ * anidado, que en iOS pelea con el overlay/scroll-lock del Sheet (§4)—. Se monta
+ * al abrir el detalle (Radix monta/desmonta el Content con `open`), así que su
+ * efecto corre una vez por apertura. Entra con rebote + brillo; respeta
+ * `prefers-reduced-motion`.
+ */
+function AvisoOrdenReciente({ grupoId }: { grupoId: string }) {
+  const [visible, setVisible] = useState(false);
+  const clave = `pll:aviso-orden-reciente:v1:${grupoId}:vistas`;
+
+  useEffect(() => {
+    // Solo dentro de la ventana de anuncios (mismo rango que la modal de
+    // eliminatorias). Compara instantes UTC → no depende de la zona del navegador.
+    if (!dentroVentanaAnuncio(Date.now())) return;
+    let vistas = 2; // si no podemos leer storage (Safari privado), no insistimos
+    try {
+      vistas = Number(localStorage.getItem(clave)) || 0;
+    } catch {
+      vistas = 2;
+    }
+    if (vistas >= 2) return;
+    // Deja que el Sheet termine de abrir antes de aparecer (se siente mejor).
+    const t = setTimeout(() => {
+      setVisible(true);
+      // Cuenta esta aparición. Releemos el valor fresco para no pisar concurrencia.
+      try {
+        const previas = Number(localStorage.getItem(clave)) || 0;
+        localStorage.setItem(clave, String(previas + 1));
+      } catch {
+        // Si no se puede persistir, igual lo mostramos.
+      }
+    }, 480);
+    return () => clearTimeout(t);
+  }, [clave]);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="absolute inset-0 z-30 grid animate-fade-in place-items-center rounded-t-2xl bg-clay-900/60 p-5 sm:rounded-2xl"
+      onClick={() => setVisible(false)}
+    >
+      <div
+        className="w-full max-w-xs animate-pop rounded-2xl border border-border bg-card p-5 text-center shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Mini-demo: el partido "más reciente" entra por abajo y sube al tope
+            de la lista, en bucle. Muestra el cambio de orden de un vistazo. */}
+        <div className="relative mx-auto mb-3 h-[4.75rem] w-40 overflow-hidden rounded-xl bg-sunken ring-1 ring-inset ring-border">
+          {/* Filas "anteriores" (estáticas, atenuadas) */}
+          <span className="absolute inset-x-2 top-7 h-4 rounded-md bg-border" />
+          <span className="absolute inset-x-2 top-[3.25rem] h-4 rounded-md bg-border" />
+          {/* Fila "más reciente": sube de abajo hacia el tope */}
+          <span className="absolute inset-x-2 top-1 flex h-4 items-center gap-1 rounded-md bg-primary px-1.5 shadow-sm motion-safe:animate-sube-reciente">
+            <ArrowDownUp
+              className="size-2.5 shrink-0 text-primary-foreground"
+              aria-hidden
+            />
+            <span className="h-1 flex-1 rounded-full bg-primary-foreground" />
+          </span>
+        </div>
+        <span className="mb-2 inline-block rounded-pill bg-primary px-2.5 py-0.5 text-2xs font-extrabold uppercase tracking-wide text-primary-foreground">
+          Nuevo
+        </span>
+        <h3 className="text-base font-black text-fg-strong">
+          Los partidos más recientes primero
+        </h3>
+        <p className="mt-1 text-sm text-fg-muted">
+          Ahora verás los partidos más recientes arriba y los anteriores abajo.
+        </p>
+        <Button onClick={() => setVisible(false)} className="mt-4 w-full">
+          ¡Entendido!
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DetalleParticipante({
   abierto,
   onOpenChange,
@@ -283,10 +372,17 @@ export function DetalleParticipante({
       );
   }, [data, fila, partidoPorId]);
 
+  // Para mostrar: los partidos más recientes primero (los anteriores, abajo).
+  // `items` viene ascendente (el export lo usa en cronología); aquí invertimos una
+  // copia. Como `agruparPorDia` conserva el orden de entrada, los días salen del
+  // más reciente al más antiguo y, dentro de cada día, también recientes primero.
   const dias = useMemo(
     () =>
       agruparPorDia(
-        items.map((it) => ({ ...it, fecha_hora: it.partido.fecha_hora })),
+        items
+          .slice()
+          .reverse()
+          .map((it) => ({ ...it, fecha_hora: it.partido.fecha_hora })),
       ),
     [items],
   );
@@ -483,6 +579,9 @@ export function DetalleParticipante({
                 </div>
               )}
             </div>
+
+            {/* Avisito del nuevo orden (máx 2 veces por polla), sobre el detalle. */}
+            <AvisoOrdenReciente grupoId={grupoId} />
           </>
         )}
       </SheetContent>

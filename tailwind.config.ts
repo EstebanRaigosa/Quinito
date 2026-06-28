@@ -227,6 +227,46 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translate3d(100%, 0, 0)" },
         },
+        // ── Celebración: aviso "inician las eliminatorias" ──
+        // Rayos radiales que giran muy lento detrás del trofeo (premium, sutil).
+        "giro-lento": {
+          to: { transform: "rotate(360deg)" },
+        },
+        // Entrada con impacto + rebote (slam) para trofeo y título.
+        "impacto-pop": {
+          "0%": { opacity: "0", transform: "scale3d(0, 0, 1) rotate(-18deg)" },
+          "55%": { opacity: "1", transform: "scale3d(1.16, 1.16, 1) rotate(6deg)" },
+          "75%": { transform: "scale3d(0.95, 0.95, 1) rotate(-2deg)" },
+          "100%": { opacity: "1", transform: "scale3d(1, 1, 1) rotate(0deg)" },
+        },
+        // Entradas laterales (dos vías que llegan de lados opuestos).
+        "entra-izq": {
+          from: { opacity: "0", transform: "translate3d(-26px, 0, 0)" },
+          to: { opacity: "1", transform: "translate3d(0, 0, 0)" },
+        },
+        "entra-der": {
+          from: { opacity: "0", transform: "translate3d(26px, 0, 0)" },
+          to: { opacity: "1", transform: "translate3d(0, 0, 0)" },
+        },
+        // Confeti que cae una sola vez al abrir el aviso.
+        confeti: {
+          "0%": { opacity: "0", transform: "translate3d(0, -120%, 0) rotate(0deg)" },
+          "12%": { opacity: "1" },
+          "100%": {
+            opacity: "0",
+            transform: "translate3d(0, 340px, 0) rotate(720deg)",
+          },
+        },
+        // Demo del avisito de orden: la fila "más reciente" entra por abajo y
+        // sube al tope de la lista, se mantiene un momento y reinicia.
+        "sube-reciente": {
+          "0%": { transform: "translate3d(0, 48px, 0)", opacity: "0" },
+          "12%": { opacity: "1" },
+          "46%": { transform: "translate3d(0, 0, 0)", opacity: "1" },
+          "74%": { transform: "translate3d(0, 0, 0)", opacity: "1" },
+          "88%": { opacity: "0" },
+          "100%": { transform: "translate3d(0, 48px, 0)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -242,6 +282,13 @@ const config: Config = {
         "latido-atencion": "latido-atencion 1.4s ease-in-out infinite",
         float: "float 7s ease-in-out infinite",
         shimmer: "shimmer 1.6s infinite",
+        // Celebración (aviso de eliminatorias).
+        "giro-lento": "giro-lento 16s linear infinite",
+        "impacto-pop": "impacto-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        confeti: "confeti 1.7s cubic-bezier(0.3, 0.7, 0.4, 1) forwards",
+        "entra-izq": "entra-izq 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "entra-der": "entra-der 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "sube-reciente": "sube-reciente 2.6s ease-in-out infinite",
       },
     },
   },

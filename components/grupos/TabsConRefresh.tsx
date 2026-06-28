@@ -11,17 +11,18 @@ import { RecorridoArranque } from "@/components/grupos/RecorridoArranque";
 const PESTANAS_CON_DATOS_VIVOS = new Set(["jugar", "partidos", "tabla"]);
 
 /**
- * Ventana de frescura: tras un render del servidor, los datos vivos (marcadores,
- * tabla) se consideran frescos por este tiempo. Entrar a una pestaña dentro de la
- * ventana NO dispara `router.refresh()`, así la página no "se recarga a media
- * lectura" mientras el usuario cambia de pestaña o hace scroll. Pasada la ventana,
- * la próxima entrada a una pestaña viva refresca una vez.
+ * Anti-rebote del refresco por clic. Al ENTRAR a una pestaña con datos vivos
+ * (Predecir, Partidos, Tabla) disparamos un `router.refresh()` SILENCIOSO
+ * —transición no bloqueante: no recarga la página, no reinicia el scroll ni el
+ * marcador que estés escribiendo— para que la info no quede "pegada" cuando
+ * alguien más predijo o cambió un resultado mientras la página seguía abierta.
  *
- * Esto NO sacrifica liveness: los cambios reales en vivo (un marcador que carga el
- * admin, el paso a "En juego") llegan igual por `RealtimePartidos` y el cierre por
- * tiempo por `AutoRefrescoCierre`, ambos independientes de este refresco por clic.
+ * Este margen es solo un dedupe: evita un doble disparo si se togglea la pestaña
+ * muy rápido. (Antes era una ventana de 60s que retenía los datos viejos al
+ * volver a "Predecir"; el usuario esperaba ver fresco al entrar.) La liveness del
+ * partido en sí la cubren `RealtimePartidos` y `AutoRefrescoCierre`.
  */
-const FRESCURA_MS = 60_000;
+const DEDUPE_REFRESCO_MS = 2_000;
 
 /** Nombre legible de cada pestaña para el panel de presencia (admin). */
 const ETIQUETA_PESTANA: Record<string, string> = {
@@ -145,13 +146,15 @@ export function TabsConRefresh({
           desplazarAlTope();
           // Cambiar de pestaña a mano cancela el recorrido guiado en curso.
           if (tourArranque) setTourArranque(false);
-          // Solo refrescamos al entrar a una pestaña viva si los datos ya están
-          // "viejos" (fuera de la ventana de frescura). Así, navegar entre
-          // pestañas o hacer scroll recién cargada la página NO dispara una
-          // recarga a media lectura. La liveness real la cubre `RealtimePartidos`.
+          // Al entrar a una pestaña con datos vivos refrescamos en silencio para
+          // que la info esté al día (p. ej. alguien más predijo, o predijiste en
+          // otro dispositivo). El dedupe corto solo evita el doble disparo de un
+          // toggle muy rápido; `router.refresh()` no recarga la página ni reinicia
+          // scroll/inputs. RealtimePartidos/AutoRefrescoCierre siguen cubriendo
+          // los cambios en vivo del partido.
           if (
             PESTANAS_CON_DATOS_VIVOS.has(valor) &&
-            Date.now() - ultimoFrescoRef.current > FRESCURA_MS
+            Date.now() - ultimoFrescoRef.current > DEDUPE_REFRESCO_MS
           ) {
             ultimoFrescoRef.current = Date.now();
             startTransition(() => router.refresh());

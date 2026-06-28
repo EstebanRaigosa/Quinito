@@ -18,6 +18,7 @@ import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import {
+  bonoDeFase,
   cerradoAlCrear,
   compararPartidos,
   esSinCierre,
@@ -51,7 +52,15 @@ import { TarjetaPrediccion } from "@/components/partidos/TarjetaPrediccion";
 import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
 import { PildoraInfo } from "@/components/grupos/PildoraInfo";
-import type { BonoFase, Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
+import { ModalEliminacionDirecta } from "@/components/grupos/ModalEliminacionDirecta";
+import { ETIQUETA_FASE } from "@/lib/types/dominio";
+import type {
+  BonoFase,
+  FaseTorneo,
+  Partido,
+  Prediccion,
+  ReglasGrupo,
+} from "@/lib/types/dominio";
 
 /**
  * Paneles SOLO de admin, cargados bajo demanda. Con import estático su JS
@@ -668,6 +677,21 @@ export default async function GrupoDetallePage({
         }))
     : [];
 
+  // Fases de eliminación directa que ESTA polla apuesta, con su bono configurado.
+  // Solo si hay al menos una, mostramos el aviso de "inician las eliminatorias"
+  // (las pollas que apuestan únicamente fase de grupos no lo necesitan).
+  const FASES_ELIMINACION: readonly FaseTorneo[] = [
+    "dieciseisavos",
+    "octavos",
+    "cuartos",
+    "semifinales",
+    "final",
+  ];
+  const fasesPresentes = new Set<FaseTorneo>(partidos.map((p) => p.fase));
+  const bonosEliminacion = FASES_ELIMINACION.filter((f) =>
+    fasesPresentes.has(f),
+  ).map((f) => ({ etiqueta: ETIQUETA_FASE[f], monto: bonoDeFase(reglas, f) }));
+
   return (
     <PageContainer ancho="ancho">
       {/* Refresca la página sola en el instante en que se cierre el próximo
@@ -675,6 +699,12 @@ export default async function GrupoDetallePage({
       <AutoRefrescoCierre proximoCierre={proximoCierre} />
       {/* "En vivo": refresca cuando cambia marcador/estado de un partido. */}
       <RealtimePartidos torneoIds={torneoIds} />
+
+      {/* Aviso de bienvenida (hasta 2 veces por usuario y por polla, dentro de
+          su ventana horaria): reglas de eliminación directa. */}
+      {bonosEliminacion.length > 0 && (
+        <ModalEliminacionDirecta grupoId={grupo.id} bonos={bonosEliminacion} />
+      )}
 
       {/* Cabecera del grupo (bento) */}
       <div className="mb-5 animate-fade-up">

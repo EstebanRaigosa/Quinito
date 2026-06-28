@@ -9,6 +9,7 @@ import {
   Search,
   ShieldAlert,
   SlidersHorizontal,
+  Trophy,
   X,
 } from "lucide-react";
 import type { MovimientoAuditoria } from "@/lib/queries/auditoria";
@@ -60,6 +61,8 @@ type Expediente = {
   movimientos: MovimientoAuditoria[];
   /** Marcador vigente; null si la predicción fue eliminada. */
   actual: { local: number; visitante: number } | null;
+  /** Equipo elegido para avanzar en empate eliminatorio (vigente); null si no aplica. */
+  avanceActual: { nombre: string; iso: string | null } | null;
   numModificaciones: number;
   ultimaFecha: string;
 };
@@ -101,6 +104,17 @@ function agruparEnExpedientes(movs: MovimientoAuditoria[]): Expediente[] {
               visitante: reciente.goles_visitante_nuevo,
             }
           : null;
+    // Avance vigente (solo aplica en empates eliminatorios). Si la predicción
+    // fue eliminada, ya no hay avance que mostrar.
+    const avanceActual =
+      reciente.accion === "delete"
+        ? null
+        : reciente.equipo_avanza_nuevo_nombre
+          ? {
+              nombre: reciente.equipo_avanza_nuevo_nombre,
+              iso: reciente.equipo_avanza_nuevo_iso,
+            }
+          : null;
     expedientes.push({
       key,
       usuario_id: reciente.usuario_id,
@@ -113,6 +127,7 @@ function agruparEnExpedientes(movs: MovimientoAuditoria[]): Expediente[] {
       visitante_iso: reciente.equipo_visitante_iso,
       movimientos: lista,
       actual,
+      avanceActual,
       numModificaciones: lista.filter((m) => m.accion === "update").length,
       ultimaFecha: reciente.creado_en,
     });
@@ -288,13 +303,13 @@ export function AuditoriaPolla({ movimientos }: Props) {
           )}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="flex flex-col gap-1">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="flex min-w-0 flex-col gap-1">
             <span className="t-caption text-fg-muted">Usuario</span>
             <select
               value={usuarioId}
               onChange={(e) => setUsuarioId(e.target.value)}
-              className="h-11 rounded-xl border border-border bg-surface px-3 text-base text-fg-strong"
+              className="h-11 w-full min-w-0 truncate rounded-xl border border-border bg-surface px-3 text-base text-fg-strong"
             >
               <option value={TODOS}>Todos los usuarios ({usuarios.length})</option>
               {usuarios.map((u) => (
@@ -305,12 +320,12 @@ export function AuditoriaPolla({ movimientos }: Props) {
             </select>
           </label>
 
-          <label className="flex flex-col gap-1">
+          <label className="flex min-w-0 flex-col gap-1">
             <span className="t-caption text-fg-muted">Partido</span>
             <select
               value={partidoId}
               onChange={(e) => setPartidoId(e.target.value)}
-              className="h-11 rounded-xl border border-border bg-surface px-3 text-base text-fg-strong"
+              className="h-11 w-full min-w-0 truncate rounded-xl border border-border bg-surface px-3 text-base text-fg-strong"
             >
               <option value={TODOS}>Todos los partidos ({partidos.length})</option>
               {partidos.map((p) => (
@@ -518,6 +533,16 @@ function ExpedienteCard({ e }: { e: Expediente }) {
             ) : (
               <span className="t-caption text-fg-subtle">Sin modificaciones</span>
             )}
+
+            {/* Equipo elegido para avanzar en empate eliminatorio */}
+            {e.avanceActual && (
+              <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-sunken px-2 py-0.5 text-2xs font-bold text-fg-strong">
+                <Trophy className="size-3 shrink-0 text-primary" aria-hidden />
+                Pasa
+                <Flag code={e.avanceActual.iso} size={12} className="shrink-0" />
+                <span className="min-w-0 truncate">{e.avanceActual.nombre}</span>
+              </span>
+            )}
           </div>
 
           {/* Fecha del último movimiento (mismo valor con que se ordena la lista). */}
@@ -637,6 +662,84 @@ function ChipMarcador({
   );
 }
 
+/** Chip del equipo que el usuario marcó para avanzar (bandera · nombre). */
+function ChipAvance({
+  nombre,
+  iso,
+  tachado,
+}: {
+  nombre: string;
+  iso: string | null;
+  tachado?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md bg-sunken px-1.5 py-0.5 font-semibold",
+        tachado ? "text-fg-muted line-through" : "text-fg-strong",
+      )}
+    >
+      <Flag code={iso} size={12} className="shrink-0" />
+      {nombre}
+    </span>
+  );
+}
+
+/**
+ * Línea de "equipo que pasa de ronda" para un movimiento. Solo aparece en
+ * empates de fase eliminatoria, donde el usuario elige quién avanza. Muestra el
+ * cambio anterior → nuevo en los UPDATE y el estado vigente en el resto.
+ */
+function AvanceMovimiento({ m }: { m: MovimientoAuditoria }) {
+  const anterior = m.equipo_avanza_anterior_nombre;
+  const nuevo = m.equipo_avanza_nuevo_nombre;
+
+  // Nada que mostrar si este movimiento no involucró un equipo de avance.
+  if (!anterior && !nuevo) return null;
+
+  // Predicción eliminada: mostramos lo que pasaba (tachado).
+  if (m.accion === "delete") {
+    return (
+      <p className="t-caption mt-1 inline-flex flex-wrap items-center gap-1 text-fg-muted">
+        <Trophy className="size-3 text-destructive" aria-hidden />
+        Pasaba:
+        <ChipAvance nombre={anterior!} iso={m.equipo_avanza_anterior_iso} tachado />
+      </p>
+    );
+  }
+
+  // UPDATE que cambió el equipo de avance: anterior → nuevo.
+  if (m.accion === "update" && anterior !== nuevo) {
+    return (
+      <p className="t-caption mt-1 inline-flex flex-wrap items-center gap-1 text-fg-muted">
+        <Trophy className="size-3 text-primary" aria-hidden />
+        Pasa de ronda:
+        {anterior ? (
+          <ChipAvance nombre={anterior} iso={m.equipo_avanza_anterior_iso} tachado />
+        ) : (
+          <span className="text-fg-subtle">sin elegir</span>
+        )}
+        <span aria-hidden>→</span>
+        {nuevo ? (
+          <ChipAvance nombre={nuevo} iso={m.equipo_avanza_nuevo_iso} />
+        ) : (
+          <span className="text-fg-subtle">sin elegir</span>
+        )}
+      </p>
+    );
+  }
+
+  // Estado vigente (insert / inicial / update sin cambio de avance).
+  if (!nuevo) return null;
+  return (
+    <p className="t-caption mt-1 inline-flex flex-wrap items-center gap-1 text-fg-muted">
+      <Trophy className="size-3 text-primary" aria-hidden />
+      Pasa de ronda:
+      <ChipAvance nombre={nuevo} iso={m.equipo_avanza_nuevo_iso} />
+    </p>
+  );
+}
+
 /** Un paso de la evolución (un movimiento) dentro del historial. */
 function PasoEvolucion({
   m,
@@ -717,6 +820,9 @@ function PasoEvolucion({
             />
           )}
         </div>
+
+        {/* Equipo que el usuario decidió que avanza (solo empates eliminatorios). */}
+        <AvanceMovimiento m={m} />
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className="t-caption inline-flex items-center gap-1 text-fg-muted">
