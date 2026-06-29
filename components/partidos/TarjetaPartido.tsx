@@ -1,9 +1,10 @@
 import { Ban, BarChart3, Clock } from "lucide-react";
 import type { Partido, Prediccion, ReglasGrupo } from "@/lib/types/dominio";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
-import { prediccionCerrada } from "@/lib/utils/prediccion";
+import { prediccionCerrada, equipoQueAvanza } from "@/lib/utils/prediccion";
 import { cn } from "@/lib/utils";
 import { Flag } from "@/components/shared/Flag";
+import { MarcaAvance } from "@/components/partidos/MarcaAvance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,12 +205,23 @@ export function TarjetaPartido({
       <DefinicionPartido partido={partido} className="mt-2.5" />
 
       {miPrediccion ? (
-        <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2.5 text-2xs">
-          <span className="text-fg-muted">
+        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border pt-2.5 text-2xs">
+          <span className="min-w-0 text-fg-muted">
             Tu predicción:{" "}
             <span className="font-bold tabular-nums text-fg-strong">
               {miPrediccion.goles_local} - {miPrediccion.goles_visitante}
             </span>
+            {(() => {
+              // Empate en eliminatoria: además del marcador, a quién marcó para
+              // pasar (con su bandera).
+              const avanza = equipoQueAvanza(partido, miPrediccion);
+              return avanza ? (
+                <>
+                  {" · "}
+                  <MarcaAvance equipo={avanza} fase={partido.fase} size={14} />
+                </>
+              ) : null;
+            })()}
           </span>
           {finalizado && (
             <PuntajeDesglose

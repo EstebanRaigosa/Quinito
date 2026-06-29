@@ -1,4 +1,9 @@
-import type { FaseTorneo, Partido, ReglasGrupo } from "@/lib/types/dominio";
+import type {
+  Equipo,
+  FaseTorneo,
+  Partido,
+  ReglasGrupo,
+} from "@/lib/types/dominio";
 
 /**
  * Fecha centinela "sin cierre": un partido con `fecha_hora` anterior a 1901
@@ -144,6 +149,66 @@ const FASES_CON_AVANCE: readonly FaseTorneo[] = [
 /** ¿Esta fase define un equipo que avanza (y por tanto requiere desempate al predecir empate)? */
 export function faseTieneAvance(fase: FaseTorneo): boolean {
   return FASES_CON_AVANCE.includes(fase);
+}
+
+/**
+ * Equipo que una predicción marca como "el que pasa" cuando es un empate en fase
+ * eliminatoria. Resuelve `equipo_avanza_id` (un id) contra los equipos del
+ * partido y devuelve el objeto `Equipo` (con su bandera), o `null` si no aplica:
+ * no es fase con avance, no es empate, o no se marcó equipo. Compartido por la
+ * tarjeta de partido ("Tu predicción") y el detalle "Por persona".
+ */
+export function equipoQueAvanza(
+  partido: Pick<Partido, "fase" | "equipo_local" | "equipo_visitante">,
+  pred: {
+    goles_local: number;
+    goles_visitante: number;
+    equipo_avanza_id: string | null;
+  },
+): Equipo | null {
+  if (!faseTieneAvance(partido.fase)) return null;
+  if (pred.goles_local !== pred.goles_visitante) return null;
+  if (!pred.equipo_avanza_id) return null;
+  if (partido.equipo_local?.id === pred.equipo_avanza_id)
+    return partido.equipo_local;
+  if (partido.equipo_visitante?.id === pred.equipo_avanza_id)
+    return partido.equipo_visitante;
+  return null;
+}
+
+/**
+ * Equipo que clasificó REALMENTE en un partido eliminatorio finalizado: el del
+ * desempate (`equipo_avanza_id`) si hubo empate, o el ganador del marcador de
+ * los 90' si hubo ganador. `null` si no está finalizado o no se puede determinar.
+ */
+export function equipoAvanzaReal(
+  partido: Pick<
+    Partido,
+    | "estado"
+    | "equipo_avanza_id"
+    | "goles_local"
+    | "goles_visitante"
+    | "equipo_local"
+    | "equipo_visitante"
+  >,
+): Equipo | null {
+  if (partido.estado !== "finalizado") return null;
+  let id: string | null = partido.equipo_avanza_id;
+  if (
+    !id &&
+    partido.goles_local != null &&
+    partido.goles_visitante != null &&
+    partido.goles_local !== partido.goles_visitante
+  ) {
+    id =
+      (partido.goles_local > partido.goles_visitante
+        ? partido.equipo_local?.id
+        : partido.equipo_visitante?.id) ?? null;
+  }
+  if (!id) return null;
+  if (partido.equipo_local?.id === id) return partido.equipo_local;
+  if (partido.equipo_visitante?.id === id) return partido.equipo_visitante;
+  return null;
 }
 
 /**

@@ -75,6 +75,8 @@ export type PrediccionNominal = {
   puntos: number | null;
   /** Si fue predicción única (para el bono en el desglose de puntos). */
   prediccion_unica: boolean;
+  /** Equipo marcado para avanzar si predijo empate en eliminatoria (o null). */
+  equipo_avanza_id: string | null;
 };
 
 /**
@@ -95,7 +97,7 @@ export function usePrediccionesNominales(
       const { data } = await supabase
         .from("vwPrediccionesGrupoPartido")
         .select(
-          "participante_id, nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, creado_en",
+          "participante_id, nombre_completo, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, creado_en, equipo_avanza_id",
         )
         .eq("grupo_id", grupoId)
         .eq("partido_id", partidoId)
@@ -110,6 +112,7 @@ export function usePrediccionesNominales(
         goles_visitante: n.goles_visitante ?? 0,
         puntos: n.puntos_obtenidos ?? null,
         prediccion_unica: n.prediccion_unica ?? false,
+        equipo_avanza_id: n.equipo_avanza_id ?? null,
       }));
     },
     staleTime: 60_000,

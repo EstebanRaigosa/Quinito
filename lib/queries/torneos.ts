@@ -9,15 +9,18 @@ export type TorneoOpcion = {
   pais_sede: string | null;
   fecha_inicio: string;
   fecha_fin: string;
-  /** false = torneo de prueba, solo visible para el superadmin (ver 0057). */
+  /** true = disponible públicamente. Un torneo de prueba lo tiene en false. */
   activo: boolean;
+  /** true = torneo de prueba: solo lo devuelve el RPC al superadmin (ver 0084). */
+  es_prueba: boolean;
 };
 
 /**
  * Torneos disponibles para crear un grupo, del más antiguo al más nuevo.
- * Usa el RPC `torneos_disponibles` (SECURITY DEFINER): devuelve los activos a
- * todos y, además, los inactivos (de prueba) solo al superadmin. Lectura sin
- * PII (CLAUDE.md §5).
+ * Usa el RPC `torneos_disponibles` (SECURITY DEFINER): devuelve los torneos
+ * activos a todos y, además, los de prueba (`es_prueba`) solo al superadmin. La
+ * visibilidad se controla desde el panel admin (/admin/torneos). Lectura sin PII
+ * (CLAUDE.md §5).
  */
 export function useTorneosDisponibles() {
   return useQuery({

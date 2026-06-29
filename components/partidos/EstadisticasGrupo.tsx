@@ -3,10 +3,11 @@
 import { Lock, Loader2 } from "lucide-react";
 import type { Partido, ReglasGrupo } from "@/lib/types/dominio";
 import { usePrediccionesNominales } from "@/lib/queries/estadisticas";
-import { prediccionCerrada } from "@/lib/utils/prediccion";
+import { prediccionCerrada, equipoQueAvanza } from "@/lib/utils/prediccion";
 import { formatearFechaHoraBogota } from "@/lib/utils/fechas";
 import { Flag } from "@/components/shared/Flag";
 import { PuntajeDesglose } from "@/components/partidos/PuntajeDesglose";
+import { MarcaAvance } from "@/components/partidos/MarcaAvance";
 import { cn } from "@/lib/utils";
 
 /**
@@ -86,7 +87,11 @@ export function EstadisticasGrupo({
   // Agrupamos por marcador: el resultado manda la jerarquía y debajo van las
   // personas que lo pusieron. Los puntos dependen solo del marcador, así que
   // viven en la cabecera del grupo (no se repiten por persona).
-  type Persona = { nombre: string; esTu: boolean };
+  type Persona = {
+    nombre: string;
+    esTu: boolean;
+    equipo_avanza_id: string | null;
+  };
   type GrupoMarcador = {
     clave: string;
     goles_local: number;
@@ -112,6 +117,7 @@ export function EstadisticasGrupo({
         nombre: n.participante,
         esTu:
           !!participanteActualId && n.participante_id === participanteActualId,
+        equipo_avanza_id: n.equipo_avanza_id,
       });
       return acc;
     }, {}),
@@ -201,44 +207,60 @@ export function EstadisticasGrupo({
                 acerto ? "divide-mustard-400/20" : "divide-mustard-400/10",
               )}
             >
-              {g.personas.map((persona, i) => (
-                <li
-                  key={`${g.clave}-${i}`}
-                  className={cn(
-                    "flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10",
-                    // La fila propia se resalta con un velo azul (info) para que
-                    // contraste con el verde del marcador y se ubique de un vistazo.
-                    persona.esTu && "bg-[#1E3A8A]/10",
-                  )}
-                >
-                  <span
-                    aria-hidden
+              {g.personas.map((persona, i) => {
+                // Empate en eliminatoria: a quién marcó esta persona para pasar.
+                const avanza = equipoQueAvanza(partido, {
+                  goles_local: g.goles_local,
+                  goles_visitante: g.goles_visitante,
+                  equipo_avanza_id: persona.equipo_avanza_id,
+                });
+                return (
+                  <li
+                    key={`${g.clave}-${i}`}
                     className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      persona.esTu
-                        ? "bg-[#1E3A8A]"
-                        : acerto
-                          ? "bg-mustard-500"
-                          : "bg-mustard-400",
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "truncate text-sm font-semibold",
-                      persona.esTu
-                        ? "text-[#1E3A8A] dark:text-info"
-                        : "text-fg-strong",
+                      "flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-mustard-400/10",
+                      // La fila propia se resalta con un velo azul (info) para que
+                      // contraste con el verde del marcador y se ubique de un vistazo.
+                      persona.esTu && "bg-[#1E3A8A]/10",
                     )}
                   >
-                    {persona.nombre}
-                  </span>
-                  {persona.esTu && (
-                    <span className="ml-auto shrink-0 rounded-full bg-[#1E3A8A] px-2 py-0.5 text-2xs font-bold text-white shadow-sm">
-                      Tú
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        persona.esTu
+                          ? "bg-[#1E3A8A]"
+                          : acerto
+                            ? "bg-mustard-500"
+                            : "bg-mustard-400",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "truncate text-sm font-semibold",
+                        persona.esTu
+                          ? "text-[#1E3A8A] dark:text-info"
+                          : "text-fg-strong",
+                      )}
+                    >
+                      {persona.nombre}
                     </span>
-                  )}
-                </li>
-              ))}
+                    {avanza && (
+                      <MarcaAvance
+                        equipo={avanza}
+                        fase={partido.fase}
+                        size={15}
+                        className="shrink-0 text-2xs"
+                      />
+                    )}
+                    {persona.esTu && (
+                      <span className="ml-auto shrink-0 rounded-full bg-[#1E3A8A] px-2 py-0.5 text-2xs font-bold text-white shadow-sm">
+                        Tú
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );

@@ -267,6 +267,19 @@ const config: Config = {
           "88%": { opacity: "0" },
           "100%": { transform: "translate3d(0, 48px, 0)", opacity: "0" },
         },
+        // Fuegos artificiales: cada partícula sale del centro de su estallido
+        // hacia (--fx, --fy) mientras se encoge y desvanece. La dirección la pone
+        // cada partícula inline; el ciclo se repite para una celebración continua.
+        estallido: {
+          "0%": { opacity: "0", transform: "translate3d(0, 0, 0) scale(0.4)" },
+          "12%": { opacity: "1" },
+          "65%": { opacity: "1" },
+          "100%": {
+            opacity: "0",
+            transform:
+              "translate3d(var(--fx, 0), var(--fy, 0), 0) scale(0.25)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -286,6 +299,7 @@ const config: Config = {
         "giro-lento": "giro-lento 16s linear infinite",
         "impacto-pop": "impacto-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         confeti: "confeti 1.7s cubic-bezier(0.3, 0.7, 0.4, 1) forwards",
+        estallido: "estallido 1.4s ease-out infinite",
         "entra-izq": "entra-izq 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "entra-der": "entra-der 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "sube-reciente": "sube-reciente 2.6s ease-in-out infinite",

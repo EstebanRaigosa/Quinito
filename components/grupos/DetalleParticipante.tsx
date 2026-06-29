@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   ArrowDownUp,
   Award,
+  Check,
   Download,
   ListChecks,
   Loader2,
   Target,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -23,6 +25,7 @@ import {
   usePrediccionesParticipante,
 } from "@/lib/queries/predicciones-participante";
 import { agruparPorDia, formatearFechaLarga } from "@/lib/utils/fechas";
+import { equipoAvanzaReal, equipoQueAvanza } from "@/lib/utils/prediccion";
 import { dentroVentanaAnuncio } from "@/lib/utils/ventana-anuncios";
 import { exportarDetalleParticipante } from "@/lib/utils/exportar-puntos";
 import { cn } from "@/lib/utils";
@@ -60,6 +63,20 @@ const ORDEN_FASE: Record<FaseTorneo, number> = {
   final: 6,
 };
 
+/**
+ * Color (frío) de la barrita lateral por fase eliminatoria en el detalle.
+ * Progresa verde → azul → índigo conforme avanza el torneo, para diferenciar de
+ * un vistazo a qué ronda pertenece cada partido. `fase_grupos` no lleva barra.
+ */
+const COLOR_FASE: Partial<Record<FaseTorneo, string>> = {
+  dieciseisavos: "#15803D", // green-700 (verde profundo)
+  octavos: "#22C55E", // green-500 (verde)
+  cuartos: "#06B6D4", // cyan-500 (cian)
+  semifinales: "#2563EB", // blue-600 (azul)
+  tercer_lugar: "#64748B", // slate-500 (no avanza: gris frío)
+  final: "#7C3AED", // violet-600 (violeta: el clímax)
+};
+
 /** Una mini-estadística del encabezado (valor + etiqueta). */
 function MiniStat({ valor, etiqueta }: { valor: number; etiqueta: string }) {
   return (
@@ -81,20 +98,81 @@ function MiniStat({ valor, etiqueta }: { valor: number; etiqueta: string }) {
  * - `izq` (local): nombre · bandera, pegado a la derecha de su celda.
  * - `der` (visitante): bandera · nombre, pegado a la izquierda de su celda.
  */
+/** Estado del avance marcado: acertó / falló el equipo que clasificó, o aún
+ *  sin definir el desempate real. `null` = este equipo no fue el marcado. */
+type EstadoAvance = "acerto" | "fallo" | "neutro" | null;
+
 function LadoCompacto({
   equipo,
   alineacion,
+  avance = null,
+  clasifico = false,
 }: {
   equipo: Partido["equipo_local"];
   alineacion: "izq" | "der";
+  /** Si este equipo es el marcado para pasar, su estado vs el avance real. */
+  avance?: EstadoAvance;
+  /**
+   * Solo en empates de eliminatoria: este equipo fue el que clasificó realmente
+   * (por penales o alargue). Resalta su nombre con un color distintivo.
+   */
+  clasifico?: boolean;
 }) {
+  // Con el badge "Pasa" presente, el nombre completo en desktop satura la celda;
+  // mostramos el código ISO en ambos tamaños (como ya se hace en móvil).
+  const conBadge = avance !== null;
   const nombre = (
-    <span className="truncate text-xs font-bold text-fg-strong sm:max-w-[7rem]">
-      <span className="sm:hidden">{equipo?.codigo_iso ?? "—"}</span>
-      <span className="hidden sm:inline">{equipo?.nombre ?? "—"}</span>
+    <span
+      title={clasifico ? "Clasificó (definido por desempate)" : undefined}
+      className={cn(
+        "min-w-0 truncate text-xs font-bold sm:max-w-[7rem]",
+        clasifico
+          ? "rounded-md bg-info-soft px-1.5 py-0.5 font-extrabold text-info"
+          : "text-fg-strong",
+      )}
+    >
+      {conBadge ? (
+        equipo?.codigo_iso ?? "—"
+      ) : (
+        <>
+          <span className="sm:hidden">{equipo?.codigo_iso ?? "—"}</span>
+          <span className="hidden sm:inline">{equipo?.nombre ?? "—"}</span>
+        </>
+      )}
     </span>
   );
   const bandera = <Flag code={equipo?.codigo_iso} size={18} />;
+  // Badge "Pasa" junto al nombre del país marcado (sin repetir su bandera).
+  // Verde ✓ si clasificó realmente, rojo ✗ si no, neutro si aún sin definir.
+  // En móvil va compacto (solo el icono) para no comer el nombre del equipo.
+  const badge = avance ? (
+    <span
+      title={
+        avance === "acerto"
+          ? "Acertó quién pasa"
+          : avance === "fallo"
+            ? "Falló quién pasa"
+            : "Marcó este para pasar"
+      }
+      className={cn(
+        "inline-flex shrink-0 items-center gap-0.5 rounded-pill px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide",
+        avance === "acerto"
+          ? "bg-success-soft text-success"
+          : avance === "fallo"
+            ? "bg-destructive-soft text-destructive"
+            : "bg-accent-soft text-accent",
+      )}
+    >
+      {/* "Pasa": oculto en móvil salvo cuando no hay icono (estado neutro). */}
+      <span className={avance === "neutro" ? "" : "hidden sm:inline"}>Pasa</span>
+      {avance === "acerto" && (
+        <Check className="size-3 sm:size-2.5" strokeWidth={3} aria-hidden />
+      )}
+      {avance === "fallo" && (
+        <X className="size-3 sm:size-2.5" strokeWidth={3} aria-hidden />
+      )}
+    </span>
+  ) : null;
   return (
     <span
       className={cn(
@@ -104,6 +182,7 @@ function LadoCompacto({
     >
       {alineacion === "izq" ? (
         <>
+          {badge}
           {nombre}
           {bandera}
         </>
@@ -111,6 +190,7 @@ function LadoCompacto({
         <>
           {bandera}
           {nombre}
+          {badge}
         </>
       )}
     </span>
@@ -176,19 +256,59 @@ function FilaPartido({
   // Partido eliminatorio (16vos en adelante): acento lateral de color de acento
   // para diferenciarlo de los de fase de grupos, sin romper las columnas fijas.
   const esEliminatoria = partido.fase !== "fase_grupos";
+  // Empate en eliminatoria: qué país marcó el participante para pasar.
+  const avanza = equipoQueAvanza(partido, prediccion);
+  const pasaLocal = !!avanza && avanza.id === partido.equipo_local?.id;
+  const pasaVisitante = !!avanza && avanza.id === partido.equipo_visitante?.id;
+  // Equipo que clasificó REALMENTE: si hubo empate, el del desempate
+  // (`equipo_avanza_id`); si el partido tuvo ganador a los 90', ese ganador.
+  const avanzaReal = equipoAvanzaReal(partido);
+  const avanceRealId = avanzaReal?.id ?? null;
+  // ¿El marcador real fue empate? Solo en empates resaltamos al que clasificó:
+  // ahí el desempate (penales/alargue) decide quién pasa y no se ve en el marcador.
+  const empateReal =
+    partido.goles_local != null &&
+    partido.goles_visitante != null &&
+    partido.goles_local === partido.goles_visitante;
+  const resaltarClasificado = esEliminatoria && empateReal && !!avanzaReal;
+  const clasificoLocal =
+    resaltarClasificado && avanzaReal.id === partido.equipo_local?.id;
+  const clasificoVisitante =
+    resaltarClasificado && avanzaReal.id === partido.equipo_visitante?.id;
+  // ¿El país que marcó para pasar fue el que clasificó realmente?
+  const estadoAvance: EstadoAvance = avanza
+    ? avanceRealId
+      ? avanza.id === avanceRealId
+        ? "acerto"
+        : "fallo"
+      : "neutro"
+    : null;
 
   return (
     // Columnas fijas (equipo · marcador · equipo · puntos): los marcadores y los
     // badges quedan SIEMPRE en la misma X entre filas, sin importar el largo del
     // nombre. Las dos celdas de equipo son 1fr iguales → marcador centrado.
     <li
+      title={esEliminatoria ? ETIQUETA_FASE[partido.fase] : undefined}
+      style={
+        esEliminatoria
+          ? ({
+              "--barra-fase": COLOR_FASE[partido.fase] ?? "var(--accent)",
+            } as CSSProperties)
+          : undefined
+      }
       className={cn(
         "grid min-h-12 grid-cols-[1fr_auto_1fr_auto] items-center gap-2 px-3 py-2",
         esEliminatoria &&
-          "relative overflow-hidden pl-4 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-accent",
+          "relative overflow-hidden pl-4 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--barra-fase)]",
       )}
     >
-      <LadoCompacto equipo={partido.equipo_local} alineacion="izq" />
+      <LadoCompacto
+        equipo={partido.equipo_local}
+        alineacion="izq"
+        avance={pasaLocal ? estadoAvance : null}
+        clasifico={clasificoLocal}
+      />
       <div className="flex items-stretch gap-1">
         <Marcador
           label="Real"
@@ -203,7 +323,12 @@ function FilaPartido({
           exacto={exacto}
         />
       </div>
-      <LadoCompacto equipo={partido.equipo_visitante} alineacion="der" />
+      <LadoCompacto
+        equipo={partido.equipo_visitante}
+        alineacion="der"
+        avance={pasaVisitante ? estadoAvance : null}
+        clasifico={clasificoVisitante}
+      />
       {/* Badge de puntos con desglose (Popover lazy). */}
       <PuntajeDesglose
         prediccion={prediccion}
@@ -360,7 +485,7 @@ export function DetalleParticipante({
           goles_visitante: pp.goles_visitante,
           puntos_obtenidos: pp.puntos_obtenidos,
           prediccion_unica: pp.prediccion_unica,
-          equipo_avanza_id: null,
+          equipo_avanza_id: pp.equipo_avanza_id,
         };
         return { partido, prediccion };
       })

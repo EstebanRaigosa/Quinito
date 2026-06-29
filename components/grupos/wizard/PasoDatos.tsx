@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Check, Loader2, Trophy } from "lucide-react";
+import { ArrowRight, ChevronDown, Loader2 } from "lucide-react";
 import { datosGrupoSchema, type DatosGrupoInput } from "@/lib/schemas/grupo";
 import { useWizardGrupo } from "@/lib/stores/wizard-grupo";
 import { useTorneosDisponibles } from "@/lib/queries/torneos";
@@ -11,7 +11,6 @@ import { formatearFechaCorta } from "@/lib/utils/fechas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import {
   Form,
   FormControl,
@@ -48,6 +47,9 @@ export function PasoDatos() {
   const torneos = torneosDisponibles.filter(
     (t) => !TORNEOS_OCULTOS_WIZARD.has(t.codigo),
   );
+
+  // Torneo elegido (para mostrar su detalle bajo el desplegable).
+  const torneoSeleccionado = torneos.find((t) => t.id === torneoId);
 
   // Preselecciona el primer torneo disponible si no hay uno elegido —o si el
   // elegido quedó oculto (ej. estaba persistido "Mundial 2" en el store).
@@ -169,63 +171,45 @@ export function PasoDatos() {
               No hay torneos disponibles por ahora.
             </div>
           ) : (
-            <div role="radiogroup" aria-label="Torneo" className="space-y-2.5">
-              {torneos.map((t) => {
-                const seleccionado = torneoId === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={seleccionado}
-                    onClick={() => setTorneo(t.id)}
-                    className={cn(
-                      "surface-card flex w-full items-center gap-3.5 rounded-2xl p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5",
-                      seleccionado
-                        ? "ring-2 ring-primary"
-                        : "hover:bg-muted/40",
+            <div className="space-y-2">
+              <div className="relative">
+                <select
+                  aria-label="Torneo"
+                  value={torneoId ?? ""}
+                  onChange={(e) => setTorneo(e.target.value)}
+                  className="h-12 w-full appearance-none rounded-xl border border-border bg-surface pl-3.5 pr-10 text-base font-semibold text-fg-strong focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {torneos.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                      {t.es_prueba ? " · Pruebas" : ""}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3.5 top-1/2 size-5 -translate-y-1/2 text-fg-muted"
+                  aria-hidden
+                />
+              </div>
+
+              {torneoSeleccionado && (
+                <p className="t-caption flex flex-wrap items-center gap-x-2 gap-y-1 px-0.5 text-fg-muted">
+                  <span>
+                    {rangoFechas(
+                      torneoSeleccionado.fecha_inicio,
+                      torneoSeleccionado.fecha_fin,
                     )}
-                  >
-                    <span
-                      className={cn(
-                        "grid size-12 shrink-0 place-items-center rounded-xl",
-                        seleccionado
-                          ? "bg-primary text-primary-foreground shadow-glow"
-                          : "bg-muted text-fg-muted",
-                      )}
-                    >
-                      <Trophy className="size-6" strokeWidth={2.2} />
+                    {torneoSeleccionado.pais_sede
+                      ? ` · ${torneoSeleccionado.pais_sede}`
+                      : ""}
+                  </span>
+                  {torneoSeleccionado.es_prueba && (
+                    <span className="shrink-0 rounded-pill bg-warning/15 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-warning">
+                      Pruebas
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="t-body flex items-center gap-2 font-extrabold text-fg-strong">
-                        {t.nombre}
-                        {!t.activo && (
-                          <span className="shrink-0 rounded-pill bg-warning/15 px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide text-warning">
-                            Prueba
-                          </span>
-                        )}
-                      </div>
-                      <div className="t-caption mt-0.5">
-                        {rangoFechas(t.fecha_inicio, t.fecha_fin)}
-                        {t.pais_sede ? ` · ${t.pais_sede}` : ""}
-                      </div>
-                    </div>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors",
-                        seleccionado
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border",
-                      )}
-                    >
-                      {seleccionado && (
-                        <Check className="size-3.5" strokeWidth={3} />
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
+                  )}
+                </p>
+              )}
             </div>
           )}
         </fieldset>

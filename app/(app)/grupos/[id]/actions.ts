@@ -208,3 +208,27 @@ export async function eliminarAbono(
   revalidatePath(`/grupos/${grupoId}`);
   return { ok: true };
 }
+
+/**
+ * Marca como celebrados los bonos de fase pendientes del usuario en esta polla
+ * (tras mostrarle la modal de celebración). Persiste en BD para que sea 1 vez
+ * por usuario en todos sus dispositivos. Idempotente: si no hay pendientes, no
+ * hace nada. La validación de membresía vive en el RPC `marcar_bonos_celebrados`.
+ */
+export async function marcarBonosCelebrados(
+  grupoId: string,
+): Promise<Resultado> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Tu sesión expiró. Inicia de nuevo." };
+
+  const { error } = await supabase.rpc("marcar_bonos_celebrados", {
+    p_grupo_id: grupoId,
+  });
+  if (error) {
+    return { ok: false, error: "No se pudo registrar la celebración." };
+  }
+  return { ok: true };
+}

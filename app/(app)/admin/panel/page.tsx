@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bell,
+  CalendarDays,
   ClipboardCheck,
   ListOrdered,
   Radio,
@@ -48,6 +49,13 @@ const SECCIONES = [
     titulo: "Pollas",
     descripcion: "Explora todas las pollas creadas en la plataforma.",
     Icono: Trophy,
+  },
+  {
+    href: "/admin/torneos",
+    titulo: "Torneos",
+    descripcion:
+      "Marca qué torneos están disponibles en el wizard de creación de pollas.",
+    Icono: CalendarDays,
   },
   {
     href: "/admin/comprobantes",

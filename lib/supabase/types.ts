@@ -150,18 +150,21 @@ export type Database = {
       }
       tblBonosFase: {
         Row: {
+          celebrado_en: string | null
           fase: Database["public"]["Enums"]["fase_torneo"]
           otorgado_en: string
           participante_id: string
           puntos: number
         }
         Insert: {
+          celebrado_en?: string | null
           fase: Database["public"]["Enums"]["fase_torneo"]
           otorgado_en?: string
           participante_id: string
           puntos: number
         }
         Update: {
+          celebrado_en?: string | null
           fase?: Database["public"]["Enums"]["fase_torneo"]
           otorgado_en?: string
           participante_id?: string
@@ -1253,6 +1256,7 @@ export type Database = {
           codigo: string
           creado_en: string
           descripcion: string | null
+          es_prueba: boolean
           fecha_fin: string
           fecha_inicio: string
           id: string
@@ -1264,6 +1268,7 @@ export type Database = {
           codigo: string
           creado_en?: string
           descripcion?: string | null
+          es_prueba?: boolean
           fecha_fin: string
           fecha_inicio: string
           id?: string
@@ -1275,6 +1280,7 @@ export type Database = {
           codigo?: string
           creado_en?: string
           descripcion?: string | null
+          es_prueba?: boolean
           fecha_fin?: string
           fecha_inicio?: string
           id?: string
@@ -1383,6 +1389,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           creado_en: string | null
+          equipo_avanza_id: string | null
           goles_local: number | null
           goles_visitante: number | null
           grupo_id: string | null
@@ -1763,11 +1770,16 @@ export type Database = {
           pts: number
         }[]
       }
+      marcar_bonos_celebrados: {
+        Args: { p_grupo_id: string }
+        Returns: undefined
+      }
       torneos_disponibles: {
         Args: never
         Returns: {
           activo: boolean
           codigo: string
+          es_prueba: boolean
           fecha_fin: string
           fecha_inicio: string
           id: string

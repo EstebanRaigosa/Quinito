@@ -15,12 +15,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGrupoDetalle } from "@/lib/queries/grupo-detalle";
+import { createClient } from "@/lib/supabase/server";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { esSuperAdmin } from "@/lib/auth/superadmin";
 import {
   bonoDeFase,
   cerradoAlCrear,
   compararPartidos,
+  equipoAvanzaReal,
   esSinCierre,
   firmaPartido,
   puedePredecir,
@@ -53,6 +55,7 @@ import { IconoAcierto } from "@/components/partidos/IconoAcierto";
 import { BotonCompartirCodigo } from "@/components/grupos/BotonCompartirCodigo";
 import { PildoraInfo } from "@/components/grupos/PildoraInfo";
 import { ModalEliminacionDirecta } from "@/components/grupos/ModalEliminacionDirecta";
+import { ModalBonoFase } from "@/components/grupos/ModalBonoFase";
 import { ETIQUETA_FASE } from "@/lib/types/dominio";
 import type {
   BonoFase,
@@ -692,6 +695,34 @@ export default async function GrupoDetallePage({
     fasesPresentes.has(f),
   ).map((f) => ({ etiqueta: ETIQUETA_FASE[f], monto: bonoDeFase(reglas, f) }));
 
+  // Bonos de fase ganados por el usuario y AÚN no celebrados (persistido en BD,
+  // `celebrado_en is null` → 1 vez por usuario en todos sus dispositivos). Se
+  // enriquecen con los países que clasificaron en esa fase (todos acertados, por
+  // ser todo-o-nada). Solo aplica a un participante real de la polla.
+  let bonosCelebracion: {
+    fase: FaseTorneo;
+    puntos: number;
+    equipos: { nombre: string; codigo_iso: string | null }[];
+  }[] = [];
+  if (miParticipanteId) {
+    const supabase = await createClient();
+    const { data: pendientes } = await supabase
+      .from("tblBonosFase")
+      .select("fase, puntos")
+      .eq("participante_id", miParticipanteId)
+      .is("celebrado_en", null);
+    bonosCelebracion = (pendientes ?? []).map((b) => ({
+      fase: b.fase,
+      puntos: b.puntos,
+      equipos: partidos
+        .filter((p) => p.fase === b.fase)
+        .sort((a, c) => a.numero_partido - c.numero_partido)
+        .map((p) => equipoAvanzaReal(p))
+        .filter((e): e is NonNullable<typeof e> => e !== null)
+        .map((e) => ({ nombre: e.nombre, codigo_iso: e.codigo_iso })),
+    }));
+  }
+
   return (
     <PageContainer ancho="ancho">
       {/* Refresca la página sola en el instante en que se cierre el próximo
@@ -704,6 +735,12 @@ export default async function GrupoDetallePage({
           su ventana horaria): reglas de eliminación directa. */}
       {bonosEliminacion.length > 0 && (
         <ModalEliminacionDirecta grupoId={grupo.id} bonos={bonosEliminacion} />
+      )}
+
+      {/* Celebración (1 vez por fase) cuando el usuario ganó el bono todo-o-nada
+          de una fase eliminatoria recién completada. */}
+      {bonosCelebracion.length > 0 && (
+        <ModalBonoFase grupoId={grupo.id} bonos={bonosCelebracion} />
       )}
 
       {/* Cabecera del grupo (bento) */}

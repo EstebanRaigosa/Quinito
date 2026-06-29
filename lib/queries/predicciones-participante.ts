@@ -9,6 +9,8 @@ export type PrediccionParticipante = {
   goles_visitante: number;
   puntos_obtenidos: number;
   prediccion_unica: boolean;
+  /** Equipo marcado para avanzar si predijo empate en eliminatoria (o null). */
+  equipo_avanza_id: string | null;
 };
 
 /**
@@ -34,7 +36,7 @@ export function usePrediccionesParticipante(
       const { data, error } = await supabase
         .from("vwPrediccionesGrupoPartido")
         .select(
-          "partido_id, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica",
+          "partido_id, goles_local, goles_visitante, puntos_obtenidos, prediccion_unica, equipo_avanza_id",
         )
         .eq("grupo_id", grupoId)
         .eq("participante_id", participanteId!);
@@ -46,6 +48,7 @@ export function usePrediccionesParticipante(
         goles_visitante: p.goles_visitante ?? 0,
         puntos_obtenidos: p.puntos_obtenidos ?? 0,
         prediccion_unica: p.prediccion_unica ?? false,
+        equipo_avanza_id: p.equipo_avanza_id ?? null,
       }));
     },
     staleTime: 60_000,
