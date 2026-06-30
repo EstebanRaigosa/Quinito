@@ -158,56 +158,59 @@ function construirSvg({
     i++;
   }
 
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
-    `<defs>` +
-    `<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1C30"/><stop offset="1" stop-color="#052E16"/></linearGradient>` +
-    `<linearGradient id="head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16A34A"/><stop offset="1" stop-color="#0D9488"/></linearGradient>` +
-    `<clipPath id="card"><rect x="${tX}" y="${tTop}" width="${tW}" height="${H - tTop * 2}" rx="${radius}"/></clipPath>` +
-    `</defs>` +
-    `<rect width="${W}" height="${H}" fill="url(#bg)"/>` +
+  // OJO: ensamblamos con un array + join, NO con concatenación de strings (`+`).
+  // El minificador de `next build` (SWC) tiene un bug con la cadena larga de
+  // template-literals con `+`: descarta el texto que va DESPUÉS del último `${}`
+  // de cada template (y los templates 100% literales como `<defs>` enteros),
+  // produciendo un SVG roto solo en producción ("SVG data parsing failed"). El
+  // array no pasa por ese camino del minificador.
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
+    `<defs>`,
+    `<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1C30"/><stop offset="1" stop-color="#052E16"/></linearGradient>`,
+    `<linearGradient id="head" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16A34A"/><stop offset="1" stop-color="#0D9488"/></linearGradient>`,
+    `<clipPath id="card"><rect x="${tX}" y="${tTop}" width="${tW}" height="${H - tTop * 2}" rx="${radius}"/></clipPath>`,
+    `</defs>`,
+    `<rect width="${W}" height="${H}" fill="url(#bg)"/>`,
     // Sombra falsa de la tarjeta (resvg no rasteriza filtros de forma fiable).
-    `<rect x="${tX + 6}" y="${tTop + 14}" width="${tW}" height="${H - tTop * 2}" rx="${radius}" fill="#000000" opacity="0.25"/>` +
-    `<rect x="${tX}" y="${tTop}" width="${tW}" height="${H - tTop * 2}" rx="${radius}" fill="#FFFFFF"/>` +
-    `<g clip-path="url(#card)">` +
+    `<rect x="${tX + 6}" y="${tTop + 14}" width="${tW}" height="${H - tTop * 2}" rx="${radius}" fill="#000000" opacity="0.25"/>`,
+    `<rect x="${tX}" y="${tTop}" width="${tW}" height="${H - tTop * 2}" rx="${radius}" fill="#FFFFFF"/>`,
+    `<g clip-path="url(#card)">`,
     // Cabecera de marca.
-    `<rect x="${tX}" y="${tTop}" width="${tW}" height="${headerH}" fill="url(#head)"/>` +
-    logoEn(tX + 52, tTop + 50, 110) +
-    `<text x="${tX + 190}" y="${tTop + 108}" font-family="Geist" font-weight="700" font-size="62" fill="#FFFFFF">Pollota</text>` +
-    `<text x="${tX + 192}" y="${tTop + 156}" font-family="Geist" font-size="34" fill="#D1FAE5">Mundial 2026</text>` +
+    `<rect x="${tX}" y="${tTop}" width="${tW}" height="${headerH}" fill="url(#head)"/>`,
+    logoEn(tX + 52, tTop + 50, 110),
+    `<text x="${tX + 190}" y="${tTop + 108}" font-family="Geist" font-weight="700" font-size="62" fill="#FFFFFF">Pollota</text>`,
+    `<text x="${tX + 192}" y="${tTop + 156}" font-family="Geist" font-size="34" fill="#D1FAE5">Mundial 2026</text>`,
     // Eyebrow + nombre de la polla.
-    `<text x="${cx}" y="${baseY + 86}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="30" letter-spacing="8" fill="#0D9488">COMPROBANTE DE PAGO</text>` +
-    `<text x="${cx}" y="${baseY + 162}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="58" fill="#0B1C30">${esc(recortar(grupo, 26))}</text>` +
+    `<text x="${cx}" y="${baseY + 86}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="30" letter-spacing="8" fill="#0D9488">COMPROBANTE DE PAGO</text>`,
+    `<text x="${cx}" y="${baseY + 162}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="58" fill="#0B1C30">${esc(recortar(grupo, 26))}</text>`,
     // Bloque destacado: participante + monto del abono.
-    `<rect x="${tX + 56}" y="${baseY + 210}" width="${tW - 112}" height="300" rx="32" fill="#ECFDF5"/>` +
-    `<text x="${cx}" y="${baseY + 268}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="28" letter-spacing="6" fill="#15803D">PARTICIPANTE</text>` +
-    `<text x="${cx}" y="${baseY + 330}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="46" fill="#0B1C30">${esc(recortar(participante, 26))}</text>` +
-    `<text x="${cx}" y="${baseY + 452}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="104" fill="#15803D">${esc(pesos(abono))}</text>` +
+    `<rect x="${tX + 56}" y="${baseY + 210}" width="${tW - 112}" height="300" rx="32" fill="#ECFDF5"/>`,
+    `<text x="${cx}" y="${baseY + 268}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="28" letter-spacing="6" fill="#15803D">PARTICIPANTE</text>`,
+    `<text x="${cx}" y="${baseY + 330}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="46" fill="#0B1C30">${esc(recortar(participante, 26))}</text>`,
+    `<text x="${cx}" y="${baseY + 452}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="104" fill="#15803D">${esc(pesos(abono))}</text>`,
     // Píldora con el método de pago.
-    `<g transform="translate(${cx} ${baseY + 540})">` +
-    `<rect x="${-pillW / 2}" y="-44" width="${pillW}" height="74" rx="37" fill="${pillBg}"/>` +
-    `<text x="0" y="6" text-anchor="middle" font-family="Geist" font-weight="700" font-size="34" letter-spacing="3" fill="#FFFFFF">${esc(recortar(pillTxt, 22))}</text>` +
-    `</g>` +
-    filasSvg +
+    `<g transform="translate(${cx} ${baseY + 540})">`,
+    `<rect x="${-pillW / 2}" y="-44" width="${pillW}" height="74" rx="37" fill="${pillBg}"/>`,
+    `<text x="0" y="6" text-anchor="middle" font-family="Geist" font-weight="700" font-size="34" letter-spacing="3" fill="#FFFFFF">${esc(recortar(pillTxt, 22))}</text>`,
+    `</g>`,
+    filasSvg,
     // Perforación + talón con el CÓDIGO (clave de verificación).
-    `<line x1="${tX + 40}" y1="${perfY}" x2="${tX + tW - 40}" y2="${perfY}" stroke="#CBD5E1" stroke-width="3" stroke-dasharray="14 12" stroke-linecap="round"/>` +
-    `<text x="${cx}" y="${perfY + 85}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="24" letter-spacing="6" fill="#0D9488">CÓDIGO DE COMPROBANTE</text>` +
-    `<text x="${cx}" y="${perfY + 130}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="32" letter-spacing="2" fill="#0B1C30">${esc(codigo)}</text>` +
-    barras +
-    `<text x="${cx}" y="${perfY + 295}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="30" letter-spacing="4" fill="#0B1C30">pollota.com</text>` +
-    `<text x="${cx}" y="${perfY + 337}" text-anchor="middle" font-family="Geist" font-size="26" fill="#94A3B8">${esc(APP_DESCRIPCION)}</text>` +
-    `</g>` +
+    `<line x1="${tX + 40}" y1="${perfY}" x2="${tX + tW - 40}" y2="${perfY}" stroke="#CBD5E1" stroke-width="3" stroke-dasharray="14 12" stroke-linecap="round"/>`,
+    `<text x="${cx}" y="${perfY + 85}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="24" letter-spacing="6" fill="#0D9488">CÓDIGO DE COMPROBANTE</text>`,
+    `<text x="${cx}" y="${perfY + 130}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="32" letter-spacing="2" fill="#0B1C30">${esc(codigo)}</text>`,
+    barras,
+    `<text x="${cx}" y="${perfY + 295}" text-anchor="middle" font-family="Geist" font-weight="700" font-size="30" letter-spacing="4" fill="#0B1C30">pollota.com</text>`,
+    `<text x="${cx}" y="${perfY + 337}" text-anchor="middle" font-family="Geist" font-size="26" fill="#94A3B8">${esc(APP_DESCRIPCION)}</text>`,
+    `</g>`,
     // Muescas de la perforación (pintadas con el color del fondo → ilusión de corte).
-    `<circle cx="${tX}" cy="${perfY}" r="${notchR}" fill="url(#bg)"/>` +
-    `<circle cx="${tX + tW}" cy="${perfY}" r="${notchR}" fill="url(#bg)"/>` +
-    `</svg>`
-  );
+    `<circle cx="${tX}" cy="${perfY}" r="${notchR}" fill="url(#bg)"/>`,
+    `<circle cx="${tX + tW}" cy="${perfY}" r="${notchR}" fill="url(#bg)"/>`,
+    `</svg>`,
+  ].join("");
 }
 
 export async function GET(request: NextRequest) {
-  // Diagnóstico temporal: si la rasterización falla, devolvemos el inicio del SVG
-  // para ver qué recibe resvg en producción (Netlify). Quitar tras depurar.
-  let svgGenerado = "";
   try {
     const { searchParams } = new URL(request.url);
 
@@ -232,7 +235,6 @@ export async function GET(request: NextRequest) {
       codigo,
       fechaISO,
     });
-    svgGenerado = svg;
 
     // Import perezoso: si el binario nativo de resvg no carga en la función
     // serverless (empaquetado de Netlify), el fallo cae en este try/catch y se
@@ -264,23 +266,11 @@ export async function GET(request: NextRequest) {
     console.error("[comprobante-pago] Fallo al generar el PNG:", error);
     const detalle =
       error instanceof Error ? error.message : "Error desconocido";
-    // Diagnóstico temporal: recortamos el SVG alrededor de la columna que reporta
-    // resvg (formato "at 1:N") para ver EXACTAMENTE qué carácter lo rompe en
-    // producción, más el inicio y el total. Con esto basta para el arreglo final.
-    const mCol = /at 1:(\d+)/.exec(detalle);
-    const col = mCol ? Number(mCol[1]) : 0;
-    const alrededor = col
-      ? svgGenerado.slice(Math.max(0, col - 50), col + 30)
-      : "";
     return new Response(
-      `No se pudo generar el comprobante: ${detalle}\n\n` +
-        `[debug] len=${svgGenerado.length}\n` +
-        `[debug] svg[0..220]=${svgGenerado.slice(0, 220)}\n\n` +
-        `[debug] alrededor de col ${col}: ...${alrededor}...`,
-      {
-        status: 500,
-        headers: { "Cache-Control": "private, no-store" },
-      },
+      process.env.NODE_ENV === "development"
+        ? `No se pudo generar el comprobante: ${detalle}`
+        : "No se pudo generar el comprobante",
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 }

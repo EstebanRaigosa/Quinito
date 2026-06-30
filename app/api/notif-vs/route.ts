@@ -82,25 +82,28 @@ export async function GET(request: NextRequest) {
   const r = V / 2 - 3; // radio de la bolita (deja aire para el aro)
   const rBadge = Math.round(V * 0.17);
 
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${V}" height="${V}" viewBox="0 0 ${V} ${V}">` +
-    `<defs>` +
-    `<clipPath id="bola"><circle cx="${c}" cy="${c}" r="${r}"/></clipPath>` +
-    `<clipPath id="izq"><rect x="0" y="0" width="${c}" height="${V}"/></clipPath>` +
-    `<clipPath id="der"><rect x="${c}" y="0" width="${c}" height="${V}"/></clipPath>` +
-    `</defs>` +
-    `<g clip-path="url(#bola)">` +
-    mitad(bL, "izq") +
-    mitad(bR, "der") +
-    `</g>` +
+  // Array + join, NO concatenación con `+`: el minificador de `next build` (SWC)
+  // corrompe la cadena larga de template-literals con `+` (descarta el texto tras
+  // el último `${}` de cada template), rompiendo el SVG solo en producción. Mismo
+  // motivo que en `app/api/comprobante-pago/route.ts`.
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${V}" height="${V}" viewBox="0 0 ${V} ${V}">`,
+    `<defs>`,
+    `<clipPath id="bola"><circle cx="${c}" cy="${c}" r="${r}"/></clipPath>`,
+    `<clipPath id="izq"><rect x="0" y="0" width="${c}" height="${V}"/></clipPath>`,
+    `<clipPath id="der"><rect x="${c}" y="0" width="${c}" height="${V}"/></clipPath>`,
+    `</defs>`,
+    `<g clip-path="url(#bola)">`,
+    mitad(bL, "izq"),
+    mitad(bR, "der"),
+    `</g>`,
     // Aro sutil de la bolita.
-    `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="6"/>` +
+    `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="6"/>`,
     // Badge "VS" al centro (cubre la costura entre banderas).
-    `<circle cx="${c}" cy="${c}" r="${rBadge}" fill="#fff" stroke="rgba(0,0,0,0.12)" stroke-width="4"/>` +
-    `<text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" ` +
-    `font-family="Geist" font-weight="700" ` +
-    `font-size="${Math.round(rBadge * 1.05)}" fill="#0f172a">VS</text>` +
-    `</svg>`;
+    `<circle cx="${c}" cy="${c}" r="${rBadge}" fill="#fff" stroke="rgba(0,0,0,0.12)" stroke-width="4"/>`,
+    `<text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" font-family="Geist" font-weight="700" font-size="${Math.round(rBadge * 1.05)}" fill="#0f172a">VS</text>`,
+    `</svg>`,
+  ].join("");
 
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: SALIDA },
