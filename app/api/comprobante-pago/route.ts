@@ -34,9 +34,16 @@ const RUTA_FUENTE = path.join(
   "app/api/notif-vs/_assets/vs-font.ttf",
 );
 
-/** Escapa los caracteres con significado en XML/SVG. */
+/**
+ * Escapa los caracteres con significado en XML/SVG. Primero elimina caracteres
+ * de control C0 ilegales en XML 1.0 (NULL, backspace, tab vertical, form feed…
+ * todo 0x00–0x1F salvo tab/LF/CR), que el parser de resvg rechaza y que a veces
+ * se cuelan al copiar/pegar nombres. No toca emojis ni acentos.
+ */
 function esc(s: string): string {
+  // eslint-disable-next-line no-control-regex -- limpieza deliberada de C0
   return s
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -198,6 +205,9 @@ function construirSvg({
 }
 
 export async function GET(request: NextRequest) {
+  // Diagnóstico temporal: si la rasterización falla, devolvemos el inicio del SVG
+  // para ver qué recibe resvg en producción (Netlify). Quitar tras depurar.
+  let svgGenerado = "";
   try {
     const { searchParams } = new URL(request.url);
 
@@ -222,6 +232,7 @@ export async function GET(request: NextRequest) {
       codigo,
       fechaISO,
     });
+    svgGenerado = svg;
 
     // Import perezoso: si el binario nativo de resvg no carga en la función
     // serverless (empaquetado de Netlify), el fallo cae en este try/catch y se
@@ -253,12 +264,23 @@ export async function GET(request: NextRequest) {
     console.error("[comprobante-pago] Fallo al generar el PNG:", error);
     const detalle =
       error instanceof Error ? error.message : "Error desconocido";
-    // Devolvemos el detalle también en producción: es una herramienta de admin
-    // (ruta con sesión) y el mensaje (fuente/binario ausente) no expone datos
-    // personales; ayuda a diagnosticar fallos de empaquetado en Netlify.
-    return new Response(`No se pudo generar el comprobante: ${detalle}`, {
-      status: 500,
-      headers: { "Cache-Control": "private, no-store" },
-    });
+    // Diagnóstico temporal: recortamos el SVG alrededor de la columna que reporta
+    // resvg (formato "at 1:N") para ver EXACTAMENTE qué carácter lo rompe en
+    // producción, más el inicio y el total. Con esto basta para el arreglo final.
+    const mCol = /at 1:(\d+)/.exec(detalle);
+    const col = mCol ? Number(mCol[1]) : 0;
+    const alrededor = col
+      ? svgGenerado.slice(Math.max(0, col - 50), col + 30)
+      : "";
+    return new Response(
+      `No se pudo generar el comprobante: ${detalle}\n\n` +
+        `[debug] len=${svgGenerado.length}\n` +
+        `[debug] svg[0..220]=${svgGenerado.slice(0, 220)}\n\n` +
+        `[debug] alrededor de col ${col}: ...${alrededor}...`,
+      {
+        status: 500,
+        headers: { "Cache-Control": "private, no-store" },
+      },
+    );
   }
 }
