@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
-import path from "node:path";
 import { formatearFechaLarga } from "@/lib/utils/fechas";
 import { APP_DESCRIPCION } from "@/lib/constants";
+import { rutaFuenteVS } from "@/app/api/_assets/vs-font";
 
 /**
  * Comprobante de pago de un abono, en formato "ticket" (PNG), pensado para
@@ -27,12 +27,6 @@ import { APP_DESCRIPCION } from "@/lib/constants";
  * personales. La ruta exige sesión (la protege el middleware).
  */
 export const runtime = "nodejs";
-
-/** Fuente embebida (compartida con el ícono de notificaciones). */
-const RUTA_FUENTE = path.join(
-  process.cwd(),
-  "app/api/notif-vs/_assets/vs-font.ttf",
-);
 
 /**
  * Escapa los caracteres con significado en XML/SVG. Primero elimina caracteres
@@ -245,7 +239,7 @@ export async function GET(request: NextRequest) {
       fitTo: { mode: "width", value: 1080 },
       font: {
         loadSystemFonts: false,
-        fontFiles: [RUTA_FUENTE],
+        fontFiles: [rutaFuenteVS()],
         defaultFontFamily: "Geist",
       },
     });
@@ -266,11 +260,11 @@ export async function GET(request: NextRequest) {
     console.error("[comprobante-pago] Fallo al generar el PNG:", error);
     const detalle =
       error instanceof Error ? error.message : "Error desconocido";
-    return new Response(
-      process.env.NODE_ENV === "development"
-        ? `No se pudo generar el comprobante: ${detalle}`
-        : "No se pudo generar el comprobante",
-      { status: 500, headers: { "Cache-Control": "private, no-store" } },
-    );
+    // Mostramos el detalle también en producción (herramienta de admin con sesión,
+    // sin datos personales) para no volver a quedarnos a ciegas ante un 500.
+    return new Response(`No se pudo generar el comprobante: ${detalle}`, {
+      status: 500,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }

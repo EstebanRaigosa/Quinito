@@ -3,9 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import { archivoBandera } from "@/lib/utils/banderas";
-
-/** Ruta absoluta a la fuente embebida del "VS" (no dependemos de fuentes del SO). */
-const RUTA_FUENTE = path.join(process.cwd(), "app/api/notif-vs/_assets/vs-font.ttf");
+import { rutaFuenteVS } from "@/app/api/_assets/vs-font";
 
 /**
  * Ícono "vs" para las notificaciones push de recordatorio: una bolita circular
@@ -107,7 +105,7 @@ export async function GET(request: NextRequest) {
 
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: SALIDA },
-    font: { loadSystemFonts: false, fontFiles: [RUTA_FUENTE], defaultFontFamily: "Geist" },
+    font: { loadSystemFonts: false, fontFiles: [rutaFuenteVS()], defaultFontFamily: "Geist" },
   });
   const png = resvg.render().asPng();
 
