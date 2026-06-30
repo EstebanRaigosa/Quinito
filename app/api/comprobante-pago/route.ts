@@ -1,6 +1,5 @@
 import { type NextRequest } from "next/server";
 import path from "node:path";
-import { Resvg } from "@resvg/resvg-js";
 import { formatearFechaLarga } from "@/lib/utils/fechas";
 import { APP_DESCRIPCION } from "@/lib/constants";
 
@@ -198,7 +197,7 @@ function construirSvg({
   );
 }
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -224,6 +223,11 @@ export function GET(request: NextRequest) {
       fechaISO,
     });
 
+    // Import perezoso: si el binario nativo de resvg no carga en la función
+    // serverless (empaquetado de Netlify), el fallo cae en este try/catch y se
+    // reporta con detalle, en vez de tumbar el módulo entero ("Internal Server
+    // Error" opaco al fallar en el import de arriba).
+    const { Resvg } = await import("@resvg/resvg-js");
     const resvg = new Resvg(svg, {
       fitTo: { mode: "width", value: 1080 },
       font: {
