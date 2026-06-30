@@ -45,6 +45,17 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  // El minificador de `next build --webpack` corrompe los SVG largos que generan
+  // las rutas API (descarta texto de los string literals), produciendo "SVG data
+  // parsing failed" SOLO en producción. Desactivamos el minimizador del bundle de
+  // SERVIDOR (no el del cliente): el código del servidor sale verbatim y no se
+  // corrompe. En dev se usa Turbopack y este `webpack()` no aplica.
+  webpack(config, { isServer }) {
+    if (isServer) {
+      config.optimization = { ...config.optimization, minimize: false };
+    }
+    return config;
+  },
   // Túnel ngrok para pruebas en dispositivos reales. Autoriza el host cross-origin
   // contra el dev server. Quitar cuando se deje de usar ngrok.
   allowedDevOrigins: ["kary-nonmountainous-absurdly.ngrok-free.dev"],
