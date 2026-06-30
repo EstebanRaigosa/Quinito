@@ -19,20 +19,23 @@ const nextConfig: NextConfig = {
   // ("No se pudo generar el comprobante"). Los incluimos explícitamente:
   //   - vs-font.ttf: fuente embebida del texto (ambas rutas).
   //   - public/flags/**: banderas que inlinea el ícono "vs".
-  //   - resvgjs.*.node: binario NATIVO de resvg. Aunque sea `serverExternalPackage`,
-  //     el file-tracing de Netlify no arrastra el `.node` de la dependencia opcional
-  //     de plataforma (pnpm lo anida), así que la función quedaba sin el binario y
-  //     resvg fallaba ("No se pudo generar el comprobante"). Lo incluimos por glob
-  //     (cubre cualquier versión/arch que instale el build de Linux de Netlify).
+  //   - @resvg/resvg-js-<arch>: PAQUETE del binario nativo de plataforma. Aunque
+  //     resvg sea `serverExternalPackage`, su `js-binding.js` hace
+  //     `require('@resvg/resvg-js-linux-x64-gnu')` (un paquete, no un import
+  //     estático), así que el file-tracing de Netlify NO lo arrastra y la función
+  //     fallaba con "Cannot find module '@resvg/resvg-js-linux-x64-gnu'". Hay que
+  //     incluir el DIRECTORIO COMPLETO del paquete (su `package.json` apunta al
+  //     `.node`), no solo el `.node`, o `require` del paquete no resuelve. El glob
+  //     cubre cualquier arch que instale el build de Linux de Netlify.
   outputFileTracingIncludes: {
     "/api/comprobante-pago": [
       "./app/api/notif-vs/_assets/vs-font.ttf",
-      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/*.node",
+      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/**",
     ],
     "/api/notif-vs": [
       "./app/api/notif-vs/_assets/vs-font.ttf",
       "./public/flags/**",
-      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/*.node",
+      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/**",
     ],
   },
   // Tree-shaking explícito de barrels grandes: Next reescribe los imports
