@@ -77,6 +77,14 @@ export function GestionPago({
   const [fechaPago, setFechaPago] = useState(hoyBogota);
   const [errorCampo, setErrorCampo] = useState<string | null>(null);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  // Comprobante recién generado: al registrar un abono, se abre su modal para
+  // compartir/descargar. `null` = sin comprobante a la vista.
+  const [comprobante, setComprobante] = useState<{
+    monto: number;
+    metodo: string;
+    codigo: string;
+    fechaISO: string;
+  } | null>(null);
   const [guardando, startGuardar] = useTransition();
   const [borrando, startBorrar] = useTransition();
 
@@ -114,25 +122,41 @@ export function GestionPago({
       fechaPago && fechaPago !== hoyBogota
         ? new Date(`${fechaPago}T12:00:00-05:00`).toISOString()
         : undefined;
+    // Capturamos el método antes de resetear el formulario, para el comprobante.
+    const metodoActual = metodo;
     startGuardar(async () => {
       const res = await registrarAbono(
         grupoId,
         participanteId,
         valor,
-        metodo,
+        metodoActual,
         fechaISO,
       );
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success(`Abono de ${formatearMonto(valor)} registrado`, {
-        description: res.codigo ? `Comprobante ${res.codigo}` : undefined,
-      });
+      toast.success(`Abono de ${formatearMonto(valor)} registrado`);
       setMonto("");
       setMetodo("Efectivo");
       setFechaPago(hoyBogota);
-      invalidar();
+      // Mostramos el comprobante para compartir/descargar. Cerramos el diálogo de
+      // pago para no anidar Dialogs (conflicto de scroll-lock en iOS, ver §4).
+      if (res.codigo) {
+        setAbierto(false);
+        setComprobante({
+          monto: valor,
+          metodo: metodoActual,
+          codigo: res.codigo,
+          // "Hoy" no envía fecha (el RPC usa now()); aproximamos al instante actual.
+          fechaISO: fechaISO ?? new Date().toISOString(),
+        });
+        // OJO: el refresco (`invalidar`/`router.refresh`) se hace al CERRAR el
+        // comprobante, no aquí: `router.refresh` remonta este componente y cerraría
+        // la modal del comprobante a media generación del PNG.
+      } else {
+        invalidar();
+      }
     });
   }
 
@@ -150,6 +174,7 @@ export function GestionPago({
   }
 
   return (
+    <>
     <Dialog open={abierto} onOpenChange={setAbierto}>
       <DialogTrigger asChild>
         {trigger ?? (
@@ -358,5 +383,31 @@ export function GestionPago({
         </div>
       </DialogContent>
     </Dialog>
+
+      {/* Comprobante del abono recién registrado: se abre automáticamente para
+          compartir (WhatsApp/Web Share) o descargar. Va fuera del Dialog de pago
+          para sobrevivir a su cierre. */}
+      {comprobante && (
+        <ComprobantePago
+          nombre={nombre}
+          grupoNombre={grupoNombre}
+          valor={valorApuesta}
+          monto={comprobante.monto}
+          metodo={comprobante.metodo}
+          codigo={comprobante.codigo}
+          fechaISO={comprobante.fechaISO}
+          hideTrigger
+          open={!!comprobante}
+          onOpenChange={(v) => {
+            if (!v) {
+              setComprobante(null);
+              // Refrescamos saldo/historial ahora que el comprobante se cerró
+              // (diferido desde el registro para no remontar a media generación).
+              invalidar();
+            }
+          }}
+        />
+      )}
+    </>
   );
 }

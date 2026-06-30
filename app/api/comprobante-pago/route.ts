@@ -249,11 +249,12 @@ export function GET(request: NextRequest) {
     console.error("[comprobante-pago] Fallo al generar el PNG:", error);
     const detalle =
       error instanceof Error ? error.message : "Error desconocido";
-    return new Response(
-      process.env.NODE_ENV === "development"
-        ? `No se pudo generar el comprobante: ${detalle}`
-        : "No se pudo generar el comprobante",
-      { status: 500, headers: { "Cache-Control": "private, no-store" } },
-    );
+    // Devolvemos el detalle también en producción: es una herramienta de admin
+    // (ruta con sesión) y el mensaje (fuente/binario ausente) no expone datos
+    // personales; ayuda a diagnosticar fallos de empaquetado en Netlify.
+    return new Response(`No se pudo generar el comprobante: ${detalle}`, {
+      status: 500,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }

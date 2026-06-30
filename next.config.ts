@@ -19,11 +19,20 @@ const nextConfig: NextConfig = {
   // ("No se pudo generar el comprobante"). Los incluimos explícitamente:
   //   - vs-font.ttf: fuente embebida del texto (ambas rutas).
   //   - public/flags/**: banderas que inlinea el ícono "vs".
+  //   - resvgjs.*.node: binario NATIVO de resvg. Aunque sea `serverExternalPackage`,
+  //     el file-tracing de Netlify no arrastra el `.node` de la dependencia opcional
+  //     de plataforma (pnpm lo anida), así que la función quedaba sin el binario y
+  //     resvg fallaba ("No se pudo generar el comprobante"). Lo incluimos por glob
+  //     (cubre cualquier versión/arch que instale el build de Linux de Netlify).
   outputFileTracingIncludes: {
-    "/api/comprobante-pago": ["./app/api/notif-vs/_assets/vs-font.ttf"],
+    "/api/comprobante-pago": [
+      "./app/api/notif-vs/_assets/vs-font.ttf",
+      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/*.node",
+    ],
     "/api/notif-vs": [
       "./app/api/notif-vs/_assets/vs-font.ttf",
       "./public/flags/**",
+      "./node_modules/.pnpm/@resvg+resvg-js*/node_modules/@resvg/resvg-js-*/*.node",
     ],
   },
   // Tree-shaking explícito de barrels grandes: Next reescribe los imports

@@ -30,6 +30,15 @@ type Props = {
   codigo: string;
   /** Fecha ISO del abono (cuándo se realizó el pago). */
   fechaISO: string;
+  /**
+   * Modo controlado: si se pasan, el padre gobierna la apertura (p. ej. para
+   * abrir el comprobante automáticamente justo tras registrar el pago). Si se
+   * omiten, el componente usa su propio estado y se abre con el botón.
+   */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  /** Oculta el botón disparador "Comprobante" (cuando se abre por código). */
+  hideTrigger?: boolean;
 };
 
 /** Slug seguro para el nombre de archivo: "Andrés Núñez" → "andres-nunez". */
@@ -63,8 +72,18 @@ export function ComprobantePago({
   metodo,
   codigo,
   fechaISO,
+  open,
+  onOpenChange,
+  hideTrigger = false,
 }: Props) {
-  const [abierto, setAbierto] = useState(false);
+  // Apertura controlada (padre) o interna (botón propio).
+  const [abiertoInterno, setAbiertoInterno] = useState(false);
+  const controlado = open !== undefined;
+  const abierto = controlado ? open : abiertoInterno;
+  const setAbierto = (v: boolean) => {
+    if (!controlado) setAbiertoInterno(v);
+    onOpenChange?.(v);
+  };
   const [compartiendo, setCompartiendo] = useState(false);
 
   // ¿El navegador soporta compartir (con archivos)? `navigator` no existe en SSR.
@@ -87,11 +106,15 @@ export function ComprobantePago({
     return `/api/comprobante-pago?${params.toString()}`;
   }, [grupoNombre, nombre, monto, valor, metodo, codigo, fechaISO]);
 
-  const { data: blob, isError } = useQuery({
+  const { data: blob, isError, error } = useQuery({
     queryKey: ["comprobante-pago", url],
     queryFn: async () => {
       const res = await fetch(url);
-      if (!res.ok) throw new Error("No se pudo generar el comprobante");
+      if (!res.ok) {
+        // El servidor manda el motivo en el cuerpo; lo propagamos para mostrarlo.
+        const motivo = await res.text().catch(() => "");
+        throw new Error(motivo || "No se pudo generar el comprobante");
+      }
       return res.blob();
     },
     enabled: abierto,
@@ -166,16 +189,18 @@ export function ComprobantePago({
 
   return (
     <Dialog open={abierto} onOpenChange={setAbierto}>
-      <Button
-        variant="outline"
-        size="sm"
-        className="shrink-0"
-        aria-label={`Ver comprobante ${codigo}`}
-        onClick={() => setAbierto(true)}
-      >
-        <Receipt className="size-4" />
-        Comprobante
-      </Button>
+      {!hideTrigger && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-label={`Ver comprobante ${codigo}`}
+          onClick={() => setAbierto(true)}
+        >
+          <Receipt className="size-4" />
+          Comprobante
+        </Button>
+      )}
 
       <DialogContent className="max-w-sm">
         <DialogHeader>
@@ -188,8 +213,10 @@ export function ComprobantePago({
         {/* Previsualización del ticket (altura acotada para no tapar los botones) */}
         <div className="grid place-items-center overflow-hidden rounded-xl border border-border bg-sunken p-2">
           {isError ? (
-            <p className="t-body-sm p-6 text-center text-destructive">
-              No se pudo generar el comprobante. Inténtalo de nuevo.
+            <p className="t-body-sm break-words p-6 text-center text-destructive">
+              {error instanceof Error && error.message
+                ? error.message
+                : "No se pudo generar el comprobante. Inténtalo de nuevo."}
             </p>
           ) : objectURL ? (
             // eslint-disable-next-line @next/next/no-img-element -- blob local, no Image
